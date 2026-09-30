@@ -1458,6 +1458,16 @@ export const EquicordDevs = Object.freeze({
 } satisfies Record<string, Dev>);
 
 export const TestcordDevs = /* #__PURE__*/ Object.freeze({
+    Kurtzon: {
+        name: "Kurtzon",
+        id: 1253545207488839784n,
+        github: "kurtzonaudio"
+    },
+    DavidHiFi: {
+        name: "DavidHiFi",
+        id: 1553713171938938891n,
+        github: "DavidHiFi"
+    },
     sirphantom89: {
         name: "SirPhantom89",
         id: 1464279455844274188n,
