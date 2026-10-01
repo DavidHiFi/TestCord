@@ -19,7 +19,7 @@ import { TestcordDevs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
 import { findByCodeLazy, findByPropsLazy } from "@webpack";
-import { Button, MediaEngineStore, React, RelationshipStore, SelectedChannelStore, showToast, Toasts, UserStore, VoiceStateStore } from "@webpack/common";
+import { Button, lodash, MediaEngineStore, React, RelationshipStore, SelectedChannelStore, showToast, Toasts, UserStore, VoiceStateStore } from "@webpack/common";
 
 import { VolumeHold } from "./protection";
 
@@ -36,16 +36,13 @@ const SPEECH_HOLD_MS = 1500;
 const AUTO_RATIO = 2;
 const AUTO_CEILING = 200;
 const AUTO_GATE_DB = -48;
+const VOLUME_DEADBAND = 0.05;
+const PERSIST_DEBOUNCE_MS = 1000;
 
 const MIC_GUARD_KEYS = ["enabled"] as const;
 
 interface VoiceStats {
     rtp?: { inbound?: Record<string, unknown> | unknown[]; };
-}
-
-interface GuardVolume {
-    isHolding?: (userId: string) => boolean;
-    getHeldBaseline?: (userId: string) => number | undefined;
 }
 
 interface VoiceConnection {
@@ -94,6 +91,7 @@ let connection: VoiceConnection | null = null;
 let boundConnection: VoiceConnection | null = null;
 let intervalId: ReturnType<typeof setInterval> | undefined;
 let persistQueue = Promise.resolve();
+let heldWrite: { (): void; flush(): void; } | undefined;
 
 const settings = definePluginSettings({
     enabled: {
@@ -336,15 +334,6 @@ function readInbound(payload: VoiceStats): InboundSample[] {
     return samples;
 }
 
-function otherGuardHolds(userId: string): boolean {
-    return Boolean((plugins.StereoGuard as GuardVolume)?.isHolding?.(userId));
-}
-
-function heldBaseline(userId: string): number {
-    const other = (plugins.StereoGuard as GuardVolume)?.getHeldBaseline?.(userId);
-    return typeof other === "number" && Number.isFinite(other) && other >= 0 ? other : MediaEngineStore.getLocalVolume(userId);
-}
-
 function updateProtection(now: number) {
     for (const [userId, hold] of [...volumeHolds]) {
         const current = MediaEngineStore.getLocalVolume(userId);
@@ -358,7 +347,7 @@ function updateProtection(now: number) {
         const next = hold.tick(now, settings.store.autoUnmute * 1000);
         if (next.done) {
             unmute(userId, "auto");
-        } else if (!otherGuardHolds(userId) && next.volume !== hold.applied) {
+        } else if (next.volume !== hold.applied) {
             hold.applied = next.volume;
             setLocalVolume(userId, next.volume);
         }
@@ -370,7 +359,7 @@ function mute(userId: string, level: number) {
     if (mutedByUs.has(userId) || isLocalMuted(userId)) return;
 
     restoreVolume(userId, "silent");
-    const base = heldBaseline(userId);
+    const base = MediaEngineStore.getLocalVolume(userId);
     if (!Number.isFinite(base) || base <= 0) return;
     savedVolume.set(userId, base);
     volumeHolds.set(userId, new VolumeHold(base, Date.now(), 2000));
@@ -389,7 +378,7 @@ function unmute(userId: string, mode: "manual" | "auto" | "silent") {
 
     const hold = volumeHolds.get(userId);
     volumeHolds.delete(userId);
-    if (!otherGuardHolds(userId) && (!hold || Math.abs(MediaEngineStore.getLocalVolume(userId) - hold.applied) < 0.5)) {
+    if (!hold || Math.abs(MediaEngineStore.getLocalVolume(userId) - hold.applied) < 0.5) {
         setLocalVolume(userId, savedVolume.get(userId) ?? 100);
     }
     savedVolume.delete(userId);
@@ -429,7 +418,7 @@ function updateDynamics(now: number) {
     if (!settings.store.enabled || !settings.store.dynamicUserVolume) return;
 
     for (const [userId, entry] of [...turnedDown]) {
-        if (isIgnored(userId) || isLocalMuted(userId) || otherGuardHolds(userId)) {
+        if (isIgnored(userId) || isLocalMuted(userId)) {
             restoreVolume(userId, "silent");
             continue;
         }
@@ -463,7 +452,8 @@ function updateDynamics(now: number) {
         entry.at = now;
 
         const applied = Math.round(entry.volume * 10) / 10;
-        if (applied !== entry.applied) {
+        const deadband = Math.max(0.5, Math.abs(entry.applied) * VOLUME_DEADBAND);
+        if (Math.abs(applied - entry.applied) >= deadband) {
             entry.applied = applied;
             setLocalVolume(userId, applied);
         }
@@ -592,8 +582,11 @@ function poll() {
 }
 
 function persistHeld() {
-    const held = Object.fromEntries(savedVolume);
-    persistQueue = persistQueue.then(() => DataStore.set(HELD_KEY, held)).catch(e => logger.error("failed to save held volumes", e));
+    heldWrite ??= lodash.debounce(() => {
+        const held = Object.fromEntries(savedVolume);
+        persistQueue = persistQueue.then(() => DataStore.set(HELD_KEY, held)).catch(e => logger.error("failed to save held volumes", e));
+    }, PERSIST_DEBOUNCE_MS);
+    heldWrite();
 }
 
 async function saveIgnored() {
@@ -760,9 +753,6 @@ export default definePlugin({
         render: MicSpamGuardButton
     },
 
-    isHolding(userId: string) { return volumeHolds.has(userId); },
-    getHeldBaseline(userId: string) { return savedVolume.get(userId); },
-
     async start() {
         try {
             if (!await DataStore.get(BALANCE_VERSION_KEY)) {
@@ -819,5 +809,6 @@ export default definePlugin({
         turnedDown.clear();
         levels.clear();
         levelAt.clear();
+        heldWrite?.flush();
     }
 });
