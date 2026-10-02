@@ -81,8 +81,8 @@ export default definePlugin({
             find: "renderEmptyFavorite",
             replacement: [
                 {
-                    match: /src:\(\i=.{0,300}"animated","true"\),\i\.toString\(\)\):\i\),/,
-                    replace: "src:$self.parseLink(this.props.src,[this.props.coords.width,this.props.coords.height]),",
+                    match: /(renderGIF\(\).{0,200}src:)\i\(\i\)/,
+                    replace: "$1$self.parseLink(this.props.src,[this.props.coords.width,this.props.coords.height])",
                 },
                 {
                     match: /(this\.handleCanPlay,\i)\.src=(\i)/,

@@ -79,7 +79,7 @@ export const MARKETPLACE_CATALOG: MarketplaceCatalogItem[] = [
     {
         id: "system-monitor",
         name: "System & Ping Monitor",
-        description: "Live Discord gateway ping latency, memory consumption, and session uptime.",
+        description: "Live voice or gateway latency, memory consumption, and session uptime.",
         authors: [TestcordDevs.sirphantom89],
         version: "1.0.0",
         tags: ["Utility", "Monitor"],

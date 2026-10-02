@@ -123,6 +123,10 @@
     background-color: var(--status-danger, #f23f43);
 }
 
+.vc-sysmonitor-ping-dot.stale {
+    background-color: var(--text-muted, #949ba4);
+}
+
 .vc-sysmonitor-value {
     font-weight: 600;
     font-variant-numeric: tabular-nums;

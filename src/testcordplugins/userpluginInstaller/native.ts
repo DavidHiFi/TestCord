@@ -165,7 +165,9 @@ export async function removePlugin(_: unknown, directory: string) {
 }
 
 export async function build() {
-    const result = await run(IS_WINDOWS ? "pnpm.cmd" : "pnpm", ["build"], repoRoot());
+    const result = IS_WINDOWS
+        ? await run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", "pnpm build"], repoRoot())
+        : await run("pnpm", ["build"], repoRoot());
     if (result.code !== 0) {
         throw new Error(result.err.trim().slice(-1500) || `Build exited with ${result.code}`);
     }
@@ -173,7 +175,7 @@ export async function build() {
 
 export async function pendingCommits(_: unknown, directory: string): Promise<Commit[]> {
     const dir = pluginDir(directory);
-    if (!existsSync(dir)) return [];
+    if (!existsSync(join(dir, ".git"))) return [];
 
     const fetched = await git(["fetch", "--quiet"], dir);
     if (fetched.code !== 0) return [];
@@ -197,8 +199,15 @@ export async function hasUpdates(_: unknown, directory: string) {
 export async function updatePlugin(_: unknown, directory: string) {
     const dir = pluginDir(directory);
     if (!existsSync(dir)) throw new Error("That plugin is not installed");
+    if (!existsSync(join(dir, ".git"))) throw new Error("This plugin is maintained locally. Update it from its source collection.");
 
-    const result = await git(["rebase", "@{upstream}"], dir);
+    const status = await git(["status", "--porcelain"], dir);
+    if (status.code !== 0 || status.out.trim()) throw new Error("This plugin has local changes. Preserve them before updating.");
+
+    const fetched = await git(["fetch", "--quiet"], dir);
+    if (fetched.code !== 0) throw new Error("The plugin update could not be fetched.");
+
+    const result = await git(["merge", "--ff-only", "@{upstream}"], dir);
     if (result.code !== 0) {
         throw new Error(result.err.trim() || `git rebase exited with ${result.code}`);
     }

@@ -69,8 +69,9 @@ function isNativelyCloneable(value: object) {
  * handed any object with a real prototype straight to `put` therefore left the helper in
  * place and the error kept firing.
  *
- * This mutates, so it must only ever be handed something we own. It is called from
- * snapshotMessage, immediately after its own cloneDeep, and from nowhere else. It used to
+ * This mutates, so it must only ever be handed something we own. snapshotMessage and
+ * queueRecord call it on their own cloneDeep copies. The queue copy also removes helpers
+ * introduced by later edit payloads without changing shared message objects. It used to
  * be called from applyBatch instead, which was wrong twice over: the record there is only
  * a shallow spread, so the walk reached the shared nested objects and deleted keys and
  * spliced arrays on the copies held by recentMessages and channelMessageCache, and it ran

@@ -561,13 +561,15 @@ function queueRecord(message: LoggedMessage, status: LogStatus) {
     const pendingHistory = pending?.message.editHistory ?? [];
     const messageHistory = message.editHistory ?? [];
     if (pendingHistory.length > messageHistory.length) message.editHistory = pendingHistory;
+    const snapshot = lodash.cloneDeep(message);
+    stripUncloneable(snapshot, new WeakSet());
 
     pendingDeletes.delete(message.id);
     pendingWrites.set(message.id, {
         message_id: message.id,
         channel_id: message.channel_id,
         status: finalStatus,
-        message,
+        message: snapshot,
         protected: pending?.protected,
         hidden: pending?.hidden
     });

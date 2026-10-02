@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { isPluginEnabled } from "@api/PluginManager";
+import BetterForwards from "@equicordplugins/betterForwards";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
@@ -14,9 +16,10 @@ export default definePlugin({
     patches: [
         {
             find: ".getChannelHistory(),",
+            predicate: () => !isPluginEnabled("BetterForwards") || !BetterForwards.settings.store.selfForward,
             replacement: [{
-                match: /\i.id\]/,
-                replace: "]"
+                match: /\[\i\.id\]/,
+                replace: "[]"
             }]
         }
     ]

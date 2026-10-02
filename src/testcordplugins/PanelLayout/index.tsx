@@ -3480,6 +3480,13 @@ export default definePlugin({
 
     patches: [
         {
+            find: "_handleControlPing(",
+            replacement: {
+                match: /(?<=_handleControlPing\(\i\)\{)\i\.\i\.supports\(\i\.\i\.NATIVE_PING\)/,
+                replace: "($& && Date.now() - (this._pings.at(-1)?.time ?? 0) < 10_000)"
+            }
+        },
+        {
             find: "#{intl::USER_PROFILE_ACCOUNT_POPOUT_BUTTON_A11Y_LABEL}",
             replacement: {
                 match: /(?<=\i\.jsxs?\)\()(\i),{(?=[^}]*?userTag:\i,occluded:)/,

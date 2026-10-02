@@ -15,17 +15,36 @@ import { TestcordDevs } from "@utils/constants";
 import { OptionType } from "@utils/types";
 import type { RenderModalProps } from "@vencord/discord-types";
 import { findStoreLazy } from "@webpack";
-import { Modal, openModalLazy, React, Select, Tooltip, useEffect, useState } from "@webpack/common";
+import { Modal, openModalLazy, React, RTCConnectionStore, Select, Tooltip, useEffect, useState, useStateFromStores } from "@webpack/common";
 
 import { defineModuleSettings } from "../moduleSettings";
 import type { UserAreaModule } from "../types";
 
 const GatewayConnectionStore = findStoreLazy("GatewayConnectionStore");
 
+function getGatewayPing(): number {
+    if (!GatewayConnectionStore?.isConnected?.()) return 0;
+
+    const reportedPing = GatewayConnectionStore.getPing?.();
+    if (typeof reportedPing === "number" && Number.isFinite(reportedPing) && reportedPing > 0) {
+        return Math.round(reportedPing);
+    }
+
+    const socket = GatewayConnectionStore.getSocket?.();
+    const sent = socket?.lastHeartbeatTime;
+    const acknowledged = socket?.lastHeartbeatAckTime;
+    if (typeof sent !== "number" || typeof acknowledged !== "number" || sent <= 0 || acknowledged < sent) {
+        return 0;
+    }
+
+    const elapsed = acknowledged - sent;
+    return elapsed > 0 && elapsed < 60_000 && Date.now() - acknowledged < 90_000 ? Math.round(elapsed) : 0;
+}
+
 export const sysMonitorSettings = defineModuleSettings("panelSystemMonitor", {
     showPing: {
         type: OptionType.BOOLEAN,
-        description: "Display gateway ping latency",
+        description: "Display voice latency during calls and gateway latency otherwise",
         default: true,
     },
     showRam: {
@@ -121,7 +140,7 @@ export function SystemMonitorSettingsModal({ modalProps, onClose }: { modalProps
                     <Flex justifyContent="space-between" alignItems="center">
                         <div>
                             <BaseText size="sm" style={{ color: "var(--header-primary)" }}>Gateway Ping</BaseText>
-                            <BaseText size="xs" color="text-muted">Display live Discord gateway latency with status indicator</BaseText>
+                            <BaseText size="xs" color="text-muted">Display voice latency during calls and gateway latency otherwise</BaseText>
                         </div>
                         <FormSwitch
                             title=""
@@ -174,6 +193,17 @@ export function SystemMonitorSettingsModal({ modalProps, onClose }: { modalProps
 function SystemMonitorComponent() {
     const [stats, setStats] = useState({ ping: 0, memoryMb: 0, uptimeSec: 0 });
     const s = sysMonitorSettings.use(["showPing", "showRam", "showUptime", "refreshInterval"]);
+    const rtcStores = [RTCConnectionStore].filter(Boolean);
+    const voiceConnected = useStateFromStores(rtcStores, () => RTCConnectionStore?.isConnected?.() ?? false);
+    const voicePing = useStateFromStores(rtcStores, () => RTCConnectionStore?.getLastPing?.() ?? 0);
+    const voicePingSampleTime = useStateFromStores(rtcStores, () => {
+        // Discord's current client returns timestamped samples, despite the declared number[] type.
+        const samples: unknown = RTCConnectionStore?.getPings?.();
+        const latest = Array.isArray(samples) ? samples.at(-1) : null;
+        return latest && typeof latest === "object" && "time" in latest && typeof latest.time === "number"
+            ? latest.time
+            : null;
+    });
 
     useEffect(() => {
         const startTime = Date.now();
@@ -181,7 +211,7 @@ function SystemMonitorComponent() {
         const update = () => {
             let ping = 0;
             try {
-                ping = Math.round(GatewayConnectionStore?.getPing?.() ?? 0);
+                ping = getGatewayPing();
             } catch { }
 
             let memMb = 0;
@@ -199,12 +229,23 @@ function SystemMonitorComponent() {
         return () => clearInterval(timer);
     }, [s.refreshInterval]);
 
-    const { ping, memoryMb, uptimeSec } = stats;
+    const { memoryMb, uptimeSec } = stats;
+    const ping = voiceConnected
+        ? (typeof voicePing === "number" && Number.isFinite(voicePing) && voicePing > 0 ? Math.round(voicePing) : 0)
+        : stats.ping;
+    const pingSource = voiceConnected ? "Voice" : "Gateway";
+    const voiceSampleAgeMs = voiceConnected && typeof voicePingSampleTime === "number"
+        ? Date.now() - voicePingSampleTime
+        : 0;
+    const staleVoicePing = voiceConnected && ping > 0 && voiceSampleAgeMs > 30_000;
     let pingQualityClass = "optimal";
     let pingQualityText = "Optimal";
     if (ping <= 0) {
-        pingQualityClass = "good";
-        pingQualityText = "Ready";
+        pingQualityClass = "stale";
+        pingQualityText = "Unavailable";
+    } else if (staleVoicePing) {
+        pingQualityClass = "stale";
+        pingQualityText = "Last measured";
     } else if (ping < 80) {
         pingQualityClass = "optimal";
         pingQualityText = "Optimal";
@@ -233,6 +274,11 @@ function SystemMonitorComponent() {
     const showPing = s.showPing ?? true;
     const showRam = (s.showRam ?? true) && memoryMb > 0;
     const showUptime = s.showUptime ?? true;
+    const pingTooltip = ping <= 0
+        ? `${pingSource} latency unavailable`
+        : staleVoicePing
+            ? `Last voice latency: ${ping}ms, measured ${formatUptime(Math.floor(voiceSampleAgeMs / 1000))} ago`
+            : `${pingSource} Latency: ${ping}ms (${pingQualityText})`;
 
     const handleClick = () => {
         openModalLazy(async () => modalProps => (
@@ -241,7 +287,7 @@ function SystemMonitorComponent() {
     };
 
     return (
-        <Tooltip text="System & Gateway Status • Click to configure" position="top">
+        <Tooltip text="System & Connection Status • Click to configure" position="top">
             {tooltipProps => (
                 <div
                     {...tooltipProps}
@@ -251,11 +297,11 @@ function SystemMonitorComponent() {
                     tabIndex={0}
                 >
                     {showPing && (
-                        <Tooltip text={`Gateway Latency: ${ping}ms (${pingQualityText})`} position="top">
+                        <Tooltip text={pingTooltip} position="top">
                             {tp => (
                                 <div {...tp} className="vc-sysmonitor-item">
                                     <span className={`vc-sysmonitor-ping-dot ${pingQualityClass}`} />
-                                    <span className="vc-sysmonitor-value">{ping > 0 ? `${ping}ms` : "-- ms"}</span>
+                                    <span className="vc-sysmonitor-value">{ping > 0 ? `${ping}ms${staleVoicePing ? " (old)" : ""}` : "-- ms"}</span>
                                 </div>
                             )}
                         </Tooltip>
@@ -291,7 +337,7 @@ function SystemMonitorComponent() {
 export const systemMonitorModule: Omit<UserAreaModule, "order" | "enabled"> = {
     id: "system-monitor",
     name: "System & Ping Monitor",
-    description: "Live Discord gateway latency (ping), JavaScript memory usage, and session uptime.",
+    description: "Live voice or gateway latency, JavaScript memory usage, and session uptime.",
     authors: [TestcordDevs.sirphantom89],
     version: "1.1.0",
     tags: ["Utility", "Monitor", "Performance"],

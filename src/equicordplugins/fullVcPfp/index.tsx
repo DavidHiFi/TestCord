@@ -7,7 +7,7 @@
 import { EquicordDevs } from "@utils/constants";
 import { getUserAvatarUrl } from "@utils/misc";
 import definePlugin from "@utils/types";
-import { ChannelRTCStore, ChannelStore, UserStore, VoiceStateStore } from "@webpack/common";
+import { ChannelRTCStore, ChannelStore, IconUtils, UserStore, VoiceStateStore } from "@webpack/common";
 
 import style from "./style.css?managed";
 
@@ -27,21 +27,30 @@ export default definePlugin({
         },
     ],
 
-    getVoiceBackgroundStyles({ className, participantUserId }: { className?: string; participantUserId?: string; }) {
-        if (!className?.includes("tile") || !participantUserId) return;
+    getVoiceBackgroundStyles({ participantUserId }: { className?: string; participantUserId?: string; }) {
+        if (!participantUserId) return;
 
         const user = UserStore.getUser(participantUserId);
         if (!user) return;
 
         const channelId = VoiceStateStore.getVoiceStateForUser(participantUserId)?.channelId;
-        if (!channelId) return;
+        const guildId = channelId ? ChannelStore.getChannel(channelId)?.guild_id : undefined;
+        const isSpeaking = channelId
+            ? ChannelRTCStore.getSpeakingParticipants(channelId).some(p => p.user.id === participantUserId && p.speaking)
+            : false;
 
-        const guildId = ChannelStore.getChannel(channelId)?.guild_id;
-        const isSpeaking = ChannelRTCStore.getSpeakingParticipants(channelId).some(p => p.user.id === participantUserId && p.speaking);
-        const avatarUrl = getUserAvatarUrl(user, guildId, isSpeaking, 1024);
+        // The stylesheet hides the tile's own avatar for every video tile, so this
+        // variable must always hold a loadable URL. getUserAvatarUrl returns undefined
+        // for members whose per-server avatar lookup yields nothing (its guild-member
+        // branch has no fallback), which used to render `url(undefined)` = blank tile.
+        const avatarUrl = getUserAvatarUrl(user, guildId, isSpeaking, 1024)
+            || user.getAvatarURL?.(guildId, 1024, isSpeaking)
+            || user.getAvatarURL?.(undefined, 1024, isSpeaking)
+            || IconUtils.getDefaultAvatarURL(user.id, user.discriminator)
+            || "https://cdn.discordapp.com/embed/avatars/0.png";
 
         return {
-            "--full-res-avatar": `url(${avatarUrl})`
+            "--full-res-avatar": `url("${avatarUrl}")`
         };
     },
 });
