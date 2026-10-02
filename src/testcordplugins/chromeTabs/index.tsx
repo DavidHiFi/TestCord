@@ -4,15 +4,15 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { findGroupChildrenByChildId, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { disableStyle, enableStyle } from "@api/Styles";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { TestcordDevs } from "@utils/constants";
 import { classes } from "@utils/misc";
 import definePlugin from "@utils/types";
-import { Channel, Message } from "@vencord/discord-types";
+import type { Channel, Message } from "@vencord/discord-types";
 import { ChannelStore, GuildChannelStore, GuildMemberStore, Menu, SelectedChannelStore, UserStore } from "@webpack/common";
-import { JSX } from "react";
+import type { JSX } from "react";
 
 import { ChromeTabsStrip } from "./components/ChromeTabsStrip";
 import { removeChromeTabSwitcher } from "./components/ChromeTabSwitcher";
@@ -35,11 +35,30 @@ function parseChannelUrl(url: string): { guildId: string; channelId?: string; me
     }
 }
 
-function findTargetFromFiber(target: HTMLElement): { guildId?: string; channelId?: string; } | null {
-    if (target.closest('[class*="messageListItem"], [id^="chat-messages-"], [class*="messageContent"], [role="article"], [class*="markup_"]')) {
-        return null;
+function resolveGuildChannelId(guildId: string): string | undefined {
+    const selected = SelectedChannelStore.getChannelId(guildId);
+    if (selected) return selected;
+
+    const def = GuildChannelStore.getDefaultChannel(guildId)?.id;
+    if (def) return def;
+
+    const selectable = GuildChannelStore.getSelectableChannels?.(guildId);
+    if (selectable && selectable.length > 0) {
+        return selectable[0]?.channel?.id;
     }
 
+    const guildChannels = GuildChannelStore.getChannels(guildId);
+    if (guildChannels?.SELECTABLE?.[0]?.channel?.id) {
+        return guildChannels.SELECTABLE[0].channel.id;
+    }
+    if (guildChannels?.VOCAL?.[0]?.channel?.id) {
+        return guildChannels.VOCAL[0].channel.id;
+    }
+
+    return undefined;
+}
+
+function findTargetFromFiber(target: HTMLElement): { guildId?: string; channelId?: string; } | null {
     let curr: HTMLElement | null = target;
     let depth = 0;
     while (curr && depth < 8) {
@@ -64,7 +83,7 @@ function findTargetFromFiber(target: HTMLElement): { guildId?: string; channelId
                     }
                     const guildId = (memo.guildId as string | undefined) || (memo.guild as { id?: string; } | undefined)?.id;
                     if (guildId) {
-                        const cid = SelectedChannelStore.getChannelId(guildId) || GuildChannelStore.getDefaultChannel(guildId)?.id;
+                        const cid = resolveGuildChannelId(guildId);
                         return { guildId, channelId: cid };
                     }
                 }
@@ -80,18 +99,16 @@ function findTargetFromFiber(target: HTMLElement): { guildId?: string; channelId
 
 function openTargetInNewTab(guildId: string, channelId?: string, messageId?: string) {
     let cid = channelId;
-    if (!cid) {
-        if (guildId === "@me") cid = "__friends__";
-        else cid = SelectedChannelStore.getChannelId(guildId) || GuildChannelStore.getDefaultChannel(guildId)?.id;
+    let gid = guildId;
+    if (gid === "@me" || gid === "home") {
+        gid = "@me";
+        if (!cid) cid = "__friends__";
+    } else if (!cid) {
+        cid = resolveGuildChannelId(gid);
     }
     if (!cid) return;
 
-    const active = ChromeTabsStore.getActiveTab();
-    if (active) {
-        ChromeTabsStore.createTabAfter(active.id, { guildId, channelId: cid }, true, messageId);
-    } else {
-        ChromeTabsStore.createTab({ guildId, channelId: cid }, true, messageId);
-    }
+    openTarget({ guildId: gid, channelId: cid }, true, messageId);
 }
 
 function handleGlobalClick(e: MouseEvent) {
@@ -102,8 +119,20 @@ function handleGlobalClick(e: MouseEvent) {
     const target = e.target as HTMLElement | null;
     if (!target) return;
 
-    if (target.closest('[class*="messageListItem"], [id^="chat-messages-"], [class*="messageContent"], [role="article"], [class*="markup_"]')) {
-        return;
+    if (target.closest(".tc-chrometabs-container, .tc-chrometabs-switcher-overlay")) return;
+
+    const channelAttrElem = target.closest("[data-channel-id]") as HTMLElement | null;
+    if (channelAttrElem) {
+        const cid = channelAttrElem.getAttribute("data-channel-id");
+        if (cid) {
+            const ch = ChannelStore.getChannel(cid);
+            const gid = ch?.guild_id || channelAttrElem.getAttribute("data-guild-id") || "@me";
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            openTargetInNewTab(gid, cid);
+            return;
+        }
     }
 
     const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
@@ -118,26 +147,87 @@ function handleGlobalClick(e: MouseEvent) {
                 openTargetInNewTab(parsed.guildId, parsed.channelId, parsed.messageId);
                 return;
             }
+            const synthetic = getSyntheticPageIdForPath(href);
+            if (synthetic) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                openTargetInNewTab("@me", synthetic);
+                return;
+            }
+        }
+    }
+
+    const channelItem = target.closest('[data-list-item-id^="channels___"], [id^="channels___"]') as HTMLElement | null;
+    if (channelItem) {
+        const attr = channelItem.getAttribute("data-list-item-id") || channelItem.getAttribute("id") || "";
+        const match = attr.match(/^channels___(\d+)/);
+        if (match?.[1]) {
+            const cid = match[1];
+            const ch = ChannelStore.getChannel(cid);
+            const gid = ch?.guild_id || "@me";
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            openTargetInNewTab(gid, cid);
+            return;
+        }
+    }
+
+    const privateItem = target.closest('[data-list-item-id*="private-channels"]') as HTMLElement | null;
+    if (privateItem) {
+        const dataId = privateItem.getAttribute("data-list-item-id") || "";
+        const match = dataId.match(/private-channels___(\d+)/);
+        if (match?.[1]) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            openTargetInNewTab("@me", match[1]);
+            return;
+        }
+        if (dataId.includes("friends")) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            openTargetInNewTab("@me", "__friends__");
+            return;
+        }
+        if (dataId.includes("shop")) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            openTargetInNewTab("@me", "__shop__");
+            return;
+        }
+        if (dataId.includes("nitro")) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            openTargetInNewTab("@me", "__nitro__");
+            return;
         }
     }
 
     const guildItem = target.closest('[data-list-item-id^="guildsnav___"]') as HTMLElement | null;
     if (guildItem) {
-        const guildId = guildItem.getAttribute("data-list-item-id")?.replace("guildsnav___", "");
-        if (guildId) {
+        const raw = guildItem.getAttribute("data-list-item-id")?.replace("guildsnav___", "");
+        if (raw) {
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
-            openTargetInNewTab(guildId);
+            openTargetInNewTab(raw);
             return;
         }
     }
-    const fromFiber = findTargetFromFiber(target);
-    if (fromFiber?.channelId) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        openTargetInNewTab(fromFiber.guildId || "@me", fromFiber.channelId);
+
+    if (!target.closest('[class*="messageListItem"], [id^="chat-messages-"], [class*="messageContent"], [role="article"], [class*="markup_"]')) {
+        const fromFiber = findTargetFromFiber(target);
+        if (fromFiber?.channelId) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            openTargetInNewTab(fromFiber.guildId || "@me", fromFiber.channelId);
+        }
     }
 }
 
@@ -247,10 +337,13 @@ export default definePlugin({
             const guildId = channel?.guild_id || "@me";
 
             let isRoleMentioned = false;
-            if (!isMentioned && channel?.guild_id && message.mentionRoles?.length) {
-                const member = GuildMemberStore.getMember(channel.guild_id, currentUserId);
-                if (member?.roles?.length) {
-                    isRoleMentioned = message.mentionRoles.some(roleId => member.roles.includes(roleId));
+            if (!isMentioned && channel?.guild_id) {
+                const mentionRoles = (message as unknown as { mention_roles?: string[]; }).mention_roles || message.mentionRoles;
+                if (mentionRoles?.length) {
+                    const member = GuildMemberStore.getMember(channel.guild_id, currentUserId);
+                    if (member?.roles?.length) {
+                        isRoleMentioned = mentionRoles.some(roleId => member.roles.includes(roleId));
+                    }
                 }
             }
 
@@ -285,12 +378,17 @@ export default definePlugin({
         }
     },
 
-    render({ currentTarget, children }: {
+    render(props: {
         currentTarget: { guildId: string; channelId: string; };
         children: JSX.Element;
+        className?: string;
+        [key: string]: unknown;
     }) {
+        const { currentTarget, children, className, ...rest } = props;
         const { tabBarPosition, collapsible } = settings.store;
-        if (tabBarPosition === "titlebar") return children;
+        if (tabBarPosition === "titlebar") {
+            return <div className={className} {...rest}>{children}</div>;
+        }
 
         const strip = (
             <ErrorBoundary noop>
@@ -305,7 +403,7 @@ export default definePlugin({
 
         if (tabBarPosition === "bottom") {
             return (
-                <div className={classes("tc-chrometabs-app-col", "tc-chrometabs-layout-bottom")}>
+                <div className={classes("tc-chrometabs-app-col", "tc-chrometabs-layout-bottom", className)} {...rest}>
                     <div className="tc-chrometabs-app-main">{children}</div>
                     {strip}
                 </div>
@@ -314,7 +412,7 @@ export default definePlugin({
 
         if (tabBarPosition === "left") {
             return (
-                <div className={classes("tc-chrometabs-app-row", "tc-chrometabs-layout-left")}>
+                <div className={classes("tc-chrometabs-app-row", "tc-chrometabs-layout-left", className)} {...rest}>
                     {strip}
                     <div className="tc-chrometabs-app-main">{children}</div>
                 </div>
@@ -323,7 +421,7 @@ export default definePlugin({
 
         if (tabBarPosition === "right") {
             return (
-                <div className={classes("tc-chrometabs-app-row", "tc-chrometabs-layout-right")}>
+                <div className={classes("tc-chrometabs-app-row", "tc-chrometabs-layout-right", className)} {...rest}>
                     <div className="tc-chrometabs-app-main">{children}</div>
                     {strip}
                 </div>
@@ -331,7 +429,7 @@ export default definePlugin({
         }
 
         return (
-            <div className={classes("tc-chrometabs-app-col", "tc-chrometabs-layout-top")}>
+            <div className={classes("tc-chrometabs-app-col", "tc-chrometabs-layout-top", className)} {...rest}>
                 {strip}
                 <div className="tc-chrometabs-app-main">{children}</div>
             </div>

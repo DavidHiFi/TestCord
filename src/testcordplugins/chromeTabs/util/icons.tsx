@@ -5,7 +5,7 @@
  */
 
 import { findComponentByCodeLazy } from "@webpack";
-import { JSX } from "react";
+import type { JSX } from "react";
 
 /** Discord's own icon components, so tabs match the rest of the client */
 export const QuestIcon = findComponentByCodeLazy("10.47a.76.76");
@@ -19,7 +19,7 @@ export const ActivityIcon = findComponentByCodeLazy("17.3 9 16.8 9 15.92V8.1Z");
 export const CircleQuestionIcon = findComponentByCodeLazy("10.58l-3.3-3.3a1");
 
 /** Renders the `#`/voice/forum glyph for a channel */
-export const ChannelTypeIcon = findComponentByCodeLazy('"ChannelItemIcon")');
+export const ChannelTypeIcon = findComponentByCodeLazy("ChannelItemIcon");
 
 export function LibraryIcon(props: { height?: number; width?: number; }): JSX.Element {
     const { height = 16, width = 16 } = props;

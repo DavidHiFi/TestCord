@@ -3,6 +3,12 @@
     align-items: center;
     justify-content: center;
     gap: 0.25em;
+
+    /* One wrapper per member row. Layout/style containment keeps each row's
+       wrapper out of its siblings' recalc, so a presence or role change high in
+       the list does not invalidate layout for every row below it. Size and paint
+       are untouched, so the rendered result is identical. */
+    contain: layout style;
 }
 
 .vc-member-list-decorators-wrapper:not(:empty) {

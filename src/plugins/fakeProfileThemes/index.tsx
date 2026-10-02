@@ -19,13 +19,14 @@
 // This plugin is a port from Alyxia's Vendetta plugin
 import "./styles.css";
 
-import { definePluginSettings } from "@api/Settings";
+import { definePluginSettings, Settings } from "@api/Settings";
 import { BaseText } from "@components/BaseText";
 import { Divider } from "@components/Divider";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Flex } from "@components/Flex";
 import { HeadingSecondary } from "@components/Heading";
 import { Paragraph } from "@components/Paragraph";
+import { buildNsTag, resolveNameColors } from "@testcordplugins/NameStyleChanger";
 import { Devs } from "@utils/constants";
 import { copyWithToast, fetchUserProfile } from "@utils/discord";
 import { Margins } from "@utils/margins";
@@ -42,8 +43,28 @@ interface Colors {
     accent: number;
 }
 
+function appendNameStyleTag(message: string): string {
+    try {
+        const nsSettings = (Settings as any).plugins?.NameStyleChanger;
+        if (!nsSettings?.enabled) return message;
+
+        return message + buildNsTag({
+            font: nsSettings.font,
+            effect: nsSettings.effect,
+            colors: nsSettings.customColors
+                ? resolveNameColors(nsSettings.color1, nsSettings.color2)
+                : null
+        });
+    } catch {
+        return message;
+    }
+}
+
 function encode(primary: number, accent: number): string {
-    const message = `[#${primary.toString(16).padStart(6, "0")},#${accent.toString(16).padStart(6, "0")}]`;
+    const message = appendNameStyleTag(
+        `[#${(primary & 0xffffff).toString(16).padStart(6, "0")},#${(accent & 0xffffff).toString(16).padStart(6, "0")}]`
+    );
+
     const padding = "";
     const encoded = Array.from(message)
         .map(x => x.codePointAt(0))
@@ -54,26 +75,22 @@ function encode(primary: number, accent: number): string {
     return (padding || "") + " " + encoded;
 }
 
-// Courtesy of Cynthia.
+const DecodeRegex = /\[#([a-fA-F0-9]{1,6}),#([a-fA-F0-9]{1,6})\]/;
 function decode(bio: string): Array<number> | null {
     if (bio == null) return null;
 
-    const colorString = bio.match(
-        /\u{e005b}\u{e0023}([\u{e0061}-\u{e0066}\u{e0041}-\u{e0046}\u{e0030}-\u{e0039}]{1,6})\u{e002c}\u{e0023}([\u{e0061}-\u{e0066}\u{e0041}-\u{e0046}\u{e0030}-\u{e0039}]{1,6})\u{e005d}/u,
-    );
-    if (colorString != null) {
-        const parsed = [...colorString[0]]
-            .map(x => String.fromCodePoint(x.codePointAt(0)! - 0xe0000))
-            .join("");
-        const colors = parsed
-            .substring(1, parsed.length - 1)
-            .split(",")
-            .map(x => parseInt(x.replace("#", "0x"), 16));
-
-        return colors;
-    } else {
-        return null;
+    let ascii = "";
+    for (const ch of bio) {
+        const cp = ch.codePointAt(0)!;
+        if (cp >= 0xe0000 && cp <= 0xe007f) {
+            ascii += String.fromCodePoint(cp - 0xe0000);
+        }
     }
+
+    const match = ascii.match(DecodeRegex);
+    if (!match) return null;
+
+    return [parseInt(match[1], 16), parseInt(match[2], 16)];
 }
 
 const settings = definePluginSettings({

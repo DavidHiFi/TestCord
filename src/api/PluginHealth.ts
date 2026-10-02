@@ -152,6 +152,11 @@ const DB_KEY_IGNORE_SOURCE_HISTORY = "PluginHealth_IgnoreSourceHistory_v1";
 let safeModeEnabled = false;
 let safeModeLoaded = false;
 let quarantinedPlugins: string[] = [];
+// Mirror of `quarantinedPlugins` for O(1) membership. `isQuarantined` runs on every
+// isPluginEnabled() call, which happens from render paths (typing indicator, user area,
+// plugin cards, every renderMessageDecoration guard). Array#includes walked the whole
+// quarantine list twice per call, twice per plugin, on every render tick.
+const quarantinedSet = new Set<string>();
 let quarantineLoaded = false;
 let crashHistory: CrashLogEntry[] = [];
 let crashLogsLoaded = false;
@@ -667,6 +672,8 @@ export const PluginHealth = {
             } catch {
                 quarantinedPlugins = [];
             }
+            quarantinedSet.clear();
+            for (const name of quarantinedPlugins) quarantinedSet.add(name);
             quarantineLoaded = true;
         }
         return [...quarantinedPlugins];
@@ -677,12 +684,13 @@ export const PluginHealth = {
     },
 
     isQuarantined(pluginName: string): boolean {
-        return quarantinedPlugins.includes(pluginName);
+        return quarantinedSet.has(pluginName);
     },
 
     async quarantinePlugin(pluginName: string): Promise<void> {
-        if (!quarantinedPlugins.includes(pluginName)) {
+        if (!quarantinedSet.has(pluginName)) {
             quarantinedPlugins.push(pluginName);
+            quarantinedSet.add(pluginName);
             quarantineLoaded = true;
             try {
                 await DataStore.set(DB_KEY_QUARANTINE, quarantinedPlugins);
@@ -694,8 +702,9 @@ export const PluginHealth = {
     },
 
     async unquarantinePlugin(pluginName: string): Promise<void> {
-        if (quarantinedPlugins.includes(pluginName)) {
+        if (quarantinedSet.has(pluginName)) {
             quarantinedPlugins = quarantinedPlugins.filter(p => p !== pluginName);
+            quarantinedSet.delete(pluginName);
             quarantineLoaded = true;
             try {
                 await DataStore.set(DB_KEY_QUARANTINE, quarantinedPlugins);
@@ -743,7 +752,7 @@ export const PluginHealth = {
         // Auto-quarantine: a plugin that crashed three or more times within
         // the last 24 hours is isolated so the next boot starts without it.
         // The user can restore it from the Crash Recovery card.
-        if (entry.pluginName && !quarantinedPlugins.includes(entry.pluginName)) {
+        if (entry.pluginName && !quarantinedSet.has(entry.pluginName)) {
             const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
             const recentCrashes = crashHistory.filter(
                 c => c.pluginName === entry.pluginName && c.timestamp >= dayAgo

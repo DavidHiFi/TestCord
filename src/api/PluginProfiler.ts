@@ -68,11 +68,6 @@ export interface PluginProfileData {
 
 export type SignalFlag = "Noticeable CPU" | "Slow spike" | "Slow calls" | "Active listeners";
 
-interface ActiveContext {
-    pluginName: string;
-    surface: string;
-}
-
 interface SessionTotals {
     cpuTimeMs: number;
     callCount: number;
@@ -111,7 +106,12 @@ const metricsRegistry = new Map<string, RawPluginMetrics>();
 /** Wall-clock start of the session, used only to label the range in the UI. */
 const sessionStartedAt = Date.now();
 const listeners = new Set<() => void>();
-const activeStack: ActiveContext[] = [];
+// Plugin name of the frame currently executing, innermost last. A plain string
+// stack rather than an array of context objects: `profileExecution` runs for
+// every flux handler, message decoration, member list row and lifecycle call, so
+// the `{pluginName, surface}` literal it used to allocate was one throwaway
+// object per rendered row. Nothing ever read `surface`, so this is all it needs.
+const activeStack: string[] = [];
 const SLOW_CALL_WARN_LIMIT = 5;
 let heapTrackingEnabled = false;
 
@@ -140,7 +140,7 @@ const measuredFunctions = new WeakSet<object>();
  * `new Error().stack` and ran four regexes over it on *every* `addEventListener` and
  * `setInterval` call in the whole client, and could only ever return null.
  */
-function currentContext(): ActiveContext | undefined {
+function currentPlugin(): string | undefined {
     return activeStack.length > 0 ? activeStack[activeStack.length - 1] : undefined;
 }
 
@@ -466,19 +466,19 @@ export const PluginProfiler = {
         const clearIntervalOrig = originalClearInterval;
 
         window.setInterval = ((handler: string | ((...args: unknown[]) => void), timeout?: number, ...args: unknown[]) => {
-            const context = currentContext();
-            if (!context || typeof handler !== "function") {
+            const pluginName = currentPlugin();
+            if (!pluginName || typeof handler !== "function") {
                 return setIntervalOrig(handler as any, timeout, ...args);
             }
 
             let id = 0;
             const wrapped = (...callbackArgs: unknown[]) =>
-                PluginProfiler.profileExecution(context.pluginName, "interval", () => handler(...callbackArgs));
+                PluginProfiler.profileExecution(pluginName, "interval", () => handler(...callbackArgs));
 
-            rememberSourceSnippet(context.pluginName, "interval", "setInterval callback", handler);
+            rememberSourceSnippet(pluginName, "interval", "setInterval callback", handler);
             id = setIntervalOrig(wrapped, timeout, ...args);
-            intervalOwners.set(id, context.pluginName);
-            const metrics = ensureMetrics(context.pluginName);
+            intervalOwners.set(id, pluginName);
+            const metrics = ensureMetrics(pluginName);
             metrics.activeIntervals.add(id);
             notifySubscribers();
             return id;
@@ -509,9 +509,9 @@ export const PluginProfiler = {
                 listener: EventListenerOrEventListenerObject | null,
                 options?: boolean | AddEventListenerOptions
             ) {
-                const context = currentContext();
-                if (context && listener) {
-                    rememberListener(this, type, listener, context.pluginName, options);
+                const pluginName = currentPlugin();
+                if (pluginName && listener) {
+                    rememberListener(this, type, listener, pluginName, options);
                 }
                 return next.call(this, type, listener, options);
             }
@@ -638,7 +638,7 @@ export const PluginProfiler = {
         const start = performance.now();
         const metrics = ensureMetrics(pluginName);
         rollPerformanceWindow(metrics, start);
-        activeStack.push({ pluginName, surface: category });
+        activeStack.push(pluginName);
 
         try {
             const result = fn();

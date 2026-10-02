@@ -9,7 +9,7 @@ import { Logger } from "@utils/Logger";
 import type { Message, MessageJSON } from "@vencord/discord-types";
 import { ChannelStore, FluxDispatcher, lodash, MessageStore, SelectedChannelStore, UserGuildSettingsStore, UserStore } from "@webpack/common";
 
-import { applyBatch, clearLogs, clearUnprotectedLogs, getChannelLogsAfter, getDatabase, getLogById, runMaintenance, stripUncloneable } from "./db";
+import { applyBatch, clearLogs, clearUnprotectedLogs, getAllHistoryForChannel, getChannelLogsAfter, getDatabase, getLogById, runMaintenance, stripUncloneable } from "./db";
 import { invalidateMessageClassCache } from "./render";
 import { ensureAttachmentSaved } from "./saveImage";
 import { settings } from "./settings";
@@ -180,6 +180,37 @@ export function cacheChannelMessages(records: LogRecord[]) {
         if (!first) break;
         channelMessageCache.delete(first);
     }
+}
+
+// Per-channel mirror of two DB queries: every logged row of the channel that is
+// not an edit, and every row carrying an edit history. They exist so a channel
+// switch does not have to re-read the channel's whole log, which is why they have
+// to be dropped whenever something actually changes those rows - a clear, an
+// edit, a delete. They live here rather than in index.tsx so the functions that
+// mutate the DB can invalidate them too; a stale copy is not a stale cache, it
+// re-injects rows that no longer exist.
+export const channelAllDeleted = new Map<string, LogRecord[]>();
+export const channelAllEdited = new Map<string, LogRecord[]>();
+export const channelSnapshotVersions = new Map<string, number>();
+
+export function snapshotVersion(channelId: string) {
+    return channelSnapshotVersions.get(channelId) ?? 0;
+}
+
+export function isCurrentSnapshot(channelId: string, version: number) {
+    return snapshotVersion(channelId) === version;
+}
+
+/** Bump only. For events that cannot change any already-logged row. */
+export function touchChannelSnapshot(channelId: string) {
+    channelSnapshotVersions.set(channelId, snapshotVersion(channelId) + 1);
+}
+
+/** Bump and drop the mirrors, so the next read comes back from the DB. */
+export function forgetChannelSnapshots(channelId: string) {
+    touchChannelSnapshot(channelId);
+    channelAllDeleted.delete(channelId);
+    channelAllEdited.delete(channelId);
 }
 
 export function invalidateChannelCache(channelId: string) {
@@ -1055,6 +1086,61 @@ export async function localRemoveLoggedMessage(id: string, permanent: boolean, f
 export async function deleteManyLogs(ids: string[]) {
     ids.forEach(queueDelete);
     await flushQueuedLogs();
+}
+
+/**
+ * Drop every logged row of a channel, mirroring the per-message context menu items.
+ * Deleted messages leave chat through the same mlDeleted dispatch `localRemoveLoggedMessage`
+ * uses; edit histories go through `clearEditHistoryCache` so the in-memory copy matches.
+ * Temporary clears only touch session state, so the rows come back after a restart,
+ * while permanent clears queue every id for a single batched delete.
+ */
+export async function removeChannelLogs(channelId: string, permanent: boolean) {
+    const [deleted, history] = await Promise.all([
+        getChannelLogsAfter(channelId, new Date(0).toISOString()),
+        getAllHistoryForChannel(channelId)
+    ]);
+
+    // The rows are about to stop existing, so the channel's DB mirrors have to go
+    // with them. Without this they survived the clear, and the next channel switch
+    // injected every "deleted" message back out of the stale copy - so only the
+    // rows the MESSAGE_DELETE dispatches below had actually been in chat ever
+    // looked cleared, and everything else came straight back.
+    forgetChannelSnapshots(channelId);
+
+    const handled = new Set<string>();
+    for (const record of deleted) {
+        const id = record.message_id;
+        handled.add(id);
+        recentMessages.delete(id);
+        channelMessageCache.delete(id);
+        invalidateLoggedCaches(id);
+        tempHiddenMessageIds.delete(id);
+        if (permanent) {
+            queueDelete(id);
+        } else {
+            // A still-pending write must flush unhidden, or the restart would lose the row.
+            pendingDeletes.delete(id);
+            tempHiddenMessageIds.add(id);
+        }
+        FluxDispatcher.dispatch({ type: "MESSAGE_DELETE", channelId, id, mlDeleted: true });
+    }
+
+    for (const record of history) {
+        const id = record.message_id;
+        // A row can be both deleted and edited; the delete above already removed it.
+        if (handled.has(id)) continue;
+        handled.add(id);
+        clearEditHistoryCache(id);
+        if (permanent) queueDelete(id);
+        FluxDispatcher.dispatch({
+            type: "MESSAGE_UPDATE",
+            message: { id, channel_id: channelId, editHistory: [] }
+        });
+    }
+
+    if (permanent) await flushQueuedLogs();
+    return handled.size;
 }
 
 export async function clearAllLogs(includeProtected = false) {

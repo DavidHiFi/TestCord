@@ -59,16 +59,27 @@
     font-weight: 500;
 }
 
-.smyn-native-gradient-animated > [data-username-with-effects],
-:where(.smyn-native-gradient-glow-overflow) .smyn-native-gradient-glow > [data-username-with-effects] {
-    animation: smyn-animation var(--smyn-gradient-duration, 1.5s) linear infinite;
-    background-image: linear-gradient(to right, var(--custom-display-name-styles-gradient-stops), var(--custom-display-name-styles-main-color) 100%) !important;
-    background-size: 100px auto !important;
+
+.smyn-native-gradient [data-username-with-effects] {
+    background-image: linear-gradient(90deg, var(--custom-gradient-color-1, var(--custom-display-name-styles-main-color, currentColor)), var(--custom-gradient-color-2, var(--custom-display-name-styles-main-color, currentColor))) !important;
+    background-size: 100% 100% !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
 }
 
-/* Offscreen pause (toggled by a shared IntersectionObserver): freezing the
-   seamless gradient loop for scrolled-away names removes their per-frame
-   paint. Resume shows no jump, so on-screen visuals are unchanged. */
+.smyn-native-gradient-animated [data-username-with-effects],
+.smyn-native-gradient-animated > [data-username-with-effects],
+:where(.smyn-native-gradient-glow-overflow) .smyn-native-gradient-glow > [data-username-with-effects] {
+    background-image: linear-gradient(to right, var(--custom-gradient-color-1, var(--custom-display-name-styles-main-color, currentColor)), var(--custom-gradient-color-2, var(--custom-display-name-styles-main-color, currentColor)), var(--custom-gradient-color-1, var(--custom-display-name-styles-main-color, currentColor))) !important;
+    background-size: 100px auto !important;
+    animation: smyn-animation var(--smyn-gradient-duration, 1.5s) linear infinite;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+
 .smyn-offscreen.smyn-gradient,
 .smyn-offscreen .smyn-gradient,
 .smyn-offscreen [data-username-with-effects],
@@ -76,9 +87,9 @@
     animation-play-state: paused !important;
 }
 
-/* Users who asked the OS for reduced motion keep the static gradient but
-   skip the per-frame background-position animation on every visible name. */
+
 @media (prefers-reduced-motion: reduce) {
+
     .smyn-native-gradient-animated > [data-username-with-effects],
     :where(.smyn-native-gradient-glow-overflow) .smyn-native-gradient-glow > [data-username-with-effects] {
         animation: none;
@@ -108,12 +119,10 @@
 .smyn-native-gradient-glow-overflow,
 .smyn-native-gradient-glow-overflow > .smyn-name-group,
 .smyn-native-gradient-glow-overflow > .smyn-name-group > .smyn-name,
-.smyn-native-gradient-glow-overflow :where(
-    [class^="text_"],
+.smyn-native-gradient-glow-overflow :where([class^="text_"],
     [class*=" text_"],
     [class^="username_"],
-    [class*=" username_"]
-) {
+    [class*=" username_"]) {
     overflow: visible;
 }
 

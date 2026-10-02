@@ -67,6 +67,31 @@
     height: 0.25rem;
     border-radius: 5px;
     margin-top: auto;
+
+    /* The bar shrinks linearly from 100% to 0% over the notification's lifetime.
+       Animating width on the compositor means the countdown costs no JS at all:
+       no interval, no per-tick setState and no React re-render. `paused` holds
+       the current width while hovered so resuming continues from where it
+       stopped, which is what the old elapsed-time bookkeeping produced. */
+    width: 100%;
+    transform-origin: left center;
+    animation-name: vc-notification-drain;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+.vc-notification-progressbar.paused {
+    animation-play-state: paused;
+}
+
+@keyframes vc-notification-drain {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
 }
 
 .vc-notification-p {

@@ -9,9 +9,10 @@ import { definePluginSettings } from "@api/Settings";
 import { UserAreaButton, UserAreaRenderProps } from "@api/UserArea";
 import { getUserSettingLazy } from "@api/UserSettings";
 import { settings as musicControlsSettings } from "@testcordplugins/PanelLayout/modules/musicControls/settings";
+import { TidalStore } from "@testcordplugins/PanelLayout/modules/musicControls/tidal/TidalStore";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
-import { FluxDispatcher } from "@webpack/common";
+import { FluxDispatcher, PresenceStore, UserStore } from "@webpack/common";
 
 const logger = new Logger("LyricsStatus");
 
@@ -26,6 +27,21 @@ const settings = definePluginSettings({
         type: OptionType.STRING,
         description: "Status template. {lyrics} = current lyric, {song} = track name, {artist} = artist name.",
         default: "🎵 {lyrics}",
+        onChange(value) {
+            if (typeof value === "string" && value.includes("??")) {
+                settings.store.format = "🎵 {lyrics}";
+            }
+        },
+    },
+    source: {
+        type: OptionType.SELECT,
+        description: "Music player used for lyric status",
+        options: [
+            { label: "Automatic", value: "auto", default: true },
+            { label: "Dopamine", value: "dopamine" },
+            { label: "TIDAL", value: "tidal" },
+            { label: "Spotify", value: "spotify" },
+        ],
     },
     customMessageOnStop: {
         type: OptionType.BOOLEAN,
@@ -66,6 +82,21 @@ let lastPositionTs = 0;
 let currentTrackId = "";
 let currentTrackName = "";
 let currentArtist = "";
+const DOPAMINE_APP_ID = "826521040275636325";
+const DOPAMINE_BRIDGE_URL = "http://127.0.0.1:35499";
+
+interface DopamineBridgeState {
+    title: string;
+    artists: string;
+    playing: boolean;
+    startTime: number;
+    artworkUrl: string | null;
+}
+
+let bridgeState: DopamineBridgeState | null = null;
+let bridgeSeenAt = 0;
+let bridgeRefreshing = false;
+let bridgeIntervalId: ReturnType<typeof setInterval> | null = null;
 
 function getPosition(): number {
     if (!isPlaying) return lastPosition;
@@ -125,11 +156,24 @@ async function fetchLyrics(track: string, artist: string, id: string, signal?: A
     if (lyricsCache.has(id)) return lyricsCache.get(id) ?? null;
     const cleanedTrack = cleanTrackName(track);
     try {
-        const res = await fetch(`https://lrclib.net/api/get?${new URLSearchParams({ track_name: cleanedTrack, artist_name: artist })}`, { signal });
-        if (!res.ok) { lyricsCache.set(id, null); return null; }
-        const data = await res.json() as { syncedLyrics?: string; };
-        const lines = data.syncedLyrics ? parseLrc(data.syncedLyrics) : null;
-        lyricsCache.set(id, lines);
+        const query = new URLSearchParams({ track_name: cleanedTrack, artist_name: artist });
+        const res = await fetch(`https://lrclib.net/api/get?${query}`, { signal });
+        let data = res.ok ? await res.json() as { syncedLyrics?: string; } : null;
+        if (!data?.syncedLyrics && (res.ok || res.status === 404)) {
+            const search = await fetch(`https://lrclib.net/api/search?${query}`, { signal });
+            if (search.ok) {
+                const results = await search.json() as { trackName: string; artistName: string; syncedLyrics?: string; }[];
+                const normalizedTitle = cleanedTrack.toLowerCase();
+                const normalizedArtist = artist.toLowerCase();
+                data = results.find(result =>
+                    cleanTrackName(result.trackName).toLowerCase() === normalizedTitle &&
+                    result.artistName.toLowerCase() === normalizedArtist &&
+                    !!result.syncedLyrics,
+                ) ?? null;
+            }
+        }
+        const lines = data?.syncedLyrics ? parseLrc(data.syncedLyrics) : null;
+        if (res.ok || res.status === 404) lyricsCache.set(id, lines);
         return lines;
     } catch (e) {
         if (signal?.aborted) return null;
@@ -154,44 +198,82 @@ const CustomStatusSetting = getUserSettingLazy("status", "customStatus")!;
 
 let lastSentLine: string | null = null;
 let savedOriginalStatus: any = null;
+let statusWriteInFlight = false;
+let lastStatusWriteAt = 0;
 
 function saveOriginalStatus() {
     if (savedOriginalStatus === null && CustomStatusSetting) {
-        const current = CustomStatusSetting.getSetting();
-        savedOriginalStatus = current ? { ...current } : null;
+        try {
+            const current = CustomStatusSetting.getSetting();
+            savedOriginalStatus = current ? { ...current } : null;
+        } catch {
+            savedOriginalStatus = null;
+        }
     }
 }
 
 function restoreOriginalStatus() {
     if (savedOriginalStatus !== null && CustomStatusSetting) {
         lastSentLine = null;
-        CustomStatusSetting.updateSetting(savedOriginalStatus);
+        Promise.resolve(CustomStatusSetting.updateSetting(savedOriginalStatus)).catch(err => {
+            logger.warn("Failed to restore original custom status:", err);
+        });
         savedOriginalStatus = null;
     }
 }
 
-function setStatus(text: string) {
-    if (text === lastSentLine) return;
-    saveOriginalStatus();
-    lastSentLine = text;
-    CustomStatusSetting?.updateSetting({
+function buildStatusPayload(text: string, createdAtMs = String(Date.now())) {
+    return {
         text: text.slice(0, 128),
         expiresAtMs: "0",
         emojiId: "0",
         emojiName: "",
-        createdAtMs: String(Date.now()),
-    });
+        createdAtMs,
+    };
 }
 
-function customStatus() {
+async function writeCustomStatus(text: string, createdAtMs?: string): Promise<boolean> {
+    if (!CustomStatusSetting) {
+        logger.warn("CustomStatusSetting unavailable; cannot write status");
+        return false;
+    }
+    try {
+        await CustomStatusSetting.updateSetting(buildStatusPayload(text, createdAtMs));
+        return true;
+    } catch (err) {
+        logger.warn("updateSetting failed, retrying once:", err);
+        try {
+            await new Promise(r => setTimeout(r, 400));
+            await CustomStatusSetting.updateSetting(buildStatusPayload(text, createdAtMs));
+            return true;
+        } catch (err2) {
+            logger.error("Custom status write failed twice:", err2);
+            return false;
+        }
+    }
+}
+
+async function setStatus(text: string) {
+    if (text === lastSentLine || statusWriteInFlight) return;
+    const now = Date.now();
+    if (now - lastStatusWriteAt < 1500) return;
+
+    statusWriteInFlight = true;
+    saveOriginalStatus();
+    const ok = await writeCustomStatus(text);
+    statusWriteInFlight = false;
+    if (ok) {
+        lastSentLine = text;
+        lastStatusWriteAt = Date.now();
+    } else {
+        lastSentLine = null;
+    }
+}
+
+async function customStatus() {
     lastSentLine = null;
-    CustomStatusSetting?.updateSetting({
-        text: settings.store.customMessage,
-        expiresAtMs: "0",
-        emojiId: "0",
-        emojiName: "",
-        createdAtMs: "0",
-    });
+    const ok = await writeCustomStatus(settings.store.customMessage || "", "0");
+    if (ok) lastStatusWriteAt = Date.now();
     savedOriginalStatus = null;
 }
 
@@ -199,8 +281,13 @@ function handleStopStatus() {
     if (settings.store.lastStatusOnStop) {
         restoreOriginalStatus();
     } else if (settings.store.customMessageOnStop) {
-        customStatus();
+        void customStatus();
     }
+}
+
+function statusLooksLikeLyric() {
+    const prefix = settings.store.format.split("{lyrics}")[0];
+    return !!prefix && !!CustomStatusSetting?.getSetting()?.text?.startsWith(prefix);
 }
 
 // ── Tick loop ─────────────────────────────────────────────────────────────────
@@ -211,15 +298,23 @@ let lyricGeneration = 0;
 let lyricsAbortController: AbortController | null = null;
 
 function tick() {
-    if (!settings.store.active || !isPlaying || !currentLines) return;
+    if (!settings.store.active) return;
+    updateActivePlayback();
+    if (!isPlaying || !currentLines) return;
     const line = getCurrentLine(currentLines, getPosition() + getCurrentDelay());
     if (!line) return;
     const text = settings.store.format
         .replace("{lyrics}", line)
         .replace("{song}", currentTrackName)
         .replace("{artist}", currentArtist);
-    setStatus(text);
+    void setStatus(text);
 }
+
+// Dopamine's own RPC (patched by dopamine-rpc-patch) is the single presence
+// writer: it sends the stock icon immediately and replays the activity with
+// the iTunes cover once the artwork lookup resolves. LyricsStatus stays
+// lyrics-only and reads the bridge as its playback clock; it never publishes
+// a second Discord activity.
 
 // ── Flux ──────────────────────────────────────────────────────────────────────
 
@@ -229,18 +324,80 @@ interface SpotifyPlayerState {
     position: number;
 }
 
-function onSpotifyPlayerState(e: SpotifyPlayerState) {
-    const newId = e.track?.id ?? "";
-    const trackChanged = newId !== currentTrackId;
+let spotifyPlayerState: SpotifyPlayerState | null = null;
+let spotifyStateTs = 0;
 
-    isPlaying = e.isPlaying ?? false;
-    lastPosition = e.position ?? 0;
+function getDopaminePlayback() {
+    if (bridgeState && Date.now() - bridgeSeenAt < 5000) {
+        return {
+            id: `dopamine:${bridgeState.title}:${bridgeState.artists}`,
+            name: bridgeState.title,
+            artist: bridgeState.artists.split(/[;,]/)[0].trim(),
+            playing: bridgeState.playing,
+            position: bridgeState.playing ? Math.max(0, Date.now() - bridgeState.startTime) : 0,
+        };
+    }
+    const userId = UserStore.getCurrentUser()?.id;
+    if (!userId) return null;
+    const activities = PresenceStore.getActivities(userId) ?? [];
+    const activity = activities.find(a => a.application_id === DOPAMINE_APP_ID && a.type === 2);
+    if (!activity?.details || !activity.state) return null;
+
+    const start = activity.timestamps?.start;
+    const startMillis = start ? start < 1e12 ? start * 1000 : start : 0;
+    return {
+        id: `dopamine:${activity.details}:${activity.state}`,
+        name: activity.details,
+        artist: activity.state.split(/[;,]/)[0].trim(),
+        playing: !!startMillis,
+        position: startMillis ? Math.max(0, Date.now() - startMillis) : lastPosition,
+    };
+}
+
+async function refreshDopamineBridge() {
+    if (bridgeRefreshing) return;
+    bridgeRefreshing = true;
+    try {
+        const response = await fetch(`${DOPAMINE_BRIDGE_URL}/current`, { signal: AbortSignal.timeout(1500) });
+        if (!response.ok) throw new Error(`Dopamine bridge returned ${response.status}`);
+        const data = await response.json() as Partial<DopamineBridgeState>;
+        bridgeState = data.title && data.artists ? data as DopamineBridgeState : null;
+        bridgeSeenAt = Date.now();
+        if (settings.store.active) updateActivePlayback();
+    } catch {
+        if (Date.now() - bridgeSeenAt >= 5000) {
+            bridgeState = null;
+        }
+    } finally {
+        bridgeRefreshing = false;
+    }
+}
+
+function getTidalPlayback() {
+    const { track } = TidalStore;
+    if (!track) return null;
+    return {
+        id: `tidal:${track.id}`,
+        name: track.name,
+        artist: track.artist,
+        playing: TidalStore.isPlaying,
+        position: TidalStore.position,
+    };
+}
+
+function updatePlayback(newId: string, name: string, artist: string, playing: boolean, position: number) {
+    const trackChanged = newId !== currentTrackId;
+    const wasPlaying = isPlaying;
+
+    isPlaying = playing;
+    lastPosition = position;
     lastPositionTs = Date.now();
     currentTrackId = newId;
-    currentTrackName = e.track?.name ?? "";
-    currentArtist = e.track?.artists?.[0]?.name ?? "";
+    currentTrackName = name;
+    currentArtist = artist;
 
     if (trackChanged) {
+        if (lastSentLine !== null || statusLooksLikeLyric()) handleStopStatus();
         currentLines = null;
         lyricsAbortController?.abort();
         const generation = ++lyricGeneration;
@@ -257,7 +414,31 @@ function onSpotifyPlayerState(e: SpotifyPlayerState) {
         }
     }
 
-    if (!isPlaying) handleStopStatus();
+    if (!isPlaying && (wasPlaying || trackChanged)) handleStopStatus();
+}
+
+function updateActivePlayback() {
+    const dopamine = getDopaminePlayback();
+    const tidal = getTidalPlayback();
+    const spotify = spotifyPlayerState;
+    const spotifyPlayback = spotify?.track ? {
+        id: spotify.track.id,
+        name: spotify.track.name,
+        artist: spotify.track.artists?.[0]?.name ?? "",
+        playing: spotify.isPlaying ?? false,
+        position: (spotify.position ?? 0) + (spotify.isPlaying ? Date.now() - spotifyStateTs : 0),
+    } : null;
+    const sources = { dopamine, tidal, spotify: spotifyPlayback };
+    const selected = settings.store.source === "auto"
+        ? dopamine?.playing ? dopamine : tidal?.playing ? tidal : spotifyPlayback?.playing ? spotifyPlayback : dopamine ?? tidal ?? spotifyPlayback
+        : sources[settings.store.source];
+    updatePlayback(selected?.id ?? "", selected?.name ?? "", selected?.artist ?? "", selected?.playing ?? false, selected?.position ?? 0);
+}
+
+function onSpotifyPlayerState(e: SpotifyPlayerState) {
+    spotifyPlayerState = e;
+    spotifyStateTs = Date.now();
+    updateActivePlayback();
 }
 
 function Icon({ className, active }: { className?: string; active: boolean; }) {
@@ -271,7 +452,7 @@ function Icon({ className, active }: { className?: string; active: boolean; }) {
     return (
         <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <mask id="lyricsStatusLine">
-                <rect width="100%" height="100%" fill="#ffffff" />
+                <rect width="100%" fill="#ffffff" height="100%" />
                 <line
                     className="blackLine"
                     x1="22"
@@ -328,7 +509,7 @@ function LyricsStatusToggleButton({ iconForeground, hideTooltips, nameplate }: U
                     handleStopStatus();
                 } else {
                     tick();
-                    if (intervalId === null) intervalId = setInterval(tick, 2000);
+                    if (intervalId === null) intervalId = setInterval(tick, 1000);
                 }
             }}
         />
@@ -337,10 +518,14 @@ function LyricsStatusToggleButton({ iconForeground, hideTooltips, nameplate }: U
 
 export default definePlugin({
     name: "LyricsStatus",
-    description: "Shows the current Spotify lyric line in your Discord custom status in real time. Lyrics fetched from LrcLib.",
+    description: "Shows Dopamine, TIDAL, or Spotify lyrics in your Discord custom status. Lyrics fetched from LrcLib.",
     tags: ["Activity", "Utility"],
-    authors: [{ name: "Sharp", id: 0n }],
+    authors: [
+        { name: "Sharp", id: 0n },
+        { name: "DavidHiFi", id: 1553713171938938891n },
+    ],
     settings,
+    dependencies: ["UserSettingsAPI"],
 
     userAreaButton: {
         icon: (props: { className?: string; }) => <Icon {...props} active={settings.store.active} />,
@@ -348,12 +533,22 @@ export default definePlugin({
     },
 
     start() {
-        loadCustomSongDelays();
-        FluxDispatcher.subscribe("SPOTIFY_PLAYER_STATE", onSpotifyPlayerState as any);
-        FluxDispatcher.subscribe("SPOTIFY_LYRICS_DELAYS_LOADED", loadCustomSongDelays as any);
-        FluxDispatcher.subscribe("SPOTIFY_LYRICS_CUSTOM_DELAY_CHANGE", onCustomDelayChange as any);
-        if (settings.store.active) {
-            intervalId = setInterval(tick, 2000);
+        try {
+            if (settings.store.source === "tidal") settings.store.source = "auto";
+            loadCustomSongDelays();
+            void refreshDopamineBridge();
+            bridgeIntervalId = setInterval(refreshDopamineBridge, 1000);
+            FluxDispatcher.subscribe("SPOTIFY_PLAYER_STATE", onSpotifyPlayerState as any);
+            FluxDispatcher.subscribe("SPOTIFY_LYRICS_DELAYS_LOADED", loadCustomSongDelays as any);
+            FluxDispatcher.subscribe("SPOTIFY_LYRICS_CUSTOM_DELAY_CHANGE", onCustomDelayChange as any);
+            if (settings.store.active) {
+                tick();
+                if (intervalId === null) intervalId = setInterval(tick, 1000);
+            }
+            logger.info(`Started (source=${settings.store.source}, active=${settings.store.active})`);
+        } catch (e) {
+            logger.error("start failed:", e);
+            throw e;
         }
     },
 
@@ -365,12 +560,18 @@ export default definePlugin({
         FluxDispatcher.unsubscribe("SPOTIFY_LYRICS_DELAYS_LOADED", loadCustomSongDelays as any);
         FluxDispatcher.unsubscribe("SPOTIFY_LYRICS_CUSTOM_DELAY_CHANGE", onCustomDelayChange as any);
         if (intervalId !== null) { clearInterval(intervalId); intervalId = null; }
+        if (bridgeIntervalId !== null) { clearInterval(bridgeIntervalId); bridgeIntervalId = null; }
         if (!isPlaying) handleStopStatus();
         currentLines = null;
         lyricsCache.clear();
         lastSentLine = null;
         isPlaying = false;
         currentTrackId = "";
+        spotifyPlayerState = null;
+        spotifyStateTs = 0;
+        bridgeState = null;
+        bridgeSeenAt = 0;
         savedOriginalStatus = null;
+        statusWriteInFlight = false;
     },
 });

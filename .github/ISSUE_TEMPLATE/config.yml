@@ -1,11 +1,11 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
     - name: 💬 Discord Community
-      url: https://equicord.org/discord
+      url: https://discord.gg/krvpRVyscP
       about: For plugin requests, support questions, and general help - join our Discord server
     - name: 🔌 Plugin Requests
-      url: https://equicord.org/discord
+      url: https://discord.gg/krvpRVyscP
       about: Want a new plugin? Request it in our Discord community, not here
     - name: ❓ Support & Questions
-      url: https://equicord.org/discord
+      url: https://discord.gg/krvpRVyscP
       about: Need help? Ask in our Discord server for faster responses

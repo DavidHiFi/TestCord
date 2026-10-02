@@ -8,7 +8,7 @@ import { Badge } from "@components/Badge";
 import { BaseText } from "@components/BaseText";
 import { getGuildAcronym, getUniqueUsername } from "@utils/discord";
 import { classes } from "@utils/misc";
-import { Channel, Guild, User } from "@vencord/discord-types";
+import type { Channel, Guild, User } from "@vencord/discord-types";
 import { findComponentByCodeLazy } from "@webpack";
 import {
     Avatar,
@@ -16,6 +16,7 @@ import {
     Clickable,
     createRoot,
     GuildStore,
+    IconUtils,
     PresenceStore,
     React,
     ReadStateStore,
@@ -28,7 +29,7 @@ import { ChannelTypeIcon, CloseIcon, UsersIcon } from "../util/icons";
 import { getSyntheticPage, isSyntheticChannelId } from "../util/pages";
 import { settings } from "../util/settings";
 import { activateTab, closeTab, getActiveTabId, getMRUTabs } from "../util/store";
-import { Tab } from "../util/types";
+import type { Tab } from "../util/types";
 
 const DiscordKeybindShortcut = findComponentByCodeLazy(".combo,", ".key,");
 
@@ -94,9 +95,8 @@ function getTabMeta(tab: Tab): TabMeta {
         const guildName = guild?.name ?? "Server";
         const initial = guild ? getGuildAcronym(guild) : "#";
         const mentionCount = settings.store.showUnreadBadges ? (ReadStateStore.getMentionCount?.(tab.channelId) ?? 0) : 0;
-        const cdnHost = (window as any).GLOBAL_ENV?.CDN_HOST ?? "cdn.discordapp.com";
         const iconUrl = guild?.icon
-            ? `https://${cdnHost}/icons/${guild.id}/${guild.icon}.webp?size=32`
+            ? IconUtils.getGuildIconURL({ id: guild.id, icon: guild.icon, size: 32 }) ?? null
             : null;
 
         return {
@@ -118,9 +118,8 @@ function getTabMeta(tab: Tab): TabMeta {
     if ((channel as any)?.isGroupDM?.() || (channel as any)?.isMultiUserDM?.()) {
         const title = channel?.name || "Group DM";
         const sub = `${(channel as any)?.recipients?.length ?? 0} MEMBERS`;
-        const cdnHost = (window as any).GLOBAL_ENV?.CDN_HOST ?? "cdn.discordapp.com";
         const iconUrl = channel?.icon
-            ? `https://${cdnHost}/channel-icons/${channel.id}/${channel.icon}.webp?size=32`
+            ? IconUtils.getChannelIconURL({ id: channel.id, icon: channel.icon, size: 32 }) ?? null
             : null;
         const mentionCount = settings.store.showUnreadBadges ? (ReadStateStore.getMentionCount?.(tab.channelId) ?? 0) : 0;
 
@@ -424,10 +423,16 @@ export function cancelChromeTabSwitcher() {
 
 export function cycleChromeTabSwitcher(direction: 1 | -1) {
     if (!mountNode) {
-        allTabs = getMRUTabs(settings.store.ctrlTabOrder as "mru" | "strip");
+        const order = settings.store.ctrlTabOrder as "mru" | "strip";
+        allTabs = getMRUTabs(order);
         if (allTabs.length < 2) return;
 
-        activeSelectedIndex = direction === 1 ? 1 : allTabs.length - 1;
+        if (order === "strip") {
+            const currentIndex = Math.max(0, allTabs.findIndex(t => t.id === getActiveTabId()));
+            activeSelectedIndex = (currentIndex + direction + allTabs.length) % allTabs.length;
+        } else {
+            activeSelectedIndex = direction === 1 ? 1 : allTabs.length - 1;
+        }
         cancelSwitch = false;
 
         mountNode = document.createElement("div");
@@ -476,7 +481,8 @@ export function handleSwitcherKeyDown(event: KeyboardEvent): boolean {
         }
     }
 
-    if (!event.ctrlKey || event.altKey || event.metaKey || event.key !== "Tab") return false;
+    const hasModifier = event.ctrlKey || event.metaKey;
+    if (!hasModifier || event.altKey || event.key !== "Tab") return false;
 
     event.preventDefault();
     event.stopPropagation();
@@ -487,7 +493,7 @@ export function handleSwitcherKeyDown(event: KeyboardEvent): boolean {
 }
 
 export function handleSwitcherKeyUp(event: KeyboardEvent): boolean {
-    if (event.key !== "Control" || !mountNode) return false;
+    if ((event.key !== "Control" && event.key !== "Meta") || !mountNode) return false;
 
     event.preventDefault();
     event.stopPropagation();

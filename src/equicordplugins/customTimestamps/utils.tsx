@@ -9,7 +9,7 @@ import "./style.css";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Paragraph } from "@components/Paragraph";
 import { findByCodeLazy, findComponentByCodeLazy } from "@webpack";
-import { moment, useRef, UserStore, useState } from "@webpack/common";
+import { useRef, UserStore, useState } from "@webpack/common";
 
 import customTimestamps from ".";
 
@@ -85,7 +85,7 @@ const DemoMessage = (props: { msgId, compact, message, date: Date | undefined, i
     const message = createBotMessage({ content: props.message, channelId: "1337", embeds: [] });
     message.author = UserStore.getCurrentUser();
     message.id = props.msgId;
-    message.timestamp = moment(props.date ?? new Date());
+    message.timestamp = new Date(props.date ?? Date.now());
     const user = UserStore.getCurrentUser();
     const populatedMessage = message && populateMessagePrototype(message);
     return populatedMessage ? (
@@ -101,8 +101,7 @@ const DemoMessage = (props: { msgId, compact, message, date: Date | undefined, i
         </div>
     ) : <div className="vc-cmt-demo-message">
         <Paragraph>
-            {/* @ts-ignore */}
-            <b>Preview:</b> {customTimestamps.renderTimestamp(date, "cozy")}
+            <b>Preview:</b> {customTimestamps.renderTimestamp(props.date, "cozy")}
         </Paragraph>
     </div>;
 };

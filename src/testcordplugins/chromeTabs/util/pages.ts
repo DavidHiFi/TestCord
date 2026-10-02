@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ComponentType } from "react";
+import type { ComponentType } from "react";
 
 import { ActivityIcon, DiscoveryIcon, EnvelopeIcon, FriendsIcon, ICYMIIcon, LibraryIcon, NitroIcon, QuestIcon, ShopIcon } from "./icons";
 
@@ -17,7 +17,7 @@ export interface SyntheticPage {
     id: string;
     route: string;
     label: string;
-    Icon: ComponentType<any>;
+    Icon: ComponentType<{ width?: number; height?: number; className?: string; }>;
 }
 
 export const SYNTHETIC_PAGES: SyntheticPage[] = [
@@ -63,6 +63,10 @@ const PATH_ROUTES: [prefix: string, id: string][] = [
 
 export function getSyntheticPageIdForPath(pathname: string): string | undefined {
     for (const [prefix, id] of PATH_ROUTES) {
+        if (id === "__friends__") {
+            if (pathname === "/channels/@me" || pathname === "/channels/@me/") return id;
+            continue;
+        }
         // exact match or a subpath — never a coincidental substring
         if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return id;
     }

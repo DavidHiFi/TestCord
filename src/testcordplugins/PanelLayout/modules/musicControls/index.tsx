@@ -5,6 +5,7 @@
  */
 
 import "./styles.css";
+import "./spotify/lyrics/spicyAnimator/spicyWordAnimation.css";
 
 import { Button } from "@components/Button";
 import { Card } from "@components/Card";

@@ -13,7 +13,7 @@ import { getLyricsSpicyLyrics } from "./providers/SpicyLyricsAPI";
 import { getLyricsSpotify } from "./providers/SpotifyAPI";
 import { LyricsData, Provider, SyncedLyric } from "./providers/types";
 
-const LyricsCacheKey = "SpotifyLyricsCacheNew";
+const LyricsCacheKey = "1";
 
 interface NullLyricCacheEntry {
     [Provider.Lrclib]?: boolean;
@@ -73,12 +73,17 @@ export async function getLyrics(track: Track | null): Promise<LyricsData | null>
 
         if (lyricsInfo) {
             const existingVersions = cached?.[cacheKey]?.lyricsVersions ?? {};
+            const existingAttributions = cached?.[cacheKey]?.attributions ?? {};
             const mergedInfo: LyricsData = {
                 ...lyricsInfo,
                 useLyric: requestedProvider in lyricsInfo.lyricsVersions ? requestedProvider : lyricsInfo.useLyric,
                 lyricsVersions: {
                     ...existingVersions,
                     ...lyricsInfo.lyricsVersions
+                },
+                attributions: {
+                    ...existingAttributions,
+                    ...(lyricsInfo.attributions ?? {})
                 }
             };
             await DataStore.set(LyricsCacheKey, { ...cached, [cacheKey]: mergedInfo });

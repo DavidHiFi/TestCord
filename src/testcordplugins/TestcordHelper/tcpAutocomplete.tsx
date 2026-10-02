@@ -104,6 +104,7 @@ let CachedPluginRow: any = null;
 interface PluginFilterEntry {
     plugin: Plugin;
     lower: string;
+    normalized: string;
     acronym: string;
     searchTerms?: string[];
     description: string;
@@ -123,9 +124,11 @@ function getFilterIndex(): PluginFilterEntry[] {
         filterIndex = [];
         for (const plugin of Object.values(plugins)) {
             if (!plugin || !plugin.name || plugin.name.endsWith("API")) continue;
+            const lower = plugin.name.toLowerCase();
             filterIndex.push({
                 plugin,
-                lower: plugin.name.toLowerCase(),
+                lower,
+                normalized: lower.replace(/\s+/g, ""),
                 acronym: (plugin.name.match(/[A-Z]/g)?.join("") || "").toLowerCase(),
                 searchTerms: plugin.searchTerms,
                 description: (plugin.description || "").toLowerCase(),
@@ -209,13 +212,18 @@ function filterPlugins(query: string, targetCategory?: "Testcord" | "Vencord" | 
     }
 
     const q = query.toLowerCase();
+    const nq = q.replace(/\s+/g, "");
     const scored: Array<{ plugin: Plugin; score: number; }> = [];
 
-    for (const { plugin, lower, acronym, searchTerms, description } of all) {
+    for (const { plugin, lower, normalized, acronym, searchTerms, description } of all) {
         if (lower === q) {
             scored.push({ plugin, score: 100 });
         } else if (lower.startsWith(q)) {
             scored.push({ plugin, score: 80 });
+        } else if (normalized === nq) {
+            scored.push({ plugin, score: 75 });
+        } else if (normalized.startsWith(nq)) {
+            scored.push({ plugin, score: 70 });
         } else if (acronym === q) {
             scored.push({ plugin, score: 70 });
         } else if (lower.includes(q)) {
@@ -235,6 +243,111 @@ function filterPlugins(query: string, targetCategory?: "Testcord" | "Vencord" | 
         .slice(0, 50);
 }
 
+type Category = "Testcord" | "Vencord" | "Equicord" | "All" | "Modified";
+
+const SENTINEL_RE = /^(tcp|testcordplugin|vcp|vencordplugin|eqp|equicordplugin|plg|plugins?|tcm|testcordmodified):/i;
+const TRAILING_SENTINEL_RE = /(?:^|\s)(tcp|testcordplugin|vcp|vencordplugin|eqp|equicordplugin|plg|plugins?|tcm|testcordmodified):(\S*)$/i;
+
+interface SentinelQuery {
+    keyword: string;
+    query: string;
+    /** How many words the reference spans, so onSelect knows how much to rewrite. */
+    wordCount: 1 | 2;
+    /** Characters before the cursor covered by the reference. */
+    distance: number;
+}
+
+function getCategory(keyword: string): { category: Category; title: string; type: string; } {
+    switch (keyword.toLowerCase()) {
+        case "vcp":
+        case "vencordplugin":
+            return { category: "Vencord", title: "VENCORD PLUGINS", type: "VENCORD_PLUGINS" };
+        case "eqp":
+        case "equicordplugin":
+            return { category: "Equicord", title: "EQUICORD PLUGINS", type: "EQUICORD_PLUGINS" };
+        case "plg":
+        case "plugin":
+        case "plugins":
+            return { category: "All", title: "PLUGINS", type: "PLUGINS" };
+        case "tcm":
+        case "testcordmodified":
+            return { category: "Modified", title: "TESTCORD MODIFIED PLUGINS", type: "TESTCORD_MODIFIED_PLUGINS" };
+        default:
+            return { category: "Testcord", title: "TESTCORD PLUGINS", type: "TESTCORD_PLUGINS" };
+    }
+}
+
+// Plugin names can contain spaces ("Fake Accounts"), but Discord's currentWord
+// stops at whitespace, so a second word would otherwise drop the panel entirely.
+// Rebuild the reference from the full input text instead.
+function parseSentinelQuery(args: any): SentinelQuery | null {
+    const currentWord: string = args?.currentWord ?? "";
+    const textValue: string = typeof args?.textValue === "string" ? args.textValue : "";
+
+    const direct = currentWord.match(SENTINEL_RE);
+    if (direct) {
+        return {
+            keyword: direct[1],
+            query: currentWord.slice(direct[0].length),
+            wordCount: 1,
+            distance: currentWord.length
+        };
+    }
+
+    if (!currentWord || !textValue.endsWith(currentWord)) return null;
+
+    const head = textValue.slice(0, textValue.length - currentWord.length).trimEnd();
+    const trailing = head.match(TRAILING_SENTINEL_RE);
+    if (!trailing?.[2]) return null;
+
+    const firstWord = trailing[2];
+
+    return {
+        keyword: trailing[1],
+        query: `${firstWord} ${currentWord}`,
+        wordCount: 2,
+        distance: textValue.length - (head.length - trailing[1].length - 1 - firstWord.length)
+    };
+}
+
+function matchPlugins(query: string, category: Category): Plugin[] {
+    const matches = filterPlugins(query, category);
+    if (matches.length > 0 || !query.includes(" ")) return matches;
+
+    // "fake accounts" is not a plugin, fall back to matching the first word only.
+    return filterPlugins(query.slice(0, query.indexOf(" ")), category);
+}
+
+const Transforms = findByPropsLazy("insertNodes", "textToText");
+
+function getChatInputEditor(): any {
+    const active = document.activeElement as HTMLElement | null;
+    const el = active?.closest?.("[data-slate-editor]");
+    if (!el) return null;
+
+    const fiberKey = Object.keys(el).find(k => k.startsWith("__reactFiber$"));
+    if (!fiberKey) return null;
+
+    let node = (el as any)[fiberKey];
+    while (node) {
+        const editor = node.stateNode?.ref?.current?.getSlateEditor?.();
+        if (editor) return editor;
+        node = node.return;
+    }
+    return null;
+}
+
+// options.insertText only rewrites the current word, which cannot reach back over
+// the space in a two word reference. Go through the editor when we can.
+function replaceBeforeCursor(distance: number, text: string): boolean {
+    const editor = getChatInputEditor();
+    if (!editor?.selection) return false;
+
+    Transforms.delete(editor, { distance, unit: "character", reverse: true });
+    Transforms.insertText(editor, text);
+    return true;
+}
+
 function hookModule(mod: any) {
     if (!isInitialized || !mod || mod._tcpAutocompleteHooked) return;
     hookedModule = mod;
@@ -244,44 +357,20 @@ function hookModule(mod: any) {
 
     Object.defineProperty(mod, "findMatchingAutocompleteType", {
         value: function (args: any) {
-            const currentWord = args?.currentWord;
-            const match = currentWord?.match(/^(?:(tcp|testcordplugin)|(vcp|vencordplugin)|(eqp|equicordplugin)|(plg|plugin|plugins)|(tcm|testcordmodified)):/i);
-            if (match) {
-                const rawPrefix = match[0];
-                const prefixKeyword = (match[1] || match[2] || match[3] || match[4] || match[5]).toLowerCase();
-                const prefix = `${prefixKeyword}:`;
-                const query = currentWord.slice(rawPrefix.length);
-
-                let category: "Testcord" | "Vencord" | "Equicord" | "All" | "Modified" = "Testcord";
-                let title = "TESTCORD PLUGINS";
-                let type = "TESTCORD_PLUGINS";
-
-                if (match[2]) {
-                    category = "Vencord";
-                    title = "VENCORD PLUGINS";
-                    type = "VENCORD_PLUGINS";
-                } else if (match[3]) {
-                    category = "Equicord";
-                    title = "EQUICORD PLUGINS";
-                    type = "EQUICORD_PLUGINS";
-                } else if (match[4]) {
-                    category = "All";
-                    title = "PLUGINS";
-                    type = "PLUGINS";
-                } else if (match[5]) {
-                    category = "Modified";
-                    title = "TESTCORD MODIFIED PLUGINS";
-                    type = "TESTCORD_MODIFIED_PLUGINS";
-                }
+            const parsed = parseSentinelQuery(args);
+            if (parsed) {
+                const { keyword, query, wordCount, distance } = parsed;
+                const { category, title, type } = getCategory(keyword);
+                const prefix = `${keyword.toLowerCase()}:`;
 
                 return {
                     type,
                     typeInfo: {
-                        sentinel: rawPrefix,
+                        sentinel: prefix,
                         matches: () => true,
                         queryResults: () => ({
                             results: {
-                                plugins: filterPlugins(query, category)
+                                plugins: matchPlugins(query, category)
                             }
                         }),
                         renderResults: ({ results, selectedIndex, onHover, onClick }: any) => {
@@ -312,10 +401,12 @@ function hookModule(mod: any) {
                             ];
                         },
                         onSelect: ({ results, index, options }: any) => {
-                            const list: Plugin[] = results?.plugins ?? [];
-                            const chosen = list[index];
-                            if (chosen && options?.insertText) {
-                                options.insertText(`${prefix}${chosen.name} `);
+                            const chosen: Plugin | undefined = results?.plugins?.[index];
+                            if (!chosen) return;
+
+                            const text = `${prefix}${chosen.name} `;
+                            if (wordCount === 1 || !replaceBeforeCursor(distance, text)) {
+                                options?.insertText?.(text);
                             }
                         }
                     },

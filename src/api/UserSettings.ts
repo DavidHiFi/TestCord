@@ -53,6 +53,41 @@ export const UserSettings: Record<PropertyKey, UserSettingDefinition<any>> | und
 });
 
 /**
+ * `group\0name` -> definition index for the module above.
+ *
+ * getUserSetting walked every exported user setting and compared two string
+ * fields on each. That module has hundreds of entries, and the API is reached
+ * from settings renders, timestamp components and profile panels, so the walk
+ * ran constantly. The module is a webpack singleton, so index it once per
+ * resolved object instead of once per call.
+ */
+const userSettingIndexCache = new WeakMap<object, Map<string, UserSettingDefinition<any>>>();
+let indexedUserSettingsModule: unknown = null;
+let userSettingIndex: Map<string, UserSettingDefinition<any>> | null = null;
+
+function getUserSettingIndex(): Map<string, UserSettingDefinition<any>> | null {
+    const settings = UserSettings;
+    if (!settings) return null;
+    if (indexedUserSettingsModule === settings && userSettingIndex) return userSettingIndex;
+
+    const cacheKey = settings as object;
+    let index = userSettingIndexCache.get(cacheKey);
+    if (!index) {
+        index = new Map();
+        for (const key in settings) {
+            const definition = settings[key];
+            if (!definition) continue;
+            index.set(`${definition.userSettingsAPIGroup}\0${definition.userSettingsAPIName}`, definition);
+        }
+        userSettingIndexCache.set(cacheKey, index);
+    }
+
+    indexedUserSettingsModule = settings;
+    userSettingIndex = index;
+    return index;
+}
+
+/**
  * Get the setting with the given setting group and name.
  *
  * @param group The setting group
@@ -61,13 +96,7 @@ export const UserSettings: Record<PropertyKey, UserSettingDefinition<any>> | und
 export function getUserSetting<T = any>(group: string, name: string): UserSettingDefinition<T> | undefined {
     if (!isPluginEnabled("UserSettingsAPI")) throw new Error("Cannot use UserSettingsAPI without setting it as a dependency.");
 
-    for (const key in UserSettings) {
-        const userSetting = UserSettings[key];
-
-        if (userSetting.userSettingsAPIGroup === group && userSetting.userSettingsAPIName === name) {
-            return userSetting;
-        }
-    }
+    return getUserSettingIndex()?.get(`${group}\0${name}`) as UserSettingDefinition<T> | undefined;
 }
 
 /**

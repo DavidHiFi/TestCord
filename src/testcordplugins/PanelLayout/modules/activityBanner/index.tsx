@@ -109,8 +109,8 @@ export const activityBannerPatches = [
                 replace: "getId()),$1=(0,$2)([$3,$4,$self.LocalActivityStore,$self.SelfPresenceStore,$self.PresenceStore],()=>$self.getVisibleGameOrRpc($5))"
             },
             {
-                match: /\(0,(\i)\.jsx\)\((\i),{name:(\i),application:(\i),game:(\i),isStreaming:(\i),ref:(\i)}\)/,
-                replace: "$self.renderActivityIcon({name:$3,application:$4,game:$5,isStreaming:$6,ref:$7,IconComponent:$2,defaultIcon:(0,$1.jsx)($2,{name:$3,application:$4,game:$5,isStreaming:$6,ref:$7})})"
+                match: /\(0,(\i)\.jsx\)\((\i),({(?:gameRecord:\i,)?name:(\i),(?:gameRecord:\i,)?application:(\i),game:(\i),isStreaming:(\i),ref:(\i)})\)/,
+                replace: "$self.renderActivityIcon({name:$4,application:$5,game:$6,isStreaming:$7,ref:$8,IconComponent:$2,defaultIcon:(0,$1.jsx)($2,$3)})"
             },
             {
                 match: /(\i)\?(\i)\((\i),(\i),{isGameRunning:!0}\)/,

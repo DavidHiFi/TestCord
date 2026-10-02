@@ -54,7 +54,7 @@ export default definePlugin({
 
     patches: [
         {
-            find: "#{intl::MESSAGE_UTILITIES_A11Y_LABEL}",
+            find: "#{intl::MESSAGE_UTILITIES_A11Y_LABEL}),children",
             replacement: [
                 {
                     noWarn: true,

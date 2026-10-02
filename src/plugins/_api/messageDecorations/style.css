@@ -3,6 +3,14 @@
     align-items: center;
     justify-content: center;
     gap: 0.25em;
+
+    /* One wrapper per rendered message. Without containment the browser has to
+       consider it a paint-affecting descendant of every message row, so a
+       scroll or a presence change anywhere above it invalidates layout for the
+       whole list. `layout style` keeps the wrapper out of its siblings'
+       layout and style recalc while leaving size and paint alone, so nothing
+       about the visible result changes. */
+    contain: layout style;
 }
 
 .vc-message-decorations-wrapper:not(:empty) {

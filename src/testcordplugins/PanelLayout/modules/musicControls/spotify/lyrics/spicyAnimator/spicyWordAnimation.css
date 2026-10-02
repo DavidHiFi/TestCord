@@ -1,0 +1,45 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+.vc-spicy-word {
+    display: inline-block;
+    position: relative;
+    font-weight: 600;
+    transform-origin: center center;
+    backface-visibility: hidden;
+    will-change: scale, translate, background-image, text-shadow;
+
+    background-image: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--text-strong, #fff) 85%, var(--text-muted, #fff)) var(--spicy-gradient-position, -20%),
+        color-mix(in srgb, var(--text-strong, #fff) 55%, transparent) calc(var(--spicy-gradient-position, -20%) + 20%)
+    );
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+
+    text-shadow: 0 0 var(--spicy-shadow-blur, 4px)
+        color-mix(in srgb, var(--text-strong, #fff) var(--spicy-shadow-opacity, 0%), transparent);
+}
+
+.vc-spicy-word.vc-spicy-bg-word {
+    background-image: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--text-strong, #fff) 60%, var(--text-muted, #fff)) var(--spicy-gradient-position, -20%),
+        color-mix(in srgb, var(--text-strong, #fff) 30%, transparent) calc(var(--spicy-gradient-position, -20%) + 20%)
+    );
+}
+
+.vc-spicy-word.vc-spicy-part-of-word {
+    transform-origin: right center;
+}
+
+.vc-spicy-word.vc-spicy-part-of-word + .vc-spicy-word {
+    transform-origin: left center;
+}

@@ -62,6 +62,24 @@ export const gitHash =
     process.env.EQUICORD_HASH ||
     execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
 
+function currentGitBranch() {
+    try {
+        const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+            encoding: "utf-8",
+        }).trim();
+        return branch === "HEAD" ? "" : branch;
+    } catch {
+        return "";
+    }
+}
+
+export const gitBranch =
+    process.env.TESTCORD_BRANCH ||
+    process.env.EQUICORD_BRANCH ||
+    currentGitBranch() ||
+    process.env.GITHUB_REF_NAME ||
+    "dev";
+
 export const banner = {
     js: `
 // Vencord ${gitHash}
@@ -112,15 +130,15 @@ export async function resolvePluginName(base, dirent) {
         const content = dirent.isFile()
             ? await readFile(fullPath, "utf-8")
             : await (async () => {
-                  for (const file of ["index.ts", "index.tsx"]) {
-                      try {
-                          return await readFile(join(fullPath, file), "utf-8");
-                      } catch {
-                          continue;
-                      }
-                  }
-                  return null;
-              })();
+                for (const file of ["index.ts", "index.tsx"]) {
+                    try {
+                        return await readFile(join(fullPath, file), "utf-8");
+                    } catch {
+                        continue;
+                    }
+                }
+                return null;
+            })();
 
         if (!content) return null;
 
@@ -350,6 +368,23 @@ export const gitHashPlugin = {
 /**
  * @type {import("esbuild").Plugin}
  */
+export const gitBranchPlugin = {
+    name: "git-branch-plugin",
+    setup: (build) => {
+        const filter = /^~git-branch$/;
+        build.onResolve({ filter }, (args) => ({
+            namespace: "git-branch",
+            path: args.path,
+        }));
+        build.onLoad({ filter, namespace: "git-branch" }, () => ({
+            contents: `export default ${JSON.stringify(gitBranch)}`,
+        }));
+    },
+};
+
+/**
+ * @type {import("esbuild").Plugin}
+ */
 export const gitRemotePlugin = {
     name: "git-remote-plugin",
     setup: (build) => {
@@ -518,8 +553,8 @@ export const commonOpts = {
     loader: {
         ".html": "text",
     },
-    plugins: [fileUrlPlugin, gitHashPlugin, gitRemotePlugin, stylePlugin],
-    external: ["~plugins", "~git-hash", "~git-remote", "/assets/*"],
+    plugins: [fileUrlPlugin, gitHashPlugin, gitBranchPlugin, gitRemotePlugin, stylePlugin],
+    external: ["~plugins", "~git-hash", "~git-branch", "~git-remote", "/assets/*"],
     inject: [join(dirname(fileURLToPath(import.meta.url)), "inject/react.mjs")],
     jsx: "transform",
     jsxFactory: "VencordCreateElement",

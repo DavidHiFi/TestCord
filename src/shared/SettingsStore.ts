@@ -72,6 +72,19 @@ export class SettingsStore<T extends object> {
 
                 let v = Reflect.get(target, key, receiver);
 
+                // Fast path. The overwhelming majority of reads are a boolean or a
+                // string that is already materialised on the target: a plugin's
+                // `enabled` flag, a slider value, a theme name. Those need no
+                // default resolution, no proxying and no path bookkeeping, so
+                // returning them without touching proxyContexts (a WeakMap lookup
+                // on every single read) skips the two most expensive steps of the
+                // trap for the reads that happen most.
+                if (v === null || typeof v !== "object") {
+                    if (key in target) return v;
+                } else if (v[SYM_IS_PROXY]) {
+                    return v;
+                }
+
                 const proxyContext = self.proxyContexts.get(target);
                 if (proxyContext == null) {
                     return v;

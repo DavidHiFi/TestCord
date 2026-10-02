@@ -50,12 +50,18 @@ export type MessageDecorationFactory = (props: MessageDecorationProps) => JSX.El
 
 export const decorationsFactories = new Map<string, MessageDecorationFactory>();
 
+// Built per decoration per rendered message before. The registration set is
+// static between plugin start/stop, so each message is stringified once there.
+const decorationErrorMessages = new Map<string, string>();
+
 export function addMessageDecoration(identifier: string, decoration: MessageDecorationFactory) {
     decorationsFactories.set(identifier, decoration);
+    decorationErrorMessages.set(identifier, `Failed to render ${identifier} Message Decoration`);
 }
 
 export function removeMessageDecoration(identifier: string) {
     decorationsFactories.delete(identifier);
+    decorationErrorMessages.delete(identifier);
 }
 
 export function __addDecorationsToMessage(props: MessageDecorationProps): JSX.Element | null {
@@ -65,7 +71,7 @@ export function __addDecorationsToMessage(props: MessageDecorationProps): JSX.El
 
     for (const [key, Decoration] of decorationsFactories) {
         decorations.push(
-            <ErrorBoundary noop message={`Failed to render ${key} Message Decoration`} key={key}>
+            <ErrorBoundary noop message={decorationErrorMessages.get(key)} key={key}>
                 <Decoration {...props} />
             </ErrorBoundary>
         );

@@ -56,6 +56,12 @@ interface DisplayNameStyles {
     fontId: number;
 }
 
+export const DISPLAY_NAME_STYLES_OVERRIDE_KEY = "__smynDisplayNameStylesOverride";
+
+export function isDisplayNameStylesOverride(styles: DisplayNameStyles | null | undefined): boolean {
+    return !!styles && (styles as unknown as Record<string, unknown>)[DISPLAY_NAME_STYLES_OVERRIDE_KEY] === true;
+}
+
 interface UserNameWithEffectsProps {
     userName: string;
     displayNameStyles: DisplayNameStyles;
@@ -71,7 +77,7 @@ const UserNameWithEffects = findComponentByCodeLazy<UserNameWithEffectsProps>(
 );
 
 const DisplayNameEffectDisplayTypes: Record<"PLAIN" | "STATIC" | "ANIMATED", number> = findByPropsLazy("PLAIN", "STATIC", "ANIMATED");
-const DisplayNameEffects: Record<"GRADIENT" | "GLOW" | "POP" | "GUMMY", number> = findByPropsLazy("SOLID", "GRADIENT", "NEON", "TOON", "POP", "GLOW", "PRISM", "GUMMY");
+const DisplayNameEffects: Record<"SOLID" | "GRADIENT" | "GLOW" | "POP" | "GUMMY", number> = findByPropsLazy("SOLID", "GRADIENT", "NEON", "TOON", "POP", "GLOW", "PRISM", "GUMMY");
 const DisplayNameFonts: Record<"DEFAULT", number> = findByPropsLazy("DEFAULT", "CHERRY_BOMB", "CHICLE", "MUSEO_MODERNO");
 
 const roleColorPattern = /^role((?:\+|-)\d{0,4})?$/iu;
@@ -194,13 +200,26 @@ function resolveColor(
     let secondaryAdjusted: any = null;
     let tertiaryAdjusted: any = null;
 
+    const customStylesWin = isDisplayNameStylesOverride(displayNameStyles);
+
     if (isRoleColor) {
         const percentage = roleColorPattern.exec(savedColor)?.[1] || "";
         if (percentage && isNaN(parseInt(percentage))) return null;
 
-        primaryColor = forceDefault ? defaultColor : (toCSS(colorStrings?.primaryColor) || (!inGuild && toCSS(displayNameStyles?.colors?.[0])) || defaultColor);
-        secondaryColor = forceDefault ? null : (toCSS(colorStrings?.secondaryColor) || (!inGuild && toCSS(displayNameStyles?.colors?.[1])) || null);
-        tertiaryColor = forceDefault ? null : (toCSS(colorStrings?.tertiaryColor) || (!inGuild && toCSS(displayNameStyles?.colors?.[2])) || null);
+        // Discord's own styles never override a role colour; only injected ones do.
+        const customColor1 = customStylesWin ? toCSS(displayNameStyles?.colors?.[0]) : null;
+        const customColor2 = customStylesWin ? toCSS(displayNameStyles?.colors?.[1]) : null;
+        const customColor3 = customStylesWin ? toCSS(displayNameStyles?.colors?.[2]) : null;
+
+        primaryColor = forceDefault
+            ? defaultColor
+            : (customColor1 || toCSS(colorStrings?.primaryColor) || defaultColor);
+        secondaryColor = forceDefault
+            ? null
+            : (customColor2 || toCSS(colorStrings?.secondaryColor) || null);
+        tertiaryColor = forceDefault
+            ? null
+            : (customColor3 || toCSS(colorStrings?.tertiaryColor) || null);
 
         primaryAdjusted = percentage ? adjustBrightness(primaryColor, parseInt(percentage)) : primaryColor;
         secondaryAdjusted = secondaryColor && percentage ? adjustBrightness(secondaryColor, parseInt(percentage)) : secondaryColor;
@@ -210,7 +229,8 @@ function resolveColor(
         primaryAdjusted = primaryColor;
     }
 
-    gradient = !canUseGradient || !secondaryColor || forceDefault
+    const hasCustomGradient = customStylesWin && Array.isArray(displayNameStyles?.colors) && displayNameStyles.colors.length >= 2;
+    gradient = (!canUseGradient && !hasCustomGradient) || !secondaryColor || forceDefault
         ? null
         : tertiaryColor
             ? "linear-gradient(to right,var(--custom-gradient-color-1),var(--custom-gradient-color-2),var(--custom-gradient-color-3),var(--custom-gradient-color-1))"
@@ -637,6 +657,7 @@ function getDisplayNameEffectClassName(
     styles: DisplayNameStyles | null | undefined,
     effectDisplayType: number,
 ): string {
+    const isGradient = styles?.effectId === DisplayNameEffects.GRADIENT;
     const useGradientAnimationOverride = needsGradientAnimationOverride(styles)
         && effectDisplayType === DisplayNameEffectDisplayTypes.ANIMATED
         && !AccessibilityStore.useReducedMotion;
@@ -647,8 +668,9 @@ function getDisplayNameEffectClassName(
 
     return [
         "smyn-native-effect",
+        isGradient && "smyn-native-gradient",
         useGradientAnimationOverride && "smyn-native-gradient-animated",
-        styles?.effectId === DisplayNameEffects.GRADIENT && settings.store.gradientGlow && "smyn-native-gradient-glow",
+        isGradient && settings.store.gradientGlow && "smyn-native-gradient-glow",
         nativeGradientGlowActive && "smyn-native-gradient-glow-active",
         styles?.effectId === DisplayNameEffects.POP && "smyn-native-pop",
         styles?.effectId === DisplayNameEffects.GUMMY && "smyn-native-gummy",
@@ -673,16 +695,41 @@ function DisplayNameEffectName({ name, styles, animate, ignoreFont = false, show
             ? DisplayNameEffectDisplayTypes.STATIC
             : DisplayNameEffectDisplayTypes.PLAIN;
 
+    const isGradient = styles?.effectId === DisplayNameEffects.GRADIENT;
+    const hasColors = Array.isArray(styles?.colors) && styles.colors.length > 0;
+    const c1 = hasColors ? toCSS(styles.colors[0]) : null;
+    const c2 = (hasColors && styles.colors.length >= 2) ? toCSS(styles.colors[1]) : c1;
+
+    const isSolid = styles?.effectId === DisplayNameEffects.SOLID;
+
+    const styleVariables: Record<string, any> = {
+        ...(c1 && c2 ? {
+            "--custom-display-name-styles-gradient-stops": `${c1} 0%, ${c2} 100%`,
+            "--custom-display-name-styles-main-color": c1,
+            "--custom-gradient-color-1": c1,
+            "--custom-gradient-color-2": c2,
+        } : {}),
+        // -webkit-text-fill-color inherits, so only force it for SOLID. Every
+        // other effect paints its own fill on the inner element, and setting it
+        // here would flatten it.
+        ...(hasColors && isSolid && c1 ? {
+            color: c1,
+            WebkitTextFillColor: c1,
+        } : {})
+    };
+
     return (
-        <UserNameWithEffects
-            userName={name}
-            displayNameStyles={getDisplayNameStyles(styles, ignoreFont)}
-            effectDisplayType={effectDisplayType}
-            textClassName={SMYNC(getDisplayNameEffectClassName(styles, effectDisplayType), {
-                "smyn-native-message-effect": useMessageLayout,
-            })}
-            loop
-        />
+        <span style={styleVariables} className={isGradient ? "smyn-native-gradient" : undefined}>
+            <UserNameWithEffects
+                userName={name}
+                displayNameStyles={getDisplayNameStyles(styles, ignoreFont)}
+                effectDisplayType={effectDisplayType}
+                textClassName={SMYNC(getDisplayNameEffectClassName(styles, effectDisplayType), {
+                    "smyn-native-message-effect": useMessageLayout,
+                })}
+                loop
+            />
+        </span>
     );
 }
 
@@ -770,8 +817,10 @@ function renderUsername(
     const ircColorsEnabled = isPluginEnabled(ircColors.name);
 
     const authorColorStrings = colorStrings || (author as any)?.colorStrings || null;
+    // Injected styles count in guilds too; Discord's own stay out-of-guild only.
+    const allowDisplayNameStylesInGuild = isDisplayNameStylesOverride((author as any)?.displayNameStyles);
     const authorDisplayNameStyles: DisplayNameStyles | null = (
-        !inGuild
+        (!inGuild || allowDisplayNameStylesInGuild)
         && !ircColorsEnabled
         && AccessibilityStore.displayNameStylesEnabled
         && (author as any)?.displayNameStyles

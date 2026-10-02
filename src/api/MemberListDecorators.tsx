@@ -34,12 +34,19 @@ type OnlyIn = "guilds" | "dms";
 
 export const decoratorsFactories = new Map<string, { render: MemberListDecoratorFactory, onlyIn?: OnlyIn; }>();
 
+// Same reasoning as the message decoration/accessory registries: this string was
+// rebuilt for every decorator on every rendered member row, and the member list
+// renders a row per member per scroll frame.
+const decoratorErrorMessages = new Map<string, string>();
+
 export function addMemberListDecorator(identifier: string, render: MemberListDecoratorFactory, onlyIn?: OnlyIn) {
     decoratorsFactories.set(identifier, { render, onlyIn });
+    decoratorErrorMessages.set(identifier, `Failed to render ${identifier} Member List Decorator`);
 }
 
 export function removeMemberListDecorator(identifier: string) {
     decoratorsFactories.delete(identifier);
+    decoratorErrorMessages.delete(identifier);
 }
 
 export function __getDecorators(props: DecoratorProps, type: "guild" | "dm"): JSX.Element | null {
@@ -47,12 +54,12 @@ export function __getDecorators(props: DecoratorProps, type: "guild" | "dm"): JS
 
     const decorators: JSX.Element[] = [];
 
-    for (const [key, { render: Decorator, onlyIn }] of decoratorsFactories) {
+    for (const [key, { render: Decoration, onlyIn }] of decoratorsFactories) {
         if ((onlyIn === "guilds" && type !== "guild") || (onlyIn === "dms" && type !== "dm")) continue;
 
         decorators.push(
-            <ErrorBoundary noop key={key} message={`Failed to render ${key} Member List Decorator`}>
-                <Decorator {...props} type={type} />
+            <ErrorBoundary noop key={key} message={decoratorErrorMessages.get(key)}>
+                <Decoration {...props} type={type} />
             </ErrorBoundary>
         );
     }

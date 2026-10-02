@@ -6,36 +6,66 @@
 
 import { ApplicationCommandInputType, ApplicationCommandOptionType, findOption, sendBotMessage } from "@api/Commands";
 import { isPluginEnabled } from "@api/PluginManager";
-import { gitHash } from "@shared/vencordUserAgent";
-import { TestcordDevs } from "@utils/constants";
+import { gitHashShort } from "@shared/vencordUserAgent";
+import { CONTRIB_ROLE_IDS, DONOR_ROLE_IDS, EQUICORD_GUILD_ID, TESTCORD_GUILD_ID, TestcordDevs, VC_GUILD_ID } from "@utils/constants";
 import { sendMessage } from "@utils/discord";
-import { tryOrElse } from "@utils/misc";
+import { isAnyPluginDev, tryOrElse } from "@utils/misc";
 import { makeCodeblock } from "@utils/text";
 import definePlugin, { PluginNative } from "@utils/types";
 import { GuildMemberStore, LocaleStore, ThemeStore, UserStore } from "@webpack/common";
 
+import gitBranch from "~git-branch";
 import { PluginMeta } from "~plugins";
 
 import { getUserSettingLazy } from "../../api/UserSettings";
 
 const Native = VencordNative.pluginHelpers.testfetch as PluginNative<typeof import("./native")>;
 
-const VENCORD_GUILD_ID = "1015060230222131221";
-const DONOR_ROLE_ID = "1042507929485586532";
-const CONTRIBUTOR_ROLE_ID = "1026534353167208489";
+const ROLE_GUILDS = [TESTCORD_GUILD_ID, EQUICORD_GUILD_ID, VC_GUILD_ID];
 const STALE_AFTER = 12096e5;
 
-const ORANGE = "\x1b[38;5;208m";
-const BOLD_ORANGE = "\x1b[1;38;5;208m";
-const DIM_ORANGE = "\x1b[2;38;5;208m";
+const BOLD_ORANGE = "\x1b[1;33;38;5;208m";
+const DIM_ORANGE = "\x1b[33;38;5;208m";
 const RESET = "\x1b[0m";
+const ANSI = /\x1b\[[0-9;]*m/g;
 
-const LOGO = [
-    "           ,",
-    "         __)\\",
-    "  (\\_.-'    a`-.",
-    "  (/~~````(/~^^` `"
+const LOGO_COLORS: Record<string, string> = {
+    ".": "\x1b[33;38;5;208m",
+    "#": "\x1b[30;38;5;16m",
+    "@": "\x1b[31;38;5;88m"
+};
+
+const LOGO_ART = [
+    "          ..........",
+    "      ..................",
+    "    ......................",
+    "  ..........................",
+    " ....############............",
+    " ....############............",
+    "........######................",
+    "........######..@@@@@@@@@@@...",
+    "........######@@@@@@..........",
+    " .......######@@@@...........",
+    " .......######@@@@...........",
+    "  ......######@@@@@@........",
+    "    ....######..@@@@@@@@..",
+    "      ..................",
+    "          .........."
 ];
+
+const LOGO = LOGO_ART.map(row => {
+    let line = "";
+    let color = "";
+    for (const cell of row) {
+        const next = LOGO_COLORS[cell] ?? "";
+        if (next !== color) {
+            line += next;
+            color = next;
+        }
+        line += next ? "█" : " ";
+    }
+    return line + RESET;
+});
 
 const COLOR_BAR = [40, 41, 42, 43, 44, 45, 46, 47].map(c => `\x1b[2;${c}m███`).join("") + RESET;
 
@@ -57,8 +87,6 @@ function bytes(value: number) {
 }
 
 function clientVersion() {
-    // The native bridges are absent on clients whose build flag and injected globals
-    // disagree, so each read is guarded rather than trusted.
     if (IS_DISCORD_DESKTOP) return `Desktop v${tryOrElse(() => DiscordNative.app.getVersion(), "unknown")}`;
     if (IS_VESKTOP) return `Vesktop v${tryOrElse(() => VesktopNative.app.getVersion(), "unknown")}`;
     if (IS_EQUIBOP) return `Equibop v${tryOrElse(() => VesktopNative.app.getVersion(), "unknown")}`;
@@ -71,12 +99,26 @@ function operatingSystem() {
     return [os ?? navigator.platform, arch].filter(Boolean).join(" / ");
 }
 
+function hasAnyRole(roleIds: readonly string[]) {
+    const me = UserStore.getCurrentUser();
+    if (!me) return false;
+    return ROLE_GUILDS.some(guildId => GuildMemberStore.getMember(guildId, me.id)?.roles?.some(role => roleIds.includes(role)));
+}
+
 function guildRoles() {
     const me = UserStore.getCurrentUser();
-    const member = me && GuildMemberStore.getMember(VENCORD_GUILD_ID, me.id);
+    const isContrib = !!me && (
+        isAnyPluginDev(me.id) ||
+        hasAnyRole(CONTRIB_ROLE_IDS) ||
+        (Boolean(me.username) && (
+            Object.values(TestcordDevs).some(d => (d.id && d.id.toString() === me.id) || d.name?.toLowerCase() === me.username.toLowerCase() || ("github" in d && typeof d.github === "string" && d.github.toLowerCase() === me.username.toLowerCase())) ||
+            Object.keys(TestcordDevs).some(k => k.toLowerCase() === me.username.toLowerCase())
+        ))
+    );
+
     return {
-        donor: !!member?.roles?.includes(DONOR_ROLE_ID),
-        contributor: !!member?.roles?.includes(CONTRIBUTOR_ROLE_ID)
+        donor: hasAnyRole(DONOR_ROLE_IDS),
+        contributor: isContrib
     };
 }
 
@@ -107,14 +149,11 @@ async function collect() {
     const sys = await tryOrElse(() => Native?.getSystemInfo?.(), null);
     const { donor, contributor } = guildRoles();
 
-    // GLOBAL_ENV is typed `any` and is absent on some clients, so tsc cannot catch a
-    // missing field here. Every read goes through this object with a fallback, because a
-    // single throw in collect() loses the entire report rather than one line.
     const env = window.GLOBAL_ENV ?? {};
 
     return {
         user: me?.username ?? "unknown",
-        version: `${VERSION} ~ ${gitHash} - ${Intl.DateTimeFormat(navigator.language, { dateStyle: "medium" }).format(BUILD_TIMESTAMP)}${IS_STANDALONE ? "" : " ~ dev"}`,
+        version: `${VERSION} ~ ${gitHashShort} - ${Intl.DateTimeFormat(navigator.language, { dateStyle: "medium" }).format(BUILD_TIMESTAMP)}${IS_STANDALONE ? "" : ` ~ ${gitBranch}`}`,
         client: `${capitalize(env.RELEASE_CHANNEL ?? "unknown")} ~ ${clientVersion()}`,
         build: `${env.BUILD_NUMBER ?? "unknown"} ~ ${env.VERSION_HASH?.slice(0, 7) ?? "unknown"}`,
         issues: knownIssues(),
@@ -152,13 +191,13 @@ function render(data: Report) {
         ["contributor", data.contributor]
     ] as [string, string][]).filter(([, value]) => value.length);
 
-    const indent = Math.max(...LOGO.map(line => line.length)) + 3;
+    const indent = Math.max(...LOGO.map(line => line.replace(ANSI, "").length)) + 3;
     const height = Math.max(LOGO.length, rows.length);
     const lines: string[] = [];
 
     for (let i = 0; i < height; i++) {
         const art = i < LOGO.length
-            ? `${ORANGE}${LOGO[i]}${RESET}${" ".repeat(indent - LOGO[i].length)}`
+            ? `${LOGO[i]}${" ".repeat(indent - LOGO[i].replace(ANSI, "").length)}`
             : " ".repeat(indent);
 
         const row = rows[i];
@@ -167,7 +206,7 @@ function render(data: Report) {
         lines.push(`${art}${text}`);
     }
 
-    return makeCodeblock(`${lines.join("\n")}${" ".repeat(indent)}${COLOR_BAR}`, "ansi");
+    return makeCodeblock([...lines, " ".repeat(indent) + COLOR_BAR].join("\n"), "ansi");
 }
 
 async function buildReport(asJson: boolean) {
@@ -179,7 +218,7 @@ export default definePlugin({
     name: "testfetch",
     description: "System info card for Testcord, for bug reports",
     tags: ["Utility", "Developers", "Fun"],
-    authors: [TestcordDevs.x2b],
+    authors: [TestcordDevs.x2b, TestcordDevs.sirphantom89],
     commands: [
         {
             name: "testfetch",

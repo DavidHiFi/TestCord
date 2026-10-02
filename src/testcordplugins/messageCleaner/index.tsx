@@ -13,6 +13,7 @@ import { definePluginSettings } from "@api/Settings";
 import { TestcordDevs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 import type { Channel, Message } from "@vencord/discord-types";
+import { MessageType } from "@vencord/discord-types/enums";
 import { ChannelStore, Menu, RestAPI, UserStore } from "@webpack/common";
 
 const settings = definePluginSettings({
@@ -148,11 +149,26 @@ function debugLog(message: string) {
     }
 }
 
+// System messages that are not real chat. Everything else the API returns as a non-zero
+// type is still ordinary user content and must stay deletable - notably REPLY (19), which
+// is what a reply to someone else's message comes back as.
+const SYSTEM_MESSAGE_TYPES: ReadonlySet<number> = new Set([
+    MessageType.RECIPIENT_ADD,
+    MessageType.RECIPIENT_REMOVE,
+    MessageType.CALL,
+    MessageType.CHANNEL_NAME_CHANGE,
+    MessageType.CHANNEL_ICON_CHANGE,
+    MessageType.GUILD_INCIDENT_ALERT_MODE_ENABLED,
+    MessageType.GUILD_INCIDENT_ALERT_MODE_DISABLED,
+    MessageType.GUILD_INCIDENT_REPORT_RAID,
+    MessageType.GUILD_INCIDENT_REPORT_FALSE_ALARM
+]);
+
 // Function to check if a message can be deleted
 function canDeleteMessage(message: Message, currentUserId: string): boolean {
     try {
         // System messages
-        if (settings.store.skipSystemMessages && message.type !== 0) {
+        if (settings.store.skipSystemMessages && SYSTEM_MESSAGE_TYPES.has(message.type)) {
             debugLog(
                 `Message ${message.id} ignored: system message (type: ${message.type})`
             );
@@ -503,7 +519,7 @@ async function cleanChannel(channelId: string) {
         // Initial estimation of message count
         log(`🔍 Analyzing channel "${channelName}"...`);
         let estimatedTotal = 0;
-        let estimateIncomplete = false;
+        let estimateReachedEnd = false;
         let lastMessageId: string | undefined;
 
         showNotification({
@@ -518,10 +534,14 @@ async function cleanChannel(channelId: string) {
             const messages = await getChannelMessages(channelId, lastMessageId);
             if (generation !== cleaningGeneration || shouldStopCleaning) return;
             if (messages === null) {
-                estimateIncomplete = true;
+                // The fetch failed, so how much history exists is unknown. Leave
+                // estimateReachedEnd false and let the real walk find out.
                 break;
             }
-            if (messages.length === 0) break;
+            if (messages.length === 0) {
+                estimateReachedEnd = true;
+                break;
+            }
 
             const validMessages = messages.filter(msg =>
                 canDeleteMessage(msg, currentUserId)
@@ -529,10 +549,18 @@ async function cleanChannel(channelId: string) {
             estimatedTotal += validMessages.length;
             lastMessageId = messages[messages.length - 1].id;
 
-            if (messages.length < pageLimit()) break;
+            if (messages.length < pageLimit()) {
+                estimateReachedEnd = true;
+                break;
+            }
         }
 
-        if (estimatedTotal === 0 && !estimateIncomplete) {
+        // Only bail out when the estimate actually walked the whole channel. The estimate is
+        // capped at 10 pages, so hitting that cap with a count of zero only means "nothing in
+        // the newest 500 messages", not "nothing to delete" - and `onlyOwnMessages` makes that
+        // the common case in a busy channel. Treating it as empty is what made the plugin
+        // report nothing to do and leave the rest of the history untouched.
+        if (estimatedTotal === 0 && estimateReachedEnd) {
             log("No messages to delete found", "warn");
             showNotification({
                 title: "ℹ️ MessageCleaner",

@@ -66,11 +66,38 @@ function canonicalKey(p: string): string {
     return getPluginId(plugin);
 }
 
+// isPluginEnabled is called from render paths (typing indicator, user area, every
+// message decoration guard, plugin cards) and from every plugin's dependency
+// resolution. Each call used to walk the quarantine list twice, hit the plugins
+// Proxy and then read `Settings.plugins[...]` through the Settings Proxy, so a
+// single render tick with a handful of decorations paid that cost per decoration.
+//
+// The result only depends on three things: the plugins registry (a bundle-time
+// constant), the settings object, and PluginHealth's safe-mode/quarantine state.
+// All three announce changes, so the cache is dropped there rather than polled.
+const enabledCache = new Map<string, boolean>();
+
+export function invalidatePluginEnabledCache() {
+    enabledCache.clear();
+}
+
 export function isPluginEnabled(p: string) {
+    const cached = enabledCache.get(p);
+    if (cached !== undefined) return cached;
+    return resolvePluginEnabled(p);
+}
+
+function resolvePluginEnabled(p: string) {
     const plugin = (Plugins as any)[p];
     const canonical = plugin ? getPluginId(plugin) : p;
     // allow lookup by either canonical id or legacy name for backwards compat
     const legacy = plugin?.name && plugin.name !== canonical ? plugin.name : (p !== canonical ? p : null);
+    const enabled = computePluginEnabled(p, plugin, canonical, legacy);
+    enabledCache.set(p, enabled);
+    return enabled;
+}
+
+function computePluginEnabled(p: string, plugin: any, canonical: string, legacy: string | null) {
     if (plugin?.required) return true;
     if (PluginHealth.isSafeModeEnabled()) return false;
     if (PluginHealth.isQuarantined(canonical) || (legacy && PluginHealth.isQuarantined(legacy))) return false;
@@ -82,8 +109,8 @@ export function isPluginEnabled(p: string) {
     if (raw) {
         if (raw[canonical]?.enabled !== undefined) return raw[canonical].enabled;
         if (legacy && raw[legacy]?.enabled !== undefined) return raw[legacy].enabled;
-        if ((plugin as any)?.aliases) {
-            for (const alias of (plugin as any).aliases) {
+        if (plugin?.aliases) {
+            for (const alias of plugin.aliases) {
                 if (raw[alias]?.enabled !== undefined) return raw[alias].enabled;
             }
         }
@@ -96,8 +123,8 @@ export function isPluginEnabled(p: string) {
         return Settings.plugins[legacy].enabled;
     }
 
-    if ((plugin as any)?.aliases) {
-        for (const alias of (plugin as any).aliases) {
+    if (plugin?.aliases) {
+        for (const alias of plugin.aliases) {
             if (Settings.plugins[alias]?.enabled !== undefined) {
                 return Settings.plugins[alias].enabled;
             }
@@ -660,4 +687,11 @@ export const initPluginManager = onlyOnce(function init() {
             }
         }
     }
+
+    // Keep the isPluginEnabled memo honest. Every `enabled` write, safe-mode flip
+    // and quarantine change lands here; nothing else can change the answer.
+    SettingsStore.addGlobalChangeListener((_, path) => {
+        if (path === "" || path.startsWith("plugins.")) invalidatePluginEnabledCache();
+    });
+    PluginHealth.subscribe(invalidatePluginEnabledCache);
 });

@@ -66,6 +66,14 @@ type TimeRowProps = {
     pluginSettings: any;
 };
 
+// Timestamp's `timestamp` prop is `Date | Moment`. A Moment has toDate() but no
+// getTime(), so normalise before anything calls getTime() on it.
+function toDate(input: unknown): Date | null {
+    if (input instanceof Date) return Number.isNaN(input.getTime()) ? null : input;
+    const date = (input as { toDate?: () => unknown } | null)?.toDate?.();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
 const format = (date: Date, formatTemplate: string): string => {
     const second = Math.floor(date.getTime() / 1000);
     const key = `${second}|${formatTemplate}`;
@@ -235,7 +243,7 @@ export default definePlugin({
         formatCache.clear();
     },
 
-    renderTimestamp: (date: Date, type: "cozy" | "compact" | "tooltip" | "ariaLabel") => {
+    renderTimestamp: (input: unknown, type: "cozy" | "compact" | "tooltip" | "ariaLabel") => {
         let formatTemplate: string;
 
         switch (type) {
@@ -255,6 +263,7 @@ export default definePlugin({
         const needsTick = formatTemplate.includes("calendar") || formatTemplate.includes("relative");
         useGlobalTick(needsTick);
 
-        return format(date, formatTemplate);
+        const date = toDate(input);
+        return date ? format(date, formatTemplate) : "";
     }
 });

@@ -6,10 +6,10 @@
 
 import { addContextMenuPatch, type NavContextMenuPatchCallback,removeContextMenuPatch } from "@api/ContextMenu";
 import { isPluginEnabled } from "@api/PluginManager";
-import { FluxDispatcher, Menu, MessageActions, React, SortedGuildStore, Toasts, UserStore } from "@webpack/common";
+import { Alerts, FluxDispatcher, Menu, MessageActions, React, SortedGuildStore, Toasts, UserStore } from "@webpack/common";
 
 import { silentDeleteMessage } from "./antilog";
-import { clearEditHistoryCache, deleteLog, invalidateLoggedCaches, localRemoveLoggedMessage } from "./engine";
+import { clearEditHistoryCache, deleteLog, invalidateLoggedCaches, localRemoveLoggedMessage, removeChannelLogs } from "./engine";
 import { addToOppositeAndList, isInList, type ListType,removeFromList } from "./lists";
 import { openLogs } from "./LogsModal";
 import { osintScanLoggedMessages } from "./osintBridge";
@@ -80,9 +80,9 @@ function renderListOption(listType: ListType, idType: string, props: MenuProps) 
     );
 }
 
-function buildLoggedMessageItems(props: MenuProps) {
+function buildLoggedMessageItems(navId: string, props: MenuProps) {
     const { message } = props;
-    if (props.navId !== "message" || !message) return null;
+    if (navId !== "message" || !message) return null;
     if (!message.deleted && !(message.editHistory?.length > 0)) return null;
 
     // Show removal options for any logged deleted/edited message.
@@ -171,10 +171,10 @@ function buildLoggedMessageItems(props: MenuProps) {
     ].filter(Boolean);
 }
 
-function buildHideFromLoggersItem(props: MenuProps) {
+function buildHideFromLoggersItem(navId: string, props: MenuProps) {
     const { message } = props;
     if (!settings.store.hideFromOtherLoggers) return null;
-    if (props.navId !== "message" || !message || message.deleted) return null;
+    if (navId !== "message" || !message || message.deleted) return null;
     if (message.author?.id !== UserStore.getCurrentUser()?.id) return null;
 
     return (
@@ -217,99 +217,168 @@ function buildHideFromLoggersItem(props: MenuProps) {
     );
 }
 
-const contextMenuPatch: NavContextMenuPatchCallback = (children, props: MenuProps) => {
-    if (!props || children.some(child => child?.props?.id === "testcord-ml-menu")) return;
+function buildChannelClearItems(navId: string, props: MenuProps) {
+    if (navId !== "channel-context" && navId !== "gdm-context") return null;
+    const channelId = idFunctions.Channel(props);
+    if (typeof channelId !== "string" || !channelId) return null;
 
-    const isMessageMenu = props.navId === "message";
-    const { message } = props;
+    const run = async (permanent: boolean) => {
+        try {
+            const count = await removeChannelLogs(channelId, permanent);
+            Toasts.show({
+                message: count === 0
+                    ? "No logs in this channel."
+                    : permanent
+                        ? `Deleted ${count} logs from this channel forever.`
+                        : `Hidden ${count} logs from this channel. They return after a restart.`,
+                type: count === 0 ? Toasts.Type.MESSAGE : Toasts.Type.SUCCESS,
+                id: Toasts.genId()
+            });
+        } catch (error) {
+            console.error("Failed to remove channel logs", error);
+            Toasts.show({
+                message: "Failed to remove logs from this channel.",
+                type: Toasts.Type.FAILURE,
+                id: Toasts.genId()
+            });
+        }
+    };
 
-    const showSilentDelete = isMessageMenu
-        && settings.store.enableSilentDelete
-        && message
-        && !message.deleted
-        && message.author?.id === UserStore.getCurrentUser()?.id
-        && !isPluginEnabled("AntilogPremium");
-
-    // Heavily used actions live at the top level for quick access
-    const loggedItems = buildLoggedMessageItems(props);
-    const hideFromLoggersItem = buildHideFromLoggersItem(props);
-
-    children.push(
-        loggedItems ? <React.Fragment key="testcord-ml-top">{loggedItems}</React.Fragment> : null,
-        hideFromLoggersItem,
-        <Menu.MenuSeparator key="testcord-ml-sep" />,
+    return [
         <Menu.MenuItem
-            key="testcord-ml-menu"
-            id="testcord-ml-menu"
-            label="Message Logger"
-        >
+            key="testcord-ml-clear-channel-temp"
+            id="testcord-ml-clear-channel-temp"
+            label="Rm All Channel Logs (Tmp)"
+            color="danger"
+            action={() => void run(false)}
+        />,
+        <Menu.MenuItem
+            key="testcord-ml-clear-channel-permanent"
+            id="testcord-ml-clear-channel-permanent"
+            label="Rm All Channel Logs (Perm)"
+            color="danger"
+            action={() => Alerts.show({
+                title: "Remove all channel logs",
+                body: "This deletes every saved deleted message and edit history for this channel and cannot be undone.",
+                confirmText: "Delete everything",
+                confirmVariant: "critical-primary",
+                cancelText: "Cancel",
+                onConfirm: () => run(true)
+            })}
+        />
+    ];
+}
+
+// The navId is the key a patch is registered under, never a field of the props Discord
+// hands the callback. Reading props.navId yields undefined, which is what silently kept
+// every navId-gated item from rendering.
+function createContextMenuPatch(navId: string): NavContextMenuPatchCallback {
+    return (children, props: MenuProps) => {
+        if (!props || children.some(child => child?.props?.id === "testcord-ml-menu")) return;
+
+        const isMessageMenu = navId === "message";
+        const { message } = props;
+
+        const showSilentDelete = isMessageMenu
+            && settings.store.enableSilentDelete
+            && message
+            && !message.deleted
+            && message.author?.id === UserStore.getCurrentUser()?.id
+            && !isPluginEnabled("AntilogPremium");
+
+        // Heavily used actions live at the top level for quick access
+        const loggedItems = buildLoggedMessageItems(navId, props);
+        const hideFromLoggersItem = buildHideFromLoggersItem(navId, props);
+
+        children.push(
+            loggedItems ? <React.Fragment key="testcord-ml-top">{loggedItems}</React.Fragment> : null,
+            hideFromLoggersItem,
+            <Menu.MenuSeparator key="testcord-ml-sep" />,
             <Menu.MenuItem
-                id="testcord-ml-open-logs"
-                label="Open Logs"
-                action={() => openLogs()}
-            />
-            {Object.keys(idFunctions).map(IdType => renderOpenLogs(IdType, props))}
-            {isMessageMenu && message && (
+                key="testcord-ml-menu"
+                id="testcord-ml-menu"
+                label="Message Logger"
+            >
                 <Menu.MenuItem
-                    id="testcord-ml-open-logs-author"
-                    label="Open Logs For Author"
-                    action={() => openLogs(`from:${message.author.id}`)}
+                    id="testcord-ml-open-logs"
+                    label="Open Logs"
+                    action={() => openLogs()}
                 />
-            )}
-
-            <Menu.MenuSeparator />
-            {Object.keys(idFunctions).map(IdType => renderListOption("blacklistedIds", IdType, props))}
-            {Object.keys(idFunctions).map(IdType => renderListOption("whitelistedIds", IdType, props))}
-
-            {isMessageMenu && message && (
-                <>
-                    <Menu.MenuSeparator />
+                {Object.keys(idFunctions).map(IdType => renderOpenLogs(IdType, props))}
+                {isMessageMenu && message && (
                     <Menu.MenuItem
-                        id="testcord-ml-osint-logged"
-                        label="OSINT Analyze Logged Messages"
-                        action={() => void osintScanLoggedMessages(message.author.id)}
+                        id="testcord-ml-open-logs-author"
+                        label="Open Logs For Author"
+                        action={() => openLogs(`from:${message.author.id}`)}
                     />
-                    <Menu.MenuItem
-                        id="testcord-ml-osint-full"
-                        label="Full OSINT Scan Of Author"
-                        action={() => {
-                            void import("../testcordosinttoolkit/index").then(({ openOsintScanFor }) =>
-                                openOsintScanFor(message.author.id, message.channel_id)
-                            );
-                        }}
-                    />
-                </>
-            )}
+                )}
 
-            {showSilentDelete && (
-                <>
-                    <Menu.MenuSeparator />
-                    <Menu.MenuItem
-                        id="testcord-ml-silent-delete"
-                        label={<span style={{ color: "var(--status-danger)" }}>Silent Delete</span>}
-                        color="danger"
-                        action={() => {
-                            void silentDeleteMessage(message.channel_id, message.id).then(ok =>
-                                Toasts.show({
-                                    message: ok ? "Message silently deleted." : "Silent delete failed.",
-                                    type: ok ? Toasts.Type.SUCCESS : Toasts.Type.FAILURE,
-                                    id: Toasts.genId()
-                                })
-                            );
-                        }}
-                    />
-                </>
-            )}
-        </Menu.MenuItem>
-    );
-};
+                {buildChannelClearItems(navId, props)}
+
+                <Menu.MenuSeparator />
+                {Object.keys(idFunctions).map(IdType => renderListOption("blacklistedIds", IdType, props))}
+                {Object.keys(idFunctions).map(IdType => renderListOption("whitelistedIds", IdType, props))}
+
+                {isMessageMenu && message && (
+                    <>
+                        <Menu.MenuSeparator />
+                        <Menu.MenuItem
+                            id="testcord-ml-osint-logged"
+                            label="OSINT Analyze Logged Messages"
+                            action={() => void osintScanLoggedMessages(message.author.id)}
+                        />
+                        <Menu.MenuItem
+                            id="testcord-ml-osint-full"
+                            label="Full OSINT Scan Of Author"
+                            action={() => {
+                                void import("../testcordosinttoolkit/index").then(({ openOsintScanFor }) =>
+                                    openOsintScanFor(message.author.id, message.channel_id)
+                                );
+                            }}
+                        />
+                    </>
+                )}
+
+                {showSilentDelete && (
+                    <>
+                        <Menu.MenuSeparator />
+                        <Menu.MenuItem
+                            id="testcord-ml-silent-delete"
+                            label={<span style={{ color: "var(--status-danger)" }}>Silent Delete</span>}
+                            color="danger"
+                            action={() => {
+                                void silentDeleteMessage(message.channel_id, message.id).then(ok =>
+                                    Toasts.show({
+                                        message: ok ? "Message silently deleted." : "Silent delete failed.",
+                                        type: ok ? Toasts.Type.SUCCESS : Toasts.Type.FAILURE,
+                                        id: Toasts.genId()
+                                    })
+                                );
+                            }}
+                        />
+                    </>
+                )}
+            </Menu.MenuItem>
+        );
+    };
+}
 
 const PATCHED_MENUS = ["message", "channel-context", "user-context", "guild-context", "gdm-context"] as const;
 
+const menuPatches = new Map<string, NavContextMenuPatchCallback>();
+
 export function setupLoggerContextMenus() {
-    for (const menu of PATCHED_MENUS) addContextMenuPatch(menu, contextMenuPatch);
+    for (const menu of PATCHED_MENUS) {
+        const patch = createContextMenuPatch(menu);
+        menuPatches.set(menu, patch);
+        addContextMenuPatch(menu, patch);
+    }
 }
 
 export function removeLoggerContextMenus() {
-    for (const menu of PATCHED_MENUS) removeContextMenuPatch(menu, contextMenuPatch);
+    for (const menu of PATCHED_MENUS) {
+        const patch = menuPatches.get(menu);
+        if (patch) removeContextMenuPatch(menu, patch);
+    }
+    menuPatches.clear();
 }

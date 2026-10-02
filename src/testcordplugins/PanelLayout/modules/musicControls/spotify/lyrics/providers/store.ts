@@ -30,6 +30,7 @@ function showNotif(title: string, body: string) {
 export const SpotifyLrcStore = proxyLazyWebpack(() => {
     let lyricsInfo: LyricsData | null = null;
     let fetchingsTracks: string[] = [];
+    let loadedTrackId: string | null = null;
 
     class SpotifyLrcStore extends Flux.Store {
         init() { }
@@ -39,33 +40,60 @@ export const SpotifyLrcStore = proxyLazyWebpack(() => {
     }
 
     const store = new SpotifyLrcStore(FluxDispatcher, {
-        async SPOTIFY_PLAYER_STATE(e: { track: Track | null; }) {
-            if (fetchingsTracks.includes(e.track?.id ?? "")) return;
-
-            fetchingsTracks.push(e.track?.id ?? "");
-            lyricsInfo = await getLyrics(e.track);
-            if (!lyricsInfo && e.track) {
-                showNotif("No lyrics found", `Could not find lyrics for ${e.track.name}`);
+        async SPOTIFY_PLAYER_STATE(e: { track: Track | null; force?: boolean; }) {
+            if (!e.track) {
+                loadedTrackId = null;
+                if (lyricsInfo) {
+                    lyricsInfo = null;
+                    store.emitChange();
+                }
+                return;
             }
+
+            const trackId = e.track.id;
+
+            if (!e.force && trackId === loadedTrackId) return;
+            if (fetchingsTracks.includes(trackId)) return;
+
+            loadedTrackId = trackId;
+            lyricsInfo = null;
+            store.emitChange();
+
+            fetchingsTracks.push(trackId);
+            try {
+                lyricsInfo = await getLyrics(e.track);
+            } finally {
+                fetchingsTracks = fetchingsTracks.filter(id => id !== trackId);
+            }
+
+            if (loadedTrackId !== trackId) return;
+
+            if (!lyricsInfo) {
+                showNotif("No lyrics found", `Could not find lyrics for ${e.track.name}`);
+                store.emitChange();
+                return;
+            }
+
             const { lyricsConversion } = settings.store;
             if (lyricsConversion !== Provider.None) {
                 FluxDispatcher.dispatch({
                     // @ts-ignore
                     type: "SPOTIFY_LYRICS_PROVIDER_CHANGE",
-                    provider: lyricsConversion
+                    provider: lyricsConversion,
+                    silent: true
                 });
             }
 
-            fetchingsTracks = fetchingsTracks.filter(id => id !== e.track?.id);
             store.emitChange();
         },
 
         // @ts-ignore
-        async SPOTIFY_LYRICS_PROVIDER_CHANGE(e: { provider: Provider; }) {
+        async SPOTIFY_LYRICS_PROVIDER_CHANGE(e: { provider: Provider; silent?: boolean; }) {
             const { track } = SpotifyStore;
             if (!track) return;
-            const currentInfo = await getLyrics(track);
             const { provider } = e;
+            const notify = e.silent ? () => { } : showNotif;
+            const currentInfo = (lyricsInfo && loadedTrackId === track.id) ? lyricsInfo : await getLyrics(track);
             if (currentInfo?.useLyric === provider) return;
 
             if (currentInfo?.lyricsVersions[provider]) {
@@ -81,7 +109,7 @@ export const SpotifyLrcStore = proxyLazyWebpack(() => {
                     providers.map(p => currentInfo?.lyricsVersions[p]).find(Boolean);
 
                 if (!originalLyrics || !currentInfo) {
-                    showNotif("No lyrics", `No lyrics to ${provider === Provider.Translated ? "translate" : "romanize"}`);
+                    notify("No lyrics", `No lyrics to ${provider === Provider.Translated ? "translate" : "romanize"}`);
                     return;
                 }
 
@@ -102,7 +130,7 @@ export const SpotifyLrcStore = proxyLazyWebpack(() => {
                 const fetchResult = await lyricsAlternativeFetchers[provider](originalLyrics);
 
                 if (!fetchResult) {
-                    showNotif("Lyrics fetch failed", `Failed to fetch ${provider === Provider.Translated ? "translation" : "romanization"}`);
+                    notify("Lyrics fetch failed", `Failed to fetch ${provider === Provider.Translated ? "translation" : "romanization"}`);
                     return;
                 }
 
@@ -121,15 +149,45 @@ export const SpotifyLrcStore = proxyLazyWebpack(() => {
                 return;
             }
 
-            const newLyricsInfo = await lyricFetchers[e.provider](track);
+            if (provider === Provider.SpicyRomanized) {
+                const spicy = await lyricFetchers[Provider.SpicyLyrics](track);
+                const spicyLines = spicy?.lyricsVersions[Provider.SpicyLyrics];
+                const romanized = spicy?.lyricsVersions[Provider.SpicyRomanized];
+
+                if (!spicy || !romanized) {
+                    notify("No romanization", "Spicy Lyrics has no romanized lyrics for this song");
+                    return;
+                }
+
+                if (spicyLines) await updateLyrics(track.id, spicyLines, Provider.SpicyLyrics);
+                await updateLyrics(track.id, romanized, Provider.SpicyRomanized);
+
+                lyricsInfo = {
+                    useLyric: Provider.SpicyRomanized,
+                    lyricsVersions: {
+                        ...currentInfo?.lyricsVersions,
+                        ...spicy.lyricsVersions
+                    }
+                };
+                store.emitChange();
+                return;
+            }
+
+            const fetcher = lyricFetchers[provider as keyof typeof lyricFetchers];
+            if (typeof fetcher !== "function") {
+                notify("Lyrics fetch failed", `No way to fetch ${provider} lyrics`);
+                return;
+            }
+
+            const newLyricsInfo = await fetcher(track);
             if (!newLyricsInfo) {
-                showNotif("Lyrics fetch failed", `Failed to fetch ${e.provider} lyrics`);
+                notify("Lyrics fetch failed", `Failed to fetch ${provider} lyrics`);
                 return;
             }
 
             lyricsInfo = newLyricsInfo;
 
-            updateLyrics(track.id, newLyricsInfo.lyricsVersions[e.provider], e.provider);
+            updateLyrics(track.id, newLyricsInfo.lyricsVersions[provider]!, provider);
 
             store.emitChange();
         }
@@ -144,7 +202,8 @@ export function refreshSpotifyLyrics() {
         FluxDispatcher.dispatch({
             // @ts-ignore
             type: "SPOTIFY_PLAYER_STATE",
-            track
+            track,
+            force: true
         });
     }
 }

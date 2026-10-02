@@ -21,15 +21,20 @@ import { removeLoggerContextMenus, setupLoggerContextMenus } from "./contextMenu
 import { getAllHistoryForChannel, getChannelLogsAfter, getChannelLogsLimit, getDatabase } from "./db";
 import {
     cacheChannelMessages,
+    channelAllDeleted,
+    channelAllEdited,
+    channelSnapshotVersions,
     clearAllLogs,
     clearTempClearedEdits,
     flushQueuedLogs,
+    forgetChannelSnapshots,
     getCachedLoggedMessage,
     handleMessageCreate,
     handleMessageDelete,
     handleMessageDeleteBulk,
     handleMessageUpdate,
     invalidateChannelCache,
+    isCurrentSnapshot,
     isEditHistoryNewer,
     isEditHistoryTempCleared,
     isHistoryNewer,
@@ -42,8 +47,10 @@ import {
     rememberLiveMessages,
     runMaintenanceNow,
     shouldIgnore,
+    snapshotVersion,
     startEngine,
-    stopEngine
+    stopEngine,
+    touchChannelSnapshot
 } from "./engine";
 import { importMleLogs, importMleSettings } from "./io";
 import { openLogs } from "./LogsModal";
@@ -153,11 +160,7 @@ async function processMessageFetch(response: FetchMessagesResponse) {
             const visible = visibleDeletedRecords(channelId);
             if (visible.length) {
                 try { cacheChannelMessages(visible); } catch { }
-                for (const rec of visible) {
-                    if (rec.message.attachments?.length) {
-                        try { await restoreAttachmentBlobs(rec.message.attachments); } catch { }
-                    }
-                }
+                restoreLoggedAttachments(visible);
                 // Skip rows whose stored message is not a usable object: those are
                 // what used to reach Discord as a bare id and break the channel.
                 response.body.extra = visible.map(record => record.message).filter(isValidMessage);
@@ -193,11 +196,7 @@ async function processMessageFetch(response: FetchMessagesResponse) {
         }
         if (combined.length) {
             try { cacheChannelMessages(combined); } catch { }
-            for (const rec of combined) {
-                if (rec.message.attachments?.length) {
-                    try { await restoreAttachmentBlobs(rec.message.attachments); } catch { }
-                }
-            }
+            restoreLoggedAttachments(combined);
             response.body.extra = combined.map(record => record.message).filter(isValidMessage);
         }
         const history = channelAllEdited.get(channelId) ?? await getAllHistoryForChannel(channelId);
@@ -208,23 +207,22 @@ async function processMessageFetch(response: FetchMessagesResponse) {
         // A MESSAGE_DELETE only reaches us for channels this client is subscribed to, so a
         // deletion elsewhere (another server) is never recorded. Now that we hold an
         // authoritative window of this channel's history, use it to catch up.
-        try {
-            const presentIds = new Set<string>();
-            for (const message of response.body) {
-                if (message && typeof message.id === "string") presentIds.add(message.id);
-            }
-            const marked = await reconcileDeletedInWindow(
-                channelId,
-                presentIds,
-                Date.parse(String(oldestMessage.timestamp)),
-                Date.parse(newestTs)
-            );
-            if (marked.length) {
-                log.info(`Reconciled ${marked.length} deleted message(s) missing from ${channelId}`);
-            }
-        } catch (error) {
-            log.error("Failed to reconcile deleted messages", error);
+        //
+        // Not awaited: this patch runs inside the fetch the channel is waiting on, and
+        // reconciliation is a catch-up pass over the DB. Blocking the paint on it is what
+        // turned a busy channel switch into a stall.
+        const presentIds = new Set<string>();
+        for (const message of response.body) {
+            if (message && typeof message.id === "string") presentIds.add(message.id);
         }
+        void reconcileDeletedInWindow(
+            channelId,
+            presentIds,
+            Date.parse(String(oldestMessage.timestamp)),
+            Date.parse(newestTs)
+        ).then(marked => {
+            if (marked.length) log.info(`Reconciled ${marked.length} deleted message(s) missing from ${channelId}`);
+        }).catch(error => log.error("Failed to reconcile deleted messages", error));
         const historyMap = new Map<string, LogRecord>();
         for (const record of history) {
             if (!isEditHistoryTempCleared(record.message_id)) historyMap.set(record.message_id, record);
@@ -349,9 +347,6 @@ function mergeLoadedMessages(messages: LoggedMessage[] & { extra?: LoggedMessage
 }
 
 const lastChannelFetch = new Map<string, number>();
-const channelAllDeleted = new Map<string, LogRecord[]>();
-const channelAllEdited = new Map<string, LogRecord[]>();
-const channelSnapshotVersions = new Map<string, number>();
 const channelFetchInFlight = new Map<string, Promise<unknown>>();
 const channelReloadInFlight = new Map<string, Promise<void>>();
 const channelCacheTimeout = new Map<string, ReturnType<typeof setTimeout>>();
@@ -360,18 +355,8 @@ const channelWebhookLimit = new Map<string, number>();
 const FETCH_RANGE_WINDOW = 200;
 let lastSelectedChannelId: string | null = null;
 
-function snapshotVersion(channelId: string) {
-    return channelSnapshotVersions.get(channelId) ?? 0;
-}
-
-function isCurrentSnapshot(channelId: string, version: number) {
-    return snapshotVersion(channelId) === version;
-}
-
 function invalidateChannelSnapshots(channelId: string, resetLimits = false, cancelUnload = false, clearCaches = false) {
-    channelSnapshotVersions.set(channelId, snapshotVersion(channelId) + 1);
-    channelAllDeleted.delete(channelId);
-    channelAllEdited.delete(channelId);
+    forgetChannelSnapshots(channelId);
     if (resetLimits) {
         channelDeleteLimit.delete(channelId);
         channelWebhookLimit.delete(channelId);
@@ -547,11 +532,7 @@ async function hydrateChannel(channelId: string) {
     channelAllEdited.set(channelId, history);
     const visible = visibleDeletedRecords(channelId);
     try { cacheChannelMessages(visible); } catch { }
-    for (const record of visible) {
-        if (record.message.attachments?.length) {
-            try { await restoreAttachmentBlobs(record.message.attachments); } catch { }
-        }
-    }
+    restoreLoggedAttachments(visible);
     injectDeletedRecords(channelId, visible);
     cacheHistoryRecords(channelId, history);
 }
@@ -582,11 +563,7 @@ async function loadMoreDeletedLogs() {
         return;
     }
     try { cacheChannelMessages(fresh); } catch { }
-    for (const rec of fresh) {
-        if (rec.message.attachments?.length) {
-            try { await restoreAttachmentBlobs(rec.message.attachments as any); } catch { }
-        }
-    }
+    restoreLoggedAttachments(fresh);
     injectDeletedRecords(channelId, fresh);
     showToast(`Loaded ${fresh.length} more deleted logs.`, Toasts.Type.SUCCESS);
 }
@@ -621,6 +598,28 @@ async function reloadCurrentChannelLogs() {
     } finally {
         if (channelReloadInFlight.get(channelId) === reload) channelReloadInFlight.delete(channelId);
     }
+}
+
+/**
+ * Repoint logged attachments at their on-disk copies without holding up the fetch.
+ *
+ * This used to be a sequential `await` per record inside the patched fetch, so a
+ * channel whose visible logs carried attachments spent the whole of Discord's
+ * channel load waiting on one disk read at a time before any of it could paint.
+ * The reads are independent and cached per attachment, so let the channel load
+ * finish first and repaint the affected messages once they land.
+ */
+function restoreLoggedAttachments(records: LogRecord[]) {
+    const withAttachments = records.filter(record => record.message?.attachments?.length);
+    if (!withAttachments.length) return;
+
+    void restoreAttachmentBlobs(withAttachments.flatMap(record => record.message.attachments))
+        .then(() => {
+            for (const record of withAttachments) {
+                repointDeletedAttachments(record.channel_id, record.message_id, record.message.attachments);
+            }
+        })
+        .catch(() => { });
 }
 
 function scheduleChannelUnload(channelId: string) {
@@ -789,7 +788,13 @@ function snapshotForDelete(channelId: string | undefined, messageId: string | un
 
 function onFluxMessageCreate(payload: MessageCreatePayload) {
     const channelId = payload.message?.channel_id ?? payload.channelId;
-    if (channelId) invalidateChannelSnapshots(channelId);
+    // A create adds a row only on the fast-delete race, and never edits or removes
+    // an existing one, so the DB mirrors stay valid. Dropping them here instead was
+    // what made an active channel re-read its entire logged history on every single
+    // fetch: processMessageFetch runs per fetch, found the mirrors gone, paid a
+    // full-channel cursor walk, and then usually threw the result away anyway
+    // because the create had bumped the version out from under it.
+    if (channelId) touchChannelSnapshot(channelId);
     handleMessageCreate(payload);
 }
 

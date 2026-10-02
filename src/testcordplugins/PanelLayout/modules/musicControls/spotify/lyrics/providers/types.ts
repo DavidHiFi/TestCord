@@ -11,10 +11,20 @@ export interface LyricWord {
     IsPartOfWord: boolean;
 }
 
+export interface LyricBackground {
+    text: string;
+    words: LyricWord[];
+    startTime: number;
+    endTime: number;
+}
+
 export interface SyncedLyric {
     time: number;
     text: string | null;
     words?: LyricWord[];
+    background?: LyricBackground[];
+    oppositeAligned?: boolean;
+    untimed?: boolean;
 }
 
 export enum Provider {
@@ -27,7 +37,22 @@ export enum Provider {
     None = "None",
 }
 
+export interface LyricsAttributionPerson {
+    username: string;
+    url?: string;
+    avatar?: string;
+    id?: string;
+}
+
+export interface LyricsAttribution {
+    provider: string;
+    uploader?: LyricsAttributionPerson;
+    maker?: LyricsAttributionPerson;
+    songWriters?: string[];
+}
+
 export interface LyricsData {
     lyricsVersions: Partial<Record<Provider, SyncedLyric[] | null>>;
     useLyric: Provider;
+    attributions?: Partial<Record<Provider, LyricsAttribution>>;
 }

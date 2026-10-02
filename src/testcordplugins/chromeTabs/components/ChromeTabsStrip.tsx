@@ -11,8 +11,8 @@ import { ChannelRTCStore, ContextMenuApi, FluxDispatcher, useCallback, useEffect
 
 import { PlusIcon } from "../util/icons";
 import { MIN_TAB_WIDTH, settings } from "../util/settings";
-import { activateTabByIndex, closeTab, createTabAfter, cycleTab, getActiveTab, getActiveTabId, getTabs, initTabs, moveTab, reopenClosedTab, subscribe } from "../util/store";
-import { TabTarget } from "../util/types";
+import { activateTabByIndex, closeTab, createTab, createTabAfter, cycleTab, getActiveTab, getActiveTabId, getTabs, initTabs, moveTab, reopenClosedTab, subscribe } from "../util/store";
+import type { TabTarget } from "../util/types";
 import { ChromeTab } from "./ChromeTab";
 import { cancelChromeTabSwitcher, cycleChromeTabSwitcher, handleSwitcherKeyDown, handleSwitcherKeyUp, isChromeTabSwitcherOpen } from "./ChromeTabSwitcher";
 import { StripContextMenu } from "./ContextMenus";
@@ -240,6 +240,7 @@ export function ChromeTabsStrip({
             : targetRef.current;
 
         if (active) createTabAfter(active.id, target, true);
+        else createTab(target, true);
     }, []);
 
     useEffect(() => {

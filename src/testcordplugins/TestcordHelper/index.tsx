@@ -584,12 +584,14 @@ const RenderEmbeds = getUserSettingLazy<boolean>("textAndImages", "renderEmbeds"
 const MESSAGE_LIMIT = 1900;
 const MB = 1024 * 1024;
 
-const PLUGIN_PATTERN = /(?:testcordplugin|tcp|vencordplugin|vcp|equicordplugin|eqp|plugins?|plg?|testcordmodified|tcm):([^\s,;\n]+)/gi;
-const PLUGIN_MATCH_PATTERN = /(testcordplugin|tcp|vencordplugin|vcp|equicordplugin|eqp|plugins?|plg?|testcordmodified|tcm):([^\s,;\n]+)/i;
+// Second word is optional and only kept when the resolver claims it, so trailing
+// prose ("tcp:AntiDelete later") is never swallowed into the link.
+const PLUGIN_PATTERN = /(?:testcordplugin|tcp|vencordplugin|vcp|equicordplugin|eqp|plugins?|plg?|testcordmodified|tcm):([^\s,;\n]+(?:\s+[^\s,;\n]+)?)/gi;
+const PLUGIN_MATCH_PATTERN = /(testcordplugin|tcp|vencordplugin|vcp|equicordplugin|eqp|plugins?|plg?|testcordmodified|tcm):([^\s,;\n]+(?:\s+[^\s,;\n]+)?)/i;
 const PLUGIN_LINK_PATTERN = /\[([^\]]+)]\(<?https:\/\/github\.com\/TestcordDev\/Testcord\/tree\/main\/src\/(?:plugins|equicordplugins|testcordplugins)\/[^>)]+>?\)/gi;
 const PLUGIN_CARD_MARKER_PATTERN = /(?:testcordplugin|tcp|vencordplugin|vcp|equicordplugin|eqp|plugins?|plg?|testcordmodified|tcm):|github\.com\/TestcordDev\/Testcord\/tree\/main\/src\/(?:plugins|equicordplugins|testcordplugins)\//i;
 const PLUGIN_RESOLVE_CACHE_LIMIT = 500;
-const pluginResolveCache = new Map<string, string | null>();
+const pluginResolveCache = new Map<string, ResolvedPlugin | null>();
 const USER_PATTERN = /dcp:([^\s,;\n]+)/gi;
 const USER_MATCH_PATTERN = /dcp:([^\s,;\n]+)/i;
 const USER_LINK_PATTERN = /\[[^\]]+]\(<?https:\/\/discord\.com\/users\/(\d{17,20})>?\)/gi;
@@ -639,7 +641,7 @@ function IconColorSettingsComponent() {
 
 interface PluginSearchEntry {
     name: string;
-    lower: string;
+    normalized: string;
     acronym: string;
     searchTerms?: string[];
     description?: string;
@@ -890,7 +892,7 @@ function getPluginSearchData() {
         pluginSearchDataSize = size;
         pluginSearchData = Object.keys(plugins).map(name => ({
             name,
-            lower: name.toLowerCase(),
+            normalized: name.toLowerCase().replace(/\s+/g, ""),
             acronym: name.match(/[A-Z]/g)?.join("").toLowerCase() ?? "",
             searchTerms: plugins[name].searchTerms?.map(t => t.toLowerCase()),
             description: plugins[name].description?.toLowerCase(),
@@ -1132,24 +1134,32 @@ function getCategoryFolders(prefix?: string): string[] | undefined {
     return undefined;
 }
 
-function resolvePluginName(search: string, prefix?: string) {
+// "words" is how many leading words of the query actually formed the name, so
+// callers can leave trailing prose alone ("tcp:AntiDelete later" must only link
+// "tcp:AntiDelete").
+interface ResolvedPlugin {
+    name: string;
+    words: number;
+}
+
+function resolvePluginName(search: string, prefix?: string): ResolvedPlugin | undefined {
     // Always the cached path: the uncached scan lowercased every plugin name,
     // description and searchTerms per message, which dominated accessory cost in
     // busy channels. Matching semantics are identical to the old scan.
     const cacheKey = `${prefix ? prefix.toLowerCase() + ":" : ""}${search.toLowerCase()}`;
     if (pluginResolveCache.has(cacheKey)) return pluginResolveCache.get(cacheKey) ?? undefined;
 
-    const pluginName = resolvePluginNameCached(search, prefix);
-    pluginResolveCache.set(cacheKey, pluginName ?? null);
+    const resolved = resolvePluginNameCached(search, prefix);
+    pluginResolveCache.set(cacheKey, resolved ?? null);
     if (pluginResolveCache.size > PLUGIN_RESOLVE_CACHE_LIMIT) {
         const oldest = pluginResolveCache.keys().next().value;
         if (oldest !== undefined) pluginResolveCache.delete(oldest);
     }
 
-    return pluginName;
+    return resolved;
 }
 
-function resolvePluginNameCached(search: string, prefix?: string) {
+function resolvePluginNameCached(search: string, prefix?: string): ResolvedPlugin | undefined {
     const categoryFolders = getCategoryFolders(prefix);
     const allData = getPluginSearchData();
     const words = search.trim().replace(/[.!?)]*$/, "").split(/\s+/);
@@ -1159,14 +1169,14 @@ function resolvePluginNameCached(search: string, prefix?: string) {
             const query = words.slice(0, i).join(" ").toLowerCase();
             const normalizedQuery = query.replace(/\s+/g, "");
 
-            const pluginName = data.find(p => p.lower === normalizedQuery)?.name
-                ?? data.find(p => p.lower.startsWith(normalizedQuery))?.name
+            const pluginName = data.find(p => p.normalized === normalizedQuery)?.name
+                ?? data.find(p => p.normalized.startsWith(normalizedQuery))?.name
                 ?? data.find(p => p.acronym.includes(normalizedQuery))?.name
-                ?? data.find(p => p.lower.includes(normalizedQuery))?.name
+                ?? data.find(p => p.normalized.includes(normalizedQuery))?.name
                 ?? data.find(p => p.searchTerms?.some(t => t.includes(query)))?.name
                 ?? data.find(p => p.description?.includes(query))?.name;
 
-            if (pluginName) return pluginName;
+            if (pluginName) return { name: pluginName, words: i };
         }
     };
 
@@ -1357,11 +1367,15 @@ function ChatProfileCard({ user }: { user: User; }) {
 function replacePluginAliases(content: string) {
     return content.replace(PLUGIN_PATTERN, match => {
         const [, prefix, query] = PLUGIN_MATCH_PATTERN.exec(match) ?? [];
-        const pluginName = query ? resolvePluginName(query, prefix) : undefined;
+        const resolved = query ? resolvePluginName(query, prefix) : undefined;
 
-        if (!pluginName) return match;
+        if (!resolved) return match;
 
-        return `[${pluginName}](<${getPluginLink(pluginName)}>)${query?.match(/[.!?)]*$/)?.[0] ?? ""}`;
+        const consumed = query.split(/\s+/).slice(0, resolved.words).join(" ");
+        const trailing = consumed.match(/[.!?)]*$/)?.[0] ?? "";
+        const rest = query.slice(consumed.length);
+
+        return `[${resolved.name}](<${getPluginLink(resolved.name)}>)${trailing}${rest}`;
     });
 }
 
@@ -1394,7 +1408,7 @@ const PluginCards = ErrorBoundary.wrap(function PluginCards({ message }: { messa
     let match;
     while ((match = PLUGIN_PATTERN.exec(message.content)) !== null) {
         const [, prefix, pluginNameFromMessage] = PLUGIN_MATCH_PATTERN.exec(match[0]) ?? [];
-        const actualPluginName = pluginNameFromMessage ? resolvePluginName(pluginNameFromMessage, prefix) : undefined;
+        const actualPluginName = pluginNameFromMessage ? resolvePluginName(pluginNameFromMessage, prefix)?.name : undefined;
         const pluginName = actualPluginName || pluginNameFromMessage;
 
         if (!pluginName || seenPlugins.has(pluginName)) continue;
@@ -1412,7 +1426,7 @@ const PluginCards = ErrorBoundary.wrap(function PluginCards({ message }: { messa
 
     while ((match = PLUGIN_LINK_PATTERN.exec(message.content)) !== null) {
         const pluginNameFromMessage = match[1]?.trim();
-        const actualPluginName = pluginNameFromMessage ? resolvePluginName(pluginNameFromMessage) : undefined;
+        const actualPluginName = pluginNameFromMessage ? resolvePluginName(pluginNameFromMessage)?.name : undefined;
         const pluginName = actualPluginName || pluginNameFromMessage;
 
         if (!pluginName || seenPlugins.has(pluginName)) continue;

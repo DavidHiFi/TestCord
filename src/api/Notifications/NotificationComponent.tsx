@@ -41,38 +41,40 @@ export default ErrorBoundary.wrap(function NotificationComponent({
     const { timeout, position } = useSettings(["notifications.timeout", "notifications.position"]).notifications;
 
     const [isHover, setIsHover] = useState(false);
-    const [elapsed, setElapsed] = useState(0);
 
-    const start = useRef(Date.now());
-    const pause = useRef<number | null>(null);
+    // The countdown used to be a 10ms interval calling setState every tick, so a
+    // single visible notification produced ~500 React re-renders and ~500 event
+    // loop wakeups over its 5s lifetime, purely to move a progress bar. The bar
+    // is now a CSS animation running on the compositor, and JS only has to fire
+    // once, when the lifetime is actually over.
+    //
+    // `remaining` is the time left, so hovering pauses the bar (via
+    // animation-play-state) without losing the time already served. The bar's
+    // duration deliberately tracks `timeout` only: changing a running
+    // animation's duration restarts it, and a restart would jump the bar
+    // backwards every time the pointer crossed it.
+    const remaining = useRef(timeout);
+    const segmentStart = useRef(Date.now());
+    const [barDuration, setBarDuration] = useState(timeout);
+
+    useEffect(() => {
+        remaining.current = timeout;
+        segmentStart.current = Date.now();
+        setBarDuration(timeout);
+    }, [timeout]);
 
     useEffect(() => {
         if (timeout === 0 || permanent) return;
+        if (isHover) return;
 
-        if (isHover) {
-            if (pause.current === null) pause.current = Date.now();
-            return;
-        }
+        segmentStart.current = Date.now();
+        const id = setTimeout(() => onClose!(), remaining.current);
 
-        if (pause.current !== null) {
-            const pausedFor = Date.now() - pause.current;
-            start.current += pausedFor;
-            pause.current = null;
-        }
-
-        const intervalId = setInterval(() => {
-            const elapsedNow = Date.now() - start.current;
-            if (elapsedNow >= timeout) {
-                onClose!();
-            } else {
-                setElapsed(elapsedNow);
-            }
-        }, 10);
-
-        return () => clearInterval(intervalId);
+        return () => {
+            clearTimeout(id);
+            remaining.current = Math.max(0, remaining.current - (Date.now() - segmentStart.current));
+        };
     }, [timeout, isHover, permanent]);
-
-    const timeoutProgress = elapsed / timeout;
 
     return (
         <button
@@ -122,8 +124,11 @@ export default ErrorBoundary.wrap(function NotificationComponent({
             {image && <img className="vc-notification-img" src={image} alt="" />}
             {timeout !== 0 && !permanent && (
                 <div
-                    className="vc-notification-progressbar"
-                    style={{ width: `${(1 - timeoutProgress) * 100}%`, backgroundColor: color || "var(--brand-500)" }}
+                    className={classes("vc-notification-progressbar", isHover && "paused")}
+                    style={{
+                        animationDuration: `${barDuration}ms`,
+                        backgroundColor: color || "var(--brand-500)"
+                    }}
                 />
             )}
         </button>

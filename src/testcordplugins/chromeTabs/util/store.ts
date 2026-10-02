@@ -9,7 +9,7 @@ import { NavigationRouter, SelectedChannelStore, SelectedGuildStore } from "@web
 
 import { getSyntheticPage, isSyntheticChannelId } from "./pages";
 import { logger, settings } from "./settings";
-import { PersistedTabs, Tab, TabTarget } from "./types";
+import type { PersistedTabs, Tab, TabTarget } from "./types";
 
 const DATASTORE_KEY = "ChromeTabs_tabs_v1";
 
@@ -209,8 +209,8 @@ export function closeTab(id: number) {
     // never leave the strip empty, there would be nothing to render Discord into
     if (tabs.length === 1) return;
 
-    const [closed] = tabs.splice(index, 1);
-    tabs = [...tabs];
+    const closed = tabs[index];
+    tabs = tabs.filter(tab => tab.id !== id);
     recordClosedTab(closed, index);
     activationHistory = activationHistory.filter(historyId => historyId !== id);
 
@@ -397,6 +397,7 @@ export function handleNavigation(target: TabTarget) {
 export function openTarget(target: TabTarget, activate: boolean, messageId?: string) {
     const existing = tabs.find(tab => isSameTarget(tab, target));
     if (existing && settings.store.switchToExistingTab) {
+        if (messageId) retargetTab(existing.id, target, messageId);
         if (activate) activateTab(existing.id);
         return;
     }

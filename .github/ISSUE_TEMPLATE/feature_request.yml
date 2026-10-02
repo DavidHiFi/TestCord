@@ -8,15 +8,15 @@ body:
       attributes:
           value: |
               This form is not for any of the following:
-              - Plugin requests - Go to our [Discord server](https://equicord.org/discord) for that
-              - Feature requests for plugins - Go to our [Discord server](https://equicord.org/discord) for that
+              - Plugin requests - Go to our [Discord server](https://discord.gg/krvpRVyscP) for that
+              - Feature requests for plugins - Go to our [Discord server](https://discord.gg/krvpRVyscP) for that
 
     - type: textarea
       id: feature-description
       attributes:
           label: A clear and concise description of the feature you'd like to see
       validations:
-          required: true
+          required: false
 
     - type: textarea
       id: implementation-notes
@@ -43,5 +43,5 @@ body:
               - label: This is a **core modification feature**, not a plugin request (those go in Discord)
               - label: This feature would benefit most users, not just a specific use case
               - label: I understand that if any of the above conditions are not met, this issue will be deleted and I will be banned from creating future issues without further warning
-                required: true
+                required: false
               - label: I am willing to work on this myself

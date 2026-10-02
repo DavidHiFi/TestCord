@@ -1,0 +1,78 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+/*
+ * Discord lightens gradient stops for contrast while rendering them in JS, so
+ * it cannot be corrected with a colour override on the name: the lightened
+ * value is already baked into its inline custom property by the time we see it.
+ *
+ * The element carrying data-ns-paint is the leaf span Discord actually paints
+ * the glyphs with (innerContainer_/gradient_), located and marked at runtime by
+ * paintSelfName in index.tsx. Only elements whose text is the current user's
+ * display name are marked, so no one else's name is affected.
+ *
+ * The duplicated attribute in the selectors is deliberate: it lifts these rules
+ * to (0,2,0) so they outrank Discord's own single-class gradient rule, which is
+ * otherwise a tie decided by source order.
+ *
+ * width: fit-content matters - without it the gradient spans the full element
+ * box while the glyphs only occupy its left edge, so the second colour is
+ * cropped away.
+ *
+ * The scroll is a fixed pixel distance because that is the only way to get a
+ * seamless loop: with repeat-x the tile has to shift by exactly its own width.
+ * Percentage positions cannot do that - when background-size is 100% there is
+ * no free space, so background-position cannot move the image at all.
+ *
+ * The tile is deliberately wider than any realistic name (the user area name
+ * measures ~151px). showMeYourName uses 100px, which fits its ~73px message
+ * names, but on a wider name that showed one and a half repeating ramps, which
+ * reads as a flat grey band instead of a gradient.
+ */
+@keyframes ns-name-scroll {
+    0% {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 250px 0;
+    }
+}
+
+[data-ns-paint][data-ns-paint] {
+    background-image: linear-gradient(90deg, var(--ns-c1), var(--ns-c2)) !important;
+    background-size: 100% 100% !important;
+    background-repeat: no-repeat !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    text-decoration: none !important;
+    width: fit-content !important;
+}
+
+/*
+ * Discord underlines the link wrapping the name on hover - a call-started
+ * message renders it inside anchorUnderlineOnHover. text-decoration cannot be
+ * cancelled by a descendant, so neutralising it on the span alone does nothing
+ * and the line survives; the anchor itself has to be neutralised. The
+ * duplicated attribute plus the :hover variant outrank Discord's own rule.
+ */
+a:has([data-ns-paint][data-ns-paint]),
+a:has([data-ns-paint][data-ns-paint]):hover {
+    text-decoration: none !important;
+}
+
+[data-ns-paint][data-ns-paint]:hover {
+    background-image: linear-gradient(to right, var(--ns-c1), var(--ns-c2), var(--ns-c1)) !important;
+    background-size: 250px 100% !important;
+    /* repeat-x, not the no-repeat from the rule above: the tile is shifted by
+       its own width, so without a repeat the trailing edge would be unpainted
+       and the name would flicker in and out as it scrolled. */
+    background-repeat: repeat-x !important;
+    text-decoration: none !important;
+    animation: ns-name-scroll var(--ns-name-duration, 1.5s) linear infinite;
+}

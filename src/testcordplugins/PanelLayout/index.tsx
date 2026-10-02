@@ -133,7 +133,7 @@ export const settings = definePluginSettings({
         ],
         onChange: () => apply()
     },
-    panelBackgroundColor: { type: OptionType.STRING, description: "Panel background color", default: "var(--background-base-lower)", onChange: () => apply() },
+    panelBackgroundColor: { type: OptionType.STRING, description: "Panel background color", default: "var(--background-gradient-highest, var(--background-base-low))", onChange: () => apply() },
     panelBackgroundOpacity: { type: OptionType.SLIDER, description: "Panel background color opacity", default: 100, markers: makeRange(0, 100, 10), stickToMarkers: false, onChange: () => apply() },
     glowColor: { type: OptionType.STRING, description: "Glow hover color", default: "#ffffff", onChange: () => apply() },
     forceNativeButtonColor: { type: OptionType.BOOLEAN, default: false, description: "Force the icon color on Discord's native buttons (Mute, Deafen, Settings) even when no custom icon color is set", onChange: () => apply() },
@@ -3404,7 +3404,7 @@ function PanelLayoutModal({ modalProps }: { modalProps: RenderModalProps; }) {
                         <SectionHeading>Panel Colors</SectionHeading>
                         <Card variant="primary">
                             <div style={{ display: "grid", gap: "8px" }}>
-                                <ColorRow label="Panel Background Color" value={s.panelBackgroundColor} onChange={v => set("panelBackgroundColor", v)} preset="var(--background-base-lower)" preset2="#242429" />
+                                <ColorRow label="Panel Background Color" value={s.panelBackgroundColor} onChange={v => set("panelBackgroundColor", v)} preset="var(--background-gradient-highest, var(--background-base-low))" preset2="#242429" />
                                 <SliderRow label="Background Opacity" value={s.panelBackgroundOpacity ?? 100} min={0} max={100} unit="%" onChange={v => set("panelBackgroundOpacity", Math.round(v))} resetKey={resetKey} />
 
                                 {settings.store.hoverEffect === "glow" && <>
@@ -3479,6 +3479,13 @@ export default definePlugin({
     ),
 
     patches: [
+        {
+            find: "_handleControlPing(",
+            replacement: {
+                match: /(?<=_handleControlPing\(\i\)\{)\i\.\i\.supports\(\i\.\i\.NATIVE_PING\)/,
+                replace: "($& && Date.now() - (this._pings.at(-1)?.time ?? 0) < 10_000)"
+            }
+        },
         {
             find: "#{intl::USER_PROFILE_ACCOUNT_POPOUT_BUTTON_A11Y_LABEL}",
             replacement: {

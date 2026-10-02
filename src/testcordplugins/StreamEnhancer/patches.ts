@@ -537,15 +537,15 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         ]
     },
     {
-        find: "REMOTE_STREAM,userId:",
+        find: "Stream Tile State",
         replacement: [
             {
                 match: /function (\i)\((\i)\)\{let\{participant:(\i),selected:(\i),onVideoResize:/,
                 replace: "function $1($2){if(null==$2?.participant)return null;let{participant:$3,selected:$4,onVideoResize:"
             },
             {
-                match: /(\{stream:\i,user:\i,streamId:\i\}=(\i),)/,
-                replace: "vcState=$self.useRenderedStreamVideoState($2?.id,g),$1"
+                match: /(\{stream:\i,user:\i,streamId:\i\})=(\i),/,
+                replace: "vcState=$self.useRenderedStreamVideoState($2?.id,arguments[0]?.fit),$1=($2??{}),"
             },
             {
                 match: /wrapperClassName:((?:\i\(\)\()?\i!==\i\.\i\.CALL_TILE\?\i\.\i:void 0,\i)\),className:/,
@@ -586,7 +586,7 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         }
     },
     {
-        find: "streamPreviewURL",
+        find: 'location:"VideoStream"',
         replacement: [
             {
                 match: /\[(\i),(\i)\]=(\i)\.useState\(!0\)/,

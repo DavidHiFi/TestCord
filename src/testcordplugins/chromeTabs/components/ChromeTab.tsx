@@ -8,14 +8,14 @@ import { BaseText } from "@components/BaseText";
 import { classNameFactory } from "@utils/css";
 import { getGuildAcronym, getUniqueUsername } from "@utils/discord";
 import { classes } from "@utils/misc";
-import { Channel, Guild, User } from "@vencord/discord-types";
-import { ActiveJoinedThreadsStore, Avatar, ChannelStore, ContextMenuApi, GuildStore, PresenceStore, ReadStateStore, Tooltip, useCallback, UserStore, useStateFromStores } from "@webpack/common";
+import type { Channel, Guild, User } from "@vencord/discord-types";
+import { ActiveJoinedThreadsStore, Avatar, ChannelStore, ContextMenuApi, GuildStore, IconUtils, PresenceStore, ReadStateStore, Tooltip, useCallback, UserStore, useStateFromStores } from "@webpack/common";
 
 import { ChannelTypeIcon, CircleQuestionIcon, CloseIcon, UsersIcon } from "../util/icons";
-import { getSyntheticPage } from "../util/pages";
+import { getSyntheticPage, isSyntheticChannelId } from "../util/pages";
 import { settings } from "../util/settings";
 import { activateTab, closeTab, getTabs } from "../util/store";
-import { Tab } from "../util/types";
+import type { Tab } from "../util/types";
 import { formatBadgeCount, getUnreadBadgeState } from "../util/unread";
 import { TabContextMenu } from "./ContextMenus";
 
@@ -38,19 +38,30 @@ function GuildIcon({ guild }: { guild: Guild; }) {
         );
     }
 
-    const ext = guild.icon.startsWith("a_") ? ".gif" : ".png";
+    const iconUrl = IconUtils.getGuildIconURL({ id: guild.id, icon: guild.icon, size: 32, canAnimate: true });
+    if (!iconUrl) {
+        return (
+            <div className={cl("favicon", "acronym")}>
+                <BaseText size="xxs" weight="semibold" tag="span">{getGuildAcronym(guild)}</BaseText>
+            </div>
+        );
+    }
 
     return (
         <img
             className={cl("favicon")}
-            src={`https://${window.GLOBAL_ENV.CDN_HOST}/icons/${guild.id}/${guild.icon}${ext}?size=32`}
+            src={iconUrl}
             alt=""
         />
     );
 }
 
 function GroupIcon({ channel }: { channel: Channel; }) {
-    if (!channel.icon) {
+    const iconUrl = channel.icon
+        ? IconUtils.getChannelIconURL({ id: channel.id, icon: channel.icon, size: 32 })
+        : null;
+
+    if (!iconUrl) {
         return (
             <div className={cl("favicon", "glyph")}>
                 <UsersIcon size={16} />
@@ -61,15 +72,17 @@ function GroupIcon({ channel }: { channel: Channel; }) {
     return (
         <img
             className={cl("favicon")}
-            src={`https://${window.GLOBAL_ENV.CDN_HOST}/channel-icons/${channel.id}/${channel.icon}.png?size=32`}
+            src={iconUrl}
             alt=""
         />
     );
 }
 
 function UnreadBadge({ channelId }: { channelId: string; }) {
+    if (isSyntheticChannelId(channelId)) return null;
+
     const state = useStateFromStores(
-        [ReadStateStore, ActiveJoinedThreadsStore],
+        [ChannelStore, ReadStateStore, ActiveJoinedThreadsStore],
         () => {
             const channel = ChannelStore.getChannel(channelId);
             const newThreads = channel?.guild_id && channel.isForumLikeChannel?.()

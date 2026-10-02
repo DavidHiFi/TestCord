@@ -10,7 +10,7 @@ import { classNameFactory } from "@utils/css";
 import { LazyComponent } from "@utils/react";
 import type { Message, MessageAttachment } from "@vencord/discord-types";
 import { find, findByCodeLazy } from "@webpack";
-import { moment, SelectedChannelStore, useEffect, useMemo, useRef, UserStore, useState } from "@webpack/common";
+import { SelectedChannelStore, useEffect, useMemo, useRef, UserStore, useState } from "@webpack/common";
 
 const cl = classNameFactory("vc-cmdpal-");
 
@@ -115,7 +115,7 @@ export function MessageMarkdownPreview({ content, channelId, files }: {
 
         draft.id = generateId();
         draft.author = UserStore.getCurrentUser();
-        draft.timestamp = moment();
+        draft.timestamp = new Date();
 
         return populateMessagePrototype(draft) ?? draft;
     }, [attachments, channelId, content]);

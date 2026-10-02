@@ -26,7 +26,15 @@ export type MessageAccessory = {
     position?: number;
 };
 
+const logger = new Logger("MessageAccessories");
+
 export const accessories = new Map<string, MessageAccessory>();
+
+// `Failed to render ${key} Message Accessory` was rebuilt for every accessory on
+// every rendered message, so a chat full of messages built one throwaway string
+// per accessory per message. The key set changes only when a plugin starts or
+// stops, so the messages are built once per registration instead.
+const accessoryErrorMessages = new Map<string, string>();
 
 export function addMessageAccessory(
     identifier: string,
@@ -37,10 +45,12 @@ export function addMessageAccessory(
         render,
         position,
     });
+    accessoryErrorMessages.set(identifier, `Failed to render ${identifier} Message Accessory`);
 }
 
 export function removeMessageAccessory(identifier: string) {
     accessories.delete(identifier);
+    accessoryErrorMessages.delete(identifier);
 }
 
 export function _modifyAccessories(
@@ -52,7 +62,7 @@ export function _modifyAccessories(
 
         for (const [key, accessory] of accessories.entries()) {
             const res = (
-                <ErrorBoundary noop message={`Failed to render ${key} Message Accessory`} key={key}>
+                <ErrorBoundary noop message={accessoryErrorMessages.get(key)} key={key}>
                     <accessory.render {...props} />
                 </ErrorBoundary>
             );
@@ -73,7 +83,7 @@ export function _modifyAccessories(
 
         return elements;
     } catch (e) {
-        new Logger("MessageAccessories").error("Failed to modify message accessories", e);
+        logger.error("Failed to modify message accessories", e);
         return elements;
     }
 }

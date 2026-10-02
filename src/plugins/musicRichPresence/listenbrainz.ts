@@ -12,9 +12,13 @@ import { ScrobblerBackend, settings, TrackData } from ".";
 
 const logger = new Logger("AudioScrobblerRichPresence/ListenBrainz");
 
-// 15 minutes
-const coverArtCache = new TTLMap<string, string>(15 * 60 * 1000);
-const metadataCache = new TTLMap<string, Partial<TrackData> | null>(15 * 60 * 1000);
+// 15 minutes. Bounded: a scrobbling session inserts one entry per distinct track
+// and these keys never repeat, so without a cap the map (and the timer driving
+// expiry) grew for the lifetime of the renderer.
+const COVER_ART_CACHE_MAX = 128;
+const METADATA_CACHE_MAX = 128;
+const coverArtCache = new TTLMap<string, string>(15 * 60 * 1000, undefined, COVER_ART_CACHE_MAX);
+const metadataCache = new TTLMap<string, Partial<TrackData> | null>(15 * 60 * 1000, undefined, METADATA_CACHE_MAX);
 
 const isCustomInstance = () => settings.store.scrobblerBackend === "listenbrainz-compatible";
 const url = (path: string) => `${isCustomInstance() ? settings.store.instanceBaseURL : "https://listenbrainz.org"}${path}`;

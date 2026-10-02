@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { definePluginSettings } from "@api/Settings";
+import { isPluginEnabled } from "@api/PluginManager";
+import { definePluginSettings, Settings } from "@api/Settings";
 import { TestcordDevs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
@@ -558,8 +559,9 @@ export default definePlugin({
     patches: [
         {
             find: "#{intl::STREAM_FPS_OPTION}",
+            predicate: () => !isPluginEnabled("FakeNitro") || !Settings.plugins.FakeNitro?.enableStreamQualityBypass,
             replacement: {
-                match: /guildPremiumTier:\i\.\i\.TIER_\d,?/,
+                match: /guildPremiumTier:\i\.\i\.TIER_\d,?/g,
                 replace: "",
             },
         },

@@ -9,7 +9,7 @@ import { ChannelStore, FluxDispatcher, Menu, ReadStateStore, ReadStateUtils } fr
 
 import { getSyntheticPage } from "../util/pages";
 import { closeOtherTabs, closeTab, closeTabsToTheLeft, closeTabsToTheRight, createTabAfter, hasClosedTabs, reopenClosedTab } from "../util/store";
-import { Tab } from "../util/types";
+import type { Tab } from "../util/types";
 
 export function TabContextMenu({ tab, index, tabCount }: { tab: Tab; index: number; tabCount: number; }) {
     const channel = ChannelStore.getChannel(tab.channelId);
