@@ -20,7 +20,7 @@ import { TestcordDevs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
 import { findByCodeLazy, findByPropsLazy } from "@webpack";
-import { Button, lodash, MediaEngineStore, React, RelationshipStore, SelectedChannelStore, showToast, Toasts, UserStore, VoiceStateStore } from "@webpack/common";
+import { Button, lodash, MediaEngineStore, React, RelationshipStore, SelectedChannelStore, UserStore, VoiceStateStore } from "@webpack/common";
 
 import { VolumeHold } from "./protection";
 
@@ -213,8 +213,18 @@ const settings = definePluginSettings({
     },
     notify: {
         type: OptionType.BOOLEAN,
-        description: "Show prominent notices and keep notification history for balancing, muting and volume recovery.",
+        description: "Show MicSpamGuard notification cards and keep them in notification history.",
         default: true
+    },
+    notificationMode: {
+        type: OptionType.SELECT,
+        displayName: "Notification detail",
+        description: "Standard shows mutes and restores. Verbose adds balancing changes and explains each action.",
+        hidden: () => !settings.store.notify,
+        options: [
+            { label: "Standard", value: "standard", default: true },
+            { label: "Verbose", value: "verbose" }
+        ]
     }
 });
 
@@ -223,10 +233,15 @@ function displayName(userId: string) {
     return user?.globalName ?? user?.username ?? userId;
 }
 
-function notifyAction(message: string, warning = false) {
+function notifyAction(message: string, options: { warning?: boolean; verboseOnly?: boolean; details?: string; } = {}) {
     if (!settings.store.notify) return;
-    showToast(`MicSpamGuard: ${message}`, Toasts.Type.MESSAGE, { position: Toasts.Position.TOP, duration: 8000 });
-    void showNotification({ title: "MicSpamGuard", body: message, color: warning ? "#f9e2af" : "#a6e3a1" });
+    const verbose = settings.store.notificationMode === "verbose";
+    if (options.verboseOnly && !verbose) return;
+    void showNotification({
+        title: "MicSpamGuard",
+        body: verbose && options.details ? `${message} ${options.details}` : message,
+        color: options.warning ? "#f9e2af" : "#a6e3a1"
+    });
 }
 
 function formatDuration(seconds: number) {
@@ -378,7 +393,10 @@ function mute(userId: string, level: number) {
     persistHeld();
     logger.debug(`muted ${userId} at ${level}%`);
 
-    notifyAction(`Muted ${displayName(userId)} for extreme loudness (${level}%). ${settings.store.autoUnmute > 0 ? "Volume will return to 100% after the quiet interval." : "Auto restore is off; restore manually."}`, true);
+    notifyAction(`Muted ${displayName(userId)} for extreme loudness.`, {
+        warning: true,
+        details: `Level ${level}%. ${settings.store.autoUnmute > 0 ? "Volume will return to 100% after the quiet interval." : "Auto restore is off; restore manually."}`
+    });
 }
 
 function unmute(userId: string, mode: "manual" | "auto" | "silent") {
@@ -395,8 +413,10 @@ function unmute(userId: string, mode: "manual" | "auto" | "silent") {
     if (mode === "silent" || !settings.store.notify) return;
 
     notifyAction(mode === "auto"
-        ? `Restored ${displayName(userId)} to 100% after ${formatDuration(settings.store.autoUnmute)} without loud audio.`
-        : `Unmuted ${displayName(userId)}.`);
+        ? `Restored ${displayName(userId)} to 100%.`
+        : `Unmuted ${displayName(userId)}.`, {
+        details: mode === "auto" ? `After ${formatDuration(settings.store.autoUnmute)} without loud audio.` : undefined
+    });
 }
 
 function restoreVolume(userId: string, mode: "manual" | "auto" | "silent") {
@@ -412,7 +432,7 @@ function restoreVolume(userId: string, mode: "manual" | "auto" | "silent") {
 
     if (mode === "silent" || !settings.store.notify) return;
 
-    notifyAction(`Restored ${displayName(userId)} to ${Math.round(amplitudeToVolume(entry.base))}%.`);
+    notifyAction(`Restored ${displayName(userId)} to ${Math.round(amplitudeToVolume(entry.base))}%.`, { verboseOnly: mode === "auto", details: "Automatic balancing ended after quiet audio." });
 }
 
 function restoreAll(mode: "manual" | "silent") {
@@ -466,7 +486,7 @@ function updateDynamics(now: number) {
             const direction = slider < baseline - 5 ? -1 : slider > baseline + 5 ? 1 : 0;
             if (direction && (entry.noticeAt === undefined || now - entry.noticeAt >= 10000)
                 && (entry.noticeDirection !== direction || Math.abs(slider - (entry.noticeVolume ?? baseline)) >= 20)) {
-                notifyAction(`${direction < 0 ? "Turned down" : "Raised"} ${displayName(userId)} to ${slider}% to balance their voice.`, direction < 0);
+                notifyAction(`${direction < 0 ? "Turned down" : "Raised"} ${displayName(userId)} to ${slider}%.`, { warning: direction < 0, verboseOnly: true, details: "Balancing their incoming voice level." });
                 entry.noticeAt = now;
                 entry.noticeDirection = direction;
                 entry.noticeVolume = slider;
@@ -746,10 +766,7 @@ function MicSpamGuardButton({ iconForeground, hideTooltips, nameplate }: UserAre
             onContextMenu={event => {
                 event.preventDefault();
                 settings.store.enabled = !enabled;
-                showToast(
-                    `Mic Spam Guard ${settings.store.enabled ? "enabled" : "disabled"}.`,
-                    Toasts.Type.MESSAGE
-                );
+                notifyAction(`MicSpamGuard ${settings.store.enabled ? "enabled" : "disabled"}.`);
             }}
         />
     );

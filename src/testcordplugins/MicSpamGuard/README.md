@@ -10,7 +10,7 @@ Manual volume changes during a hold remain yours. Manual restore and disabling t
 
 ## Notices
 
-With notifications enabled, mute, recovery, manual restore, balancing reduction and quiet-voice boost actions display an eight-second top toast and a notification saved in the client notification history. Balancing notices require a meaningful slider change, repeat at most every ten seconds per participant and do not fire on every volume tick. Notifications disabled suppress both channels. Client-wide notification settings control native versus in-app presentation.
+MicSpamGuard uses one notification card per event, with no duplicate top toast. Cards remain in client notification history. Standard mode, the default, shows concise mute, protection recovery and manual restore notices. Verbose adds automatic volume reductions, quiet-voice boosts, balancing restores and explanations. Balancing notices require a meaningful slider change and repeat at most every ten seconds per participant. The notifications toggle turns all notices off. Client-wide notification settings control native versus in-app presentation.
 
 ## Validation
 

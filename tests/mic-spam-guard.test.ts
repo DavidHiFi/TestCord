@@ -727,10 +727,10 @@ test("Repeated held volume changes collapse into one debounced DataStore write",
 
 
 test("Balancing actions show prominent notices without a notice every tick", () => {
-    const t = setup(); t.store.notify = true; t.speech(-6, 5000);
+    const t = setup(); t.store.notify = true; t.store.notificationMode = "verbose"; t.speech(-6, 5000);
     assert(t.notifications.some(n => n.body.includes("Turned down")));
     assert(t.notifications.length <= 2);
-    assert(t.toasts.every(n => n.options.duration === 8000 && n.options.position === 0));
+    assert.equal(t.toasts.length, 0);
     t.speech(-Infinity, 12000);
     assert(t.notifications.some(n => n.body.includes("Restored")));
     assert.equal(v(t), 100);
@@ -746,4 +746,25 @@ test("Mute and automatic 100% recovery each get a notification", () => {
 test("Notifications disabled suppress both presentation channels", () => {
     const t = setup(); t.speech(-6, 5000); t.speech(-Infinity, 12000);
     assert.equal(t.notifications.length, 0); assert.equal(t.toasts.length, 0);
+});
+
+
+test("Standard mode shows essential events once and skips balancing notices", () => {
+    const t = setup(); t.store.notify = true;
+    assert.equal(t.store.notificationMode, "standard");
+    t.speech(-6, 5000); t.speech(-Infinity, 12000);
+    assert.equal(t.notifications.length, 0); assert.equal(t.toasts.length, 0);
+    t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
+    t.speech(0, 1000); t.speech(-Infinity, 6000);
+    assert.equal(t.notifications.length, 2); assert.equal(t.toasts.length, 0);
+    assert.equal(t.notifications[1].body, "Restored 2 to 100%.");
+});
+
+test("Verbose adds context without adding a second notification channel", () => {
+    const t = setup(); t.store.notify = true; t.store.notificationMode = "verbose";
+    t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
+    t.speech(0, 1000); t.speech(-Infinity, 6000);
+    assert.equal(t.notifications.length, 2); assert.equal(t.toasts.length, 0);
+    assert(t.notifications[0].body.includes("Level 100%"));
+    assert(t.notifications[1].body.includes("After 3 seconds"));
 });
