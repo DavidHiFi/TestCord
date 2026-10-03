@@ -11,6 +11,7 @@
  */
 
 import { DataStore } from "@api/index";
+import { showNotification } from "@api/Notifications";
 import { plugins } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
 import { UserAreaButton, UserAreaRenderProps } from "@api/UserArea";
@@ -70,6 +71,9 @@ interface TurnedDown {
     sampleAt: number;
     speechAt: number;
     speechMs: number;
+    noticeAt?: number;
+    noticeDirection?: number;
+    noticeVolume?: number;
 }
 
 const levels = new Map<string, number>();
@@ -142,7 +146,7 @@ const settings = definePluginSettings({
     autoUnmute: {
         type: OptionType.SELECT,
         displayName: "Auto unmute",
-        description: "How long fresh safe voice audio must continue before volume returns smoothly. Silence or missing samples cannot reopen a held volume. Off requires manual restore.",
+        description: "How long quiet audio or inactivity must continue before volume returns smoothly to 100%. New loud audio cancels recovery. Off requires manual restore.",
         hidden: () => !settings.store.autoMute,
         options: [
             { label: "Off (stay muted)", value: 0 },
@@ -209,7 +213,7 @@ const settings = definePluginSettings({
     },
     notify: {
         type: OptionType.BOOLEAN,
-        description: "Show a toast for mute, unmute, and manual volume restore. Automatic balancing stays silent.",
+        description: "Show prominent notices and keep notification history for balancing, muting and volume recovery.",
         default: true
     }
 });
@@ -217,6 +221,12 @@ const settings = definePluginSettings({
 function displayName(userId: string) {
     const user = UserStore.getUser(userId);
     return user?.globalName ?? user?.username ?? userId;
+}
+
+function notifyAction(message: string, warning = false) {
+    if (!settings.store.notify) return;
+    showToast(`MicSpamGuard: ${message}`, Toasts.Type.MESSAGE, { position: Toasts.Position.TOP, duration: 8000 });
+    void showNotification({ title: "MicSpamGuard", body: message, color: warning ? "#f9e2af" : "#a6e3a1" });
 }
 
 function formatDuration(seconds: number) {
@@ -362,15 +372,13 @@ function mute(userId: string, level: number) {
     const base = MediaEngineStore.getLocalVolume(userId);
     if (!Number.isFinite(base) || base <= 0) return;
     savedVolume.set(userId, base);
-    volumeHolds.set(userId, new VolumeHold(base, Date.now(), 2000));
+    volumeHolds.set(userId, new VolumeHold(100, Date.now(), 2000, true));
     setLocalVolume(userId, 0);
     mutedByUs.set(userId, Date.now());
     persistHeld();
     logger.debug(`muted ${userId} at ${level}%`);
 
-    if (settings.store.notify) {
-        showToast(`MicSpamGuard muted ${displayName(userId)} at ${level}% volume.`, Toasts.Type.MESSAGE);
-    }
+    notifyAction(`Muted ${displayName(userId)} for extreme loudness (${level}%). ${settings.store.autoUnmute > 0 ? "Volume will return to 100% after the quiet interval." : "Auto restore is off; restore manually."}`, true);
 }
 
 function unmute(userId: string, mode: "manual" | "auto" | "silent") {
@@ -379,22 +387,19 @@ function unmute(userId: string, mode: "manual" | "auto" | "silent") {
     const hold = volumeHolds.get(userId);
     volumeHolds.delete(userId);
     if (!hold || Math.abs(MediaEngineStore.getLocalVolume(userId) - hold.applied) < 0.5) {
-        setLocalVolume(userId, savedVolume.get(userId) ?? 100);
+        setLocalVolume(userId, mode === "auto" ? 100 : savedVolume.get(userId) ?? 100);
     }
     savedVolume.delete(userId);
     persistHeld();
 
     if (mode === "silent" || !settings.store.notify) return;
 
-    showToast(
-        mode === "auto"
-            ? `MicSpamGuard auto-unmuted ${displayName(userId)} after ${formatDuration(settings.store.autoUnmute)}.`
-            : `MicSpamGuard unmuted ${displayName(userId)}.`,
-        Toasts.Type.MESSAGE
-    );
+    notifyAction(mode === "auto"
+        ? `Restored ${displayName(userId)} to 100% after ${formatDuration(settings.store.autoUnmute)} without loud audio.`
+        : `Unmuted ${displayName(userId)}.`);
 }
 
-function restoreVolume(userId: string, mode: "manual" | "silent") {
+function restoreVolume(userId: string, mode: "manual" | "auto" | "silent") {
     const entry = turnedDown.get(userId);
     if (!entry || !turnedDown.delete(userId)) return;
 
@@ -407,7 +412,7 @@ function restoreVolume(userId: string, mode: "manual" | "silent") {
 
     if (mode === "silent" || !settings.store.notify) return;
 
-    showToast(`MicSpamGuard restored ${displayName(userId)}'s volume.`, Toasts.Type.MESSAGE);
+    notifyAction(`Restored ${displayName(userId)} to ${Math.round(amplitudeToVolume(entry.base))}%.`);
 }
 
 function restoreAll(mode: "manual" | "silent") {
@@ -456,9 +461,19 @@ function updateDynamics(now: number) {
         if (Math.abs(applied - entry.applied) >= deadband) {
             entry.applied = applied;
             setLocalVolume(userId, applied);
+            const slider = Math.round(amplitudeToVolume(applied));
+            const baseline = amplitudeToVolume(entry.base);
+            const direction = slider < baseline - 5 ? -1 : slider > baseline + 5 ? 1 : 0;
+            if (direction && (entry.noticeAt === undefined || now - entry.noticeAt >= 10000)
+                && (entry.noticeDirection !== direction || Math.abs(slider - (entry.noticeVolume ?? baseline)) >= 20)) {
+                notifyAction(`${direction < 0 ? "Turned down" : "Raised"} ${displayName(userId)} to ${slider}% to balance their voice.`, direction < 0);
+                entry.noticeAt = now;
+                entry.noticeDirection = direction;
+                entry.noticeVolume = slider;
+            }
         }
 
-        if (now - entry.speechAt > SPEECH_HOLD_MS && Math.abs(entry.gainDb) < 0.05) restoreVolume(userId, "silent");
+        if (now - entry.speechAt > SPEECH_HOLD_MS && Math.abs(entry.gainDb) < 0.05) restoreVolume(userId, "auto");
     }
 }
 
@@ -483,7 +498,7 @@ function onStats(payload: VoiceStats) {
         levelAt.set(userId, now);
 
         // A zero reading while held can be post-volume silence. Require safe positive source audio.
-        if (amplitude > 0) volumeHolds.get(userId)?.observe(percent <= threshold - 10, now);
+        volumeHolds.get(userId)?.observe(percent <= threshold - 10, now);
 
         if (!enabled) continue;
 

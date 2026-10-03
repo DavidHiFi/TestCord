@@ -35,6 +35,8 @@ interface Harness {
     speech: (db: number, ms: number, user?: string) => void;
     store: Record<string, any>;
     storeWrites: string[];
+    notifications: Array<{ title: string; body: string; }>;
+    toasts: Array<{ message: string; options: { duration?: number; position?: number; }; }>;
     volumes: Map<string, number>;
     writes: Array<{ user: string; value: number; at: number; }>;
     persisted: Map<string, any>;
@@ -50,6 +52,8 @@ function setup(initial: Record<string, number> = {}): Harness {
     const writes: Array<{ user: string; value: number; at: number; }> = [];
     const persisted = new Map<string, any>();
     const storeWrites: string[] = [];
+    const notifications: Array<{ title: string; body: string; }> = [];
+    const toasts: Array<{ message: string; options: { duration?: number; position?: number; }; }> = [];
     const timers = new Map<number, { fn: () => void; at: number; }>();
     let nextTimer = 1;
     const muted = new Set<string>();
@@ -120,8 +124,9 @@ function setup(initial: Record<string, number> = {}): Harness {
             getLocalVolume: (user: string) => volumes.get(user) ?? 100,
             isLocalMute: (user: string) => muted.has(user)
         },
-        showToast() {},
-        Toasts: { Type: { MESSAGE: 1 } }
+        showToast(message: string, _type: number, options: { duration?: number; position?: number; }) { toasts.push({ message, options }); },
+        showNotification(data: { title: string; body: string; }) { notifications.push(data); return Promise.resolve(); },
+        Toasts: { Type: { MESSAGE: 1 }, Position: { TOP: 0 } }
     };
     sandbox.lodash = {
         debounce: (fn: (...args: any[]) => void, wait = 0) => {
@@ -179,7 +184,7 @@ function setup(initial: Record<string, number> = {}): Harness {
 
     return {
         run, sample, stats, advance, speech, store,
-        storeWrites, volumes, writes, persisted, muted, friends, members,
+        storeWrites, notifications, toasts, volumes, writes, persisted, muted, friends, members,
         plugin: sandbox.plugin
     };
 }
@@ -446,23 +451,12 @@ test("Old low thresholds cannot mute everyday speech", () => {
     assert(v(t) > 0);
 });
 
-test("Fresh safe speech restores protection smoothly after the configured hold", () => {
-    const t = setup({ "2": 155 });
-    t.run("poll()");
-    t.store.autoMute = true;
-    t.store.autoUnmute = 3;
-    t.store.dynamicUserVolume = false;
-    t.speech(0, 1000);
-    assert.equal(t.volumes.get("2"), 0);
-    t.advance(10000);
-    t.run("poll()");
-    assert.equal(t.volumes.get("2"), 0);
-    t.speech(-20, 3000);
-    assert.equal(t.volumes.get("2"), 0);
-    t.speech(-20, 500);
-    assert(v(t) > 0 && v(t) < 100);
-    t.speech(-20, 1200);
-    assert.equal(t.volumes.get("2"), 155);
+test("Fresh safe speech restores protection smoothly to 100% after the configured hold", () => {
+    const t = setup({ "2": 155 }); t.run("poll()"); t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
+    t.speech(0, 1000); assert.equal(v(t), 0);
+    t.speech(-20, 3000); assert.equal(v(t), 0);
+    t.speech(-20, 500); assert(v(t) > 0 && v(t) < 100);
+    t.speech(-20, 1200); assert.equal(v(t), 100);
 });
 
 test("Continuous blasts cannot periodically reopen a held volume", () => {
@@ -477,15 +471,16 @@ test("Continuous blasts cannot periodically reopen a held volume", () => {
     assert(t.writes.slice(count).every(w => w.value === 0));
 });
 
-test("Zero and missing readings cannot falsely prove safe speech", () => {
-    const t = setup();
-    t.run("poll()");
-    t.store.autoMute = true;
-    t.store.autoUnmute = 3;
-    t.speech(0, 1000);
-    t.speech(-Infinity, 12000);
-    t.advance(12000);
-    assert.equal(t.volumes.get("2"), 0);
+test("Fresh zero readings restore a held user after silence", () => {
+    const t = setup(); t.run("poll()"); t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
+    t.speech(0, 1000); t.speech(-Infinity, 6000);
+    assert.equal(v(t), 100); assert.equal(t.run("mutedByUs.size"), 0);
+});
+
+test("Missing readings cannot leave a guard-owned zero volume forever", () => {
+    const t = setup(); t.run("poll()"); t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
+    t.speech(0, 1000); t.advance(3000); assert.equal(v(t), 0);
+    t.advance(5000); assert.equal(v(t), 100); assert.equal(t.run("mutedByUs.size"), 0);
 });
 
 test("A returning blast closes partial recovery before the next full-volume write", () => {
@@ -516,16 +511,10 @@ test("Brief natural speech pauses do not reset verified safe recovery", () => {
     assert.equal(t.volumes.get("2"), 100);
 });
 
-test("Evidence gaps restart the complete safe interval", () => {
-    const t = setup();
-    t.run("poll()");
-    t.store.autoMute = true;
-    t.store.autoUnmute = 3;
-    t.speech(0, 1000);
-    t.speech(-20, 2500);
-    t.advance(2500);
-    t.speech(-20, 1500);
-    assert.equal(t.volumes.get("2"), 0);
+test("Quiet evidence gaps do not restart recovery forever", () => {
+    const t = setup(); t.run("poll()"); t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
+    t.speech(0, 1000); t.speech(-20, 2500); t.advance(2500); t.speech(-20, 1500);
+    assert.equal(v(t), 100);
 });
 
 test("Auto restore off never raises volume despite continuous safe speech", () => {
@@ -538,19 +527,11 @@ test("Auto restore off never raises volume despite continuous safe speech", () =
     assert.equal(t.volumes.get("2"), 0);
 });
 
-test("Duplicated timestamps cannot fabricate continuing safe evidence", () => {
-    const t = setup();
-    t.run("poll()");
-    t.store.autoMute = true;
-    t.store.autoUnmute = 3;
+test("Duplicated timestamps do not accelerate the quiet interval", () => {
+    const t = setup(); t.run("poll()"); t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
     t.speech(0, 1000);
-    t.sample(-20);
-    const at = t.run("Date.now()") as number;
-    for (let i = 0; i < 50; i++) {
-        t.run(`volumeHolds.get("2").observe(true, ${at})`);
-        t.advance(100);
-    }
-    assert.equal(t.volumes.get("2"), 0);
+    for (let i = 0; i < 100; i++) t.sample(-20);
+    assert.equal(v(t), 0);
 });
 
 test("Manual volume changes during protection remain the user's choice", () => {
@@ -742,4 +723,27 @@ test("Repeated held volume changes collapse into one debounced DataStore write",
     assert.equal(held["2"], 80);
     assert.equal(held["3"], 70);
     assert.equal(t.storeWrites.length, 1);
+});
+
+
+test("Balancing actions show prominent notices without a notice every tick", () => {
+    const t = setup(); t.store.notify = true; t.speech(-6, 5000);
+    assert(t.notifications.some(n => n.body.includes("Turned down")));
+    assert(t.notifications.length <= 2);
+    assert(t.toasts.every(n => n.options.duration === 8000 && n.options.position === 0));
+    t.speech(-Infinity, 12000);
+    assert(t.notifications.some(n => n.body.includes("Restored")));
+    assert.equal(v(t), 100);
+});
+
+test("Mute and automatic 100% recovery each get a notification", () => {
+    const t = setup(); t.run("poll()"); t.store.notify = true; t.store.autoMute = true; t.store.autoUnmute = 3; t.store.dynamicUserVolume = false;
+    t.speech(0, 1000); t.speech(-Infinity, 6000);
+    assert(t.notifications.some(n => n.body.startsWith("Muted")));
+    assert(t.notifications.some(n => n.body.includes("to 100%")));
+});
+
+test("Notifications disabled suppress both presentation channels", () => {
+    const t = setup(); t.speech(-6, 5000); t.speech(-Infinity, 12000);
+    assert.equal(t.notifications.length, 0); assert.equal(t.toasts.length, 0);
 });
