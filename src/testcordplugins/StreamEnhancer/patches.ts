@@ -163,6 +163,27 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         }
     },
     {
+        find: "streamerName:t.user.username",
+        replacement: [
+            {
+                match: /\(0,\i\.jsx\)\("div",\{className:\i\.Rh,children:\(0,\i\.jsx\)\(\i\.A,\{noText:!0,className:\i\.HL,stream:(\i)\.stream\}\)\}\)/,
+                replace: "$self.renderSpoofedStreamPanelPreview($1.stream)??$&"
+            },
+            {
+                match: /\(0,\i\.jsx\)\(\i,\{onResize:\i,.{0,220}?streamKey:\i\.id\},\i\)/,
+                replace: "$&,$self.renderSpoofedStreamPanelPreview(arguments[0])",
+                noWarn: true
+            }
+        ]
+    },
+    {
+        find: "hasActiveStream:u,onEnablePin",
+        replacement: {
+            match: /\(0,\i\.jsx\)\(\i,\{onResize:\i,.{0,220}?streamKey:\i\.id\},\i\)/,
+            replace: "$&,$self.renderSpoofedStreamPanelPreview(arguments[0])"
+        }
+    },
+    {
         find: "Stream Tile State - activeStream",
         replacement: {
             match: /\(0,\i\.jsx\)\(\i\.A,\{noImage:!0,noText:!0,className:\i\(\)\(\i\.HL,\{\[\i\.gH\]:null==\i\}\),stream:\i\.stream\}\)/,
