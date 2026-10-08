@@ -1,0 +1,11 @@
+/* Tile meters that sit inside Discord's hover controls strip lift above it while
+   the strip is showing (the strip fades in on tile hover), so the bars and the
+   Options buttons never paint over each other. The lift clears the strip's top
+   edge 44px up plus a small gap. */
+div[data-selenium-video-tile] [data-vu-meter-near] {
+    transition: bottom 0.12s ease;
+}
+
+div[data-selenium-video-tile]:hover [data-vu-meter-near] {
+    bottom: 52px !important; /* Discord's hover controls strip tops out 44px above the tile edge */
+}

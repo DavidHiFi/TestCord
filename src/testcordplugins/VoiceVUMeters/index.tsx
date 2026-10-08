@@ -17,6 +17,8 @@ import { Logger } from "@utils/Logger";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
 import { MediaEngineStore, React, SelectedChannelStore, UserStore, VoiceStateStore } from "@webpack/common";
 
+import meterStyle from "./style.css?managed";
+
 const logger = new Logger("VoiceVUMeters");
 
 const POLL_MS = 50;
@@ -730,8 +732,17 @@ function TileMeter({ userId }: { userId?: string; }) {
         bottom = pictureInset ? pictureInset.bottom + 14 : 14;
     }
 
+    // Meters that sit inside Discord's hover controls strip get lifted above it
+    // while the strip is showing (tile hover), so the bars and the Options
+    // buttons never paint on top of each other.
+    const nearControls = onPicture && (!pictureInset || pictureInset.right < 48);
+
     return (
-        <div ref={boxRef} style={{ position: "absolute", right, bottom, height, zIndex: 3, pointerEvents: "none" }}>
+        <div
+            ref={boxRef}
+            data-vu-meter-near={nearControls ? "" : undefined}
+            style={{ position: "absolute", right, bottom, height, zIndex: 3, pointerEvents: "none" }}
+        >
             <VoiceMeter userId={userId} height="100%" width={8} />
         </div>
     );
@@ -743,6 +754,7 @@ export default definePlugin({
     authors: [TestcordDevs.Kurtzon, TestcordDevs.DavidHiFi],
     tags: ["Voice", "Utility"],
     settings,
+    managedStyle: meterStyle,
 
     patches: [
         {
