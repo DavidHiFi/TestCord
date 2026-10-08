@@ -45,15 +45,32 @@ div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] [class*="background"] {
     background: none !important; /* user's hide-background switch */
 }
 
-/* The glow paints through the filter var the plugin emits only when the
-   floating state has it on, so a boxed tile stays untouched. The content
-   backdrop wrapper exists only on picture tiles, which is what scopes the
-   rule to them. Selectors stay :has()-free on purpose: the composed managed
-   sheet can silently drop :has() rules from its parsed cascade at boot
-   (measured 2026-10-08 evening), while plain attribute and descendant
-   selectors survive every compose. */
-div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] div[class*="background"] {
+/* The glow paints through the filter var the plugin emits, independently of
+    the background switch: it wraps the picture over the box or banner too.
+    The content backdrop wrapper exists only on picture tiles, which is what
+    scopes the rule to them. Selectors stay :has()-free on purpose: the
+    composed managed sheet can silently drop :has() rules from its parsed
+    cascade at boot (measured 2026-10-08 evening), while plain attribute and
+    descendant selectors survive every compose. */
+div[data-selenium-video-tile] div[class*="background"] {
     filter: var(--vc-pfp-glow-filter, none) !important; /* the glow var is set per tile by the plugin */
+}
+
+/* Speaking indicator moved onto the picture: the green glow rides the same
+   filter string as the user glow (the patch composes both layers while the
+   user speaks), and the drop-shadow trails the masked picture outline, which
+   a box-shadow on the masked element itself could never do - the mask square
+   is centered inside the element box, so any shadow on that element would
+   clip wrong. */
+div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"] [class*="border__"] {
+    display: none !important; /* speaking indicator switched to the picture */
+}
+
+/* Camera and stream tiles have no picture box for the bloom to wrap; their
+   ring follows the video edge instead, which fills the tile and already
+   carries the rounded corners. */
+div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"][style*="--vc-pfp-speaking: 1"] video {
+    box-shadow: inset 0 0 0 3px var(--green-360, #23a55a) !important; /* Discord's own speaking green */
 }
 
 /* The halo must keep fading outside the tile box or it gets a hard straight

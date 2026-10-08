@@ -18,6 +18,7 @@ const source = readFileSync(new URL("../src/testcordplugins/RoundedVcPfp/index.t
     .replace("export default definePlugin(", "globalThis.plugin = definePlugin(");
 let lookups = 0;
 let user: { getDefaultAvatarURL?: unknown; } = {};
+const voiceState: { channelId?: string; } = {};
 const store: Record<string, unknown> = {
     avatarRadius: 5,
     cornerRadius: 12,
@@ -25,7 +26,8 @@ const store: Record<string, unknown> = {
     hideTileBackground: false,
     hideUserBackgrounds: false,
     enableGlow: false,
-    glowColor: "#45475a"
+    glowColor: "#45475a",
+    speakingIndicator: "box"
 };
 const sandbox = {
     EquicordDevs: { mochienya: {} }, TestcordDevs: { DavidHiFi: {} },
@@ -33,7 +35,9 @@ const sandbox = {
     definePluginSettings: () => ({ store }), OptionType: { SLIDER: 5 }, style: "",
     makeRange,
     UserStore: { getUser: () => { lookups++; return user; } },
-    VoiceStateStore: { getVoiceStateForUser: () => undefined },
+    VoiceStateStore: { getVoiceStateForUser: () => voiceState.channelId ? voiceState : undefined },
+    ChannelStore: { getChannel: () => ({ guild_id: "guild-1" }) },
+    ChannelRTCStore: { getSpeakingParticipants: () => [{ user: { id: "1" }, speaking: true }] },
     getUserAvatarUrl: () => undefined
 };
 vm.createContext(sandbox);
@@ -72,13 +76,13 @@ test("Picture masking follows the radius slider and the theme slot is always set
     Object.assign(store, { avatarRadius: 5 });
 });
 
-test("The glow emits no filter while the box still shows or the toggle is off", () => {
+test("The glow follows its own switch while the box shows or hides", () => {
     Object.assign(store, { hideTileBackground: false, enableGlow: true });
     const result = styles({ participantUserId: "1" });
     assert.equal(result["backgroundColor"], "");
-    assert.equal("background" in result, false);
+    assert.equal("backgroundImage" in result, false);
     assert.equal(result["--vc-pfp-hide-bg"], "");
-    assert.equal(result["--vc-pfp-glow-filter"], "");
+    assert.equal(result["--vc-pfp-glow-filter"], "drop-shadow(0 0 14px rgba(69, 71, 90, 0.4)) drop-shadow(0 0 3px rgba(69, 71, 90, 0.6))");
 
     Object.assign(store, { hideTileBackground: true, enableGlow: false });
     const floating = styles({ participantUserId: "1" });
@@ -86,6 +90,37 @@ test("The glow emits no filter while the box still shows or the toggle is off", 
     assert.equal(floating["--vc-pfp-hide-bg"], "1");
     assert.equal(floating["--vc-pfp-glow-filter"], "");
     Object.assign(store, { enableGlow: false });
+});
+
+test("The speaking ring emits its markers only in picture mode while speaking", () => {
+    Object.assign(store, { speakingIndicator: "box" });
+    const boxed = styles({ participantUserId: "1" });
+    assert.equal(boxed["--vc-pfp-ring-pic"], "");
+    assert.equal(boxed["--vc-pfp-speaking"], "");
+
+    Object.assign(store, { speakingIndicator: "picture" });
+    const silent = styles({ participantUserId: "1" });
+    assert.equal(silent["--vc-pfp-ring-pic"], "1");
+    assert.equal(silent["--vc-pfp-speaking"], "");
+    assert.equal(silent["--vc-pfp-glow-filter"], "");
+    Object.assign(store, { speakingIndicator: "box" });
+});
+
+test("Picture mode merges the speaking bloom into the filter while speaking", () => {
+    voiceState.channelId = "channel-1";
+    Object.assign(store, { speakingIndicator: "picture", enableGlow: true, glowColor: "#45475a" });
+    const talking = styles({ participantUserId: "1" });
+    assert.equal(talking["--vc-pfp-speaking"], "1");
+    assert.equal(talking["--vc-pfp-glow-filter"], "drop-shadow(0 0 14px rgba(69, 71, 90, 0.4)) drop-shadow(0 0 3px rgba(69, 71, 90, 0.6)) drop-shadow(0 0 2px var(--green-360, #23a55a)) drop-shadow(0 0 8px var(--green-360, #23a55a))");
+
+    Object.assign(store, { enableGlow: false });
+    const bloomOnly = styles({ participantUserId: "1" });
+    assert.equal(bloomOnly["--vc-pfp-glow-filter"], "drop-shadow(0 0 2px var(--green-360, #23a55a)) drop-shadow(0 0 8px var(--green-360, #23a55a))");
+
+    Object.assign(store, { speakingIndicator: "box" });
+    const boxed = styles({ participantUserId: "1" });
+    assert.equal(boxed["--vc-pfp-glow-filter"], "");
+    voiceState.channelId = undefined;
 });
 
 test("User backgrounds stay visible without their own switch and hide with it", () => {

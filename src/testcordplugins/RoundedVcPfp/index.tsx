@@ -72,6 +72,21 @@ const settings = definePluginSettings({
         description: "Also hide backgrounds that users set themselves, like USRBG banners. The background switch above only turns off Discord's own background.",
         default: false
     },
+    speakingIndicator: {
+        type: OptionType.SELECT,
+        description: "Where the green speaking glow shows on call tiles. Profile picture moves it from the tile border onto the picture edge.",
+        options: [
+            {
+                label: "Box border",
+                value: "box",
+                default: true
+            },
+            {
+                label: "Profile picture",
+                value: "picture"
+            }
+        ]
+    },
     enableGlow: {
         type: OptionType.BOOLEAN,
         description: "Turn the glow behind floating profile pictures on or off. Applies when the background switch is on.",
@@ -133,7 +148,15 @@ export default definePlugin({
 
         const hideBg = settings.store.hideTileBackground;
         const hideUserBg = settings.store.hideUserBackgrounds;
-        const glow = hideBg && settings.store.enableGlow ? glowFilter(settings.store.glowColor ?? "") : undefined;
+        // The glow is independent of the background switch: it wraps the picture
+        // whether the tile box is visible or not.
+        const glow = settings.store.enableGlow ? glowFilter(settings.store.glowColor ?? "") : undefined;
+        const ringPic = settings.store.speakingIndicator === "picture";
+        // The speaking glow merges into the same filter string: the backdrop
+        // wrapper is unmasked, so its drop-shadow trails the picture outline.
+        const filterParts: string[] = [];
+        if (glow) filterParts.push(glow);
+        if (ringPic && isSpeaking) filterParts.push("drop-shadow(0 0 2px var(--green-360, #23a55a)) drop-shadow(0 0 8px var(--green-360, #23a55a))");
         return {
             "--full-res-avatar": `url("${avatarUrl}")`,
             "--vc-pfp-radius": `${Math.round(settings.store.cornerRadius)}px`,
@@ -149,11 +172,13 @@ export default definePlugin({
             backgroundColor: hideBg ? "transparent" : "",
             ...(hideUserBg ? { backgroundImage: "none" } : {}),
             "--vc-pfp-hide-bg": hideBg ? "1" : "",
+            "--vc-pfp-speaking": isSpeaking ? "1" : "",
+            "--vc-pfp-ring-pic": ringPic ? "1" : "",
             // Marks this plugin version for theme handoff: themes drop their own
             // fallback glow when the slot is present. The filter string carries the
             // configured color; themes and any other stylesheet consume it.
             "--vc-pfp-glow-slot": "1",
-            "--vc-pfp-glow-filter": glow ?? ""
+            "--vc-pfp-glow-filter": filterParts.length ? filterParts.join(" ") : ""
         };
     },
 });
