@@ -1941,7 +1941,9 @@ const SpoofedStreamPanelPreview = ErrorBoundary.wrap(
         const config = getConfig();
         if (!config.previewTweaksEnabled || !config.customPreviewUrl) return null;
 
-        const active = applicationStreamingStore?.getActiveStreamForApplicationStream?.(stream) ?? null;
+        const caller = stream as Record<string, unknown> | null;
+        const streamObj = caller && typeof caller === "object" && "stream" in caller ? caller.stream : stream;
+        const active = applicationStreamingStore?.getActiveStreamForApplicationStream?.(streamObj) ?? null;
         if (!active || active.state === "ENDED" || active.state === "FAILED") return null;
 
         const url = applicationStreamPreviewStore?.getPreviewURL?.(active.guildId, active.channelId, active.ownerId) ?? null;

@@ -159,7 +159,21 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         find: "streamPreviewURL:g,videoSpinnerContext",
         replacement: {
             match: /(?=null!=\i&&\i\.Ay\.supports\(\i\.O5\.VIDEO\))/,
-            replace: "$self.shouldSpoofStreamPanelPreview()?$self.renderSpoofedStreamPanelPreview(arguments[0])||C:"
+            replace: "$self.renderSpoofedStreamPanelPreview(arguments[0])||C:"
+        }
+    },
+    {
+        find: "Stream Tile State - activeStream",
+        replacement: {
+            match: /\(0,\i\.jsx\)\(\i\.A,\{noImage:!0,noText:!0,className:\i\(\)\(\i\.HL,\{\[\i\.gH\]:null==\i\}\),stream:\i\.stream\}\)/,
+            replace: "$self.renderSpoofedStreamPanelPreview(arguments[0])??$&"
+        }
+    },
+    {
+        find: "pgUTZC)}):(0,",
+        replacement: {
+            match: /\(0,\i\.jsx\)\("img",\{src:\i,alt:""[^}]+/g,
+            replace: "$self.renderSpoofedStreamPanelPreview(arguments[0])??$&"
         }
     },
     {
