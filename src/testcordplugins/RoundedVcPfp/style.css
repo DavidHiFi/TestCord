@@ -15,6 +15,7 @@ div[data-selenium-video-tile] div[role="img"] {
     height: 100% !important;
     background: center / contain no-repeat;
     background-image: var(--full-res-avatar);
+    transform: scale(var(--vc-pfp-zoom, 1)) !important;
     -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='5'%20fill='%23fff'/%3E%3C/svg%3E");
     -webkit-mask-repeat: no-repeat;
     -webkit-mask-position: center;

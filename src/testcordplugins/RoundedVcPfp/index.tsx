@@ -16,8 +16,15 @@ const settings = definePluginSettings({
     cornerRadius: {
         type: OptionType.SLIDER,
         description: "Tile corner rounding in pixels. 0 is flat like FullVCPFP; 12 is a clean, visible round.",
-        markers: makeRange(0, 24, 2),
+        markers: makeRange(0, 36, 2),
         default: 12,
+        stickToMarkers: true
+    },
+    zoom: {
+        type: OptionType.SLIDER,
+        description: "Avatar zoom in percent. 100 is the current size; lower values zoom the picture out inside the tile.",
+        markers: makeRange(50, 100, 5),
+        default: 100,
         stickToMarkers: true
     }
 });
@@ -67,7 +74,8 @@ export default definePlugin({
 
         return {
             "--full-res-avatar": `url("${avatarUrl}")`,
-            "--vc-pfp-radius": `${Math.round(settings.store.cornerRadius)}px`
+            "--vc-pfp-radius": `${Math.round(settings.store.cornerRadius)}px`,
+            "--vc-pfp-zoom": `${Math.round(settings.store.zoom) / 100}`
         };
     },
 });
