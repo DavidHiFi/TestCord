@@ -420,8 +420,9 @@ html:has(:fullscreen) :is(.vc-stream-enhancer-wrapper-contain, .vc-stream-enhanc
     object-fit: fill;
 }
 
-div:has(> .vc-stream-enhancer-panel-preview-stretch) {
-    width: 100%;
-    height: 100%;
-    aspect-ratio: auto !important; /* beats Discord's inline aspect-ratio measured from the preview image, which letterboxes the cover */
+/* Discord's stock stream preview thumbnails render with object-fit contain, which
+   letterboxes the image inside the tile and leaves empty bars; stretch them to fill
+   the whole tile so the custom preview covers the entire rounded area. */
+img[src*="/streams/"] {
+    object-fit: fill !important;
 }
