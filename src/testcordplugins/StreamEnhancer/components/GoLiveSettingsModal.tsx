@@ -717,6 +717,7 @@ function GoLiveQuickPanel({ selectedAudioSourceId }: { selectedAudioSourceId?: s
                     <Divider />
                     <div className={cl("go-live-toggle-grid")}>
                         <FormSwitch value={normalized.previewTweaksEnabled} onChange={value => setConfig({ previewTweaksEnabled: value })} title="Enable preview tweaks" />
+                        <FormSwitch value={normalized.previewStretchFill} onChange={value => setConfig({ previewStretchFill: value })} title="Stretch preview to fill" />
                         <FormSwitch value={normalized.previewUploadFilterEnabled} onChange={value => setConfig({ previewUploadFilterEnabled: value })} title="Enhance preview upload" />
                     </div>
                     <Divider />

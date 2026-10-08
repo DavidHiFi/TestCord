@@ -415,3 +415,13 @@ html:has(:fullscreen) :is(.vc-stream-enhancer-wrapper-contain, .vc-stream-enhanc
     height: 100%;
     object-fit: cover;
 }
+
+.vc-stream-enhancer-panel-preview-stretch img {
+    object-fit: fill;
+}
+
+div:has(> .vc-stream-enhancer-panel-preview-stretch) {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto !important; /* beats Discord's inline aspect-ratio measured from the preview image, which letterboxes the cover */
+}

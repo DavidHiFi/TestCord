@@ -259,6 +259,7 @@ export const defaultStreamEnhancerConfig = {
     previewUploadFilterEnabled: false,
     previewUploadFilterContrastPercent: 112,
     customPreviewUrl: "",
+    previewStretchFill: false,
     streamTelemetryEnabled: true,
     streamTelemetryIntervalSec: 5,
     viewerResizeSliderEnabled: false,
@@ -554,6 +555,7 @@ export function normalizeConfig(input: Partial<StreamEnhancerConfig> | undefined
         previewUploadFilterEnabled: source.previewUploadFilterEnabled ?? defaultStreamEnhancerConfig.previewUploadFilterEnabled,
         previewUploadFilterContrastPercent: clamp(Math.round(source.previewUploadFilterContrastPercent ?? defaultStreamEnhancerConfig.previewUploadFilterContrastPercent), 50, 200),
         customPreviewUrl: sanitizePreviewUrl(source.customPreviewUrl ?? defaultStreamEnhancerConfig.customPreviewUrl),
+        previewStretchFill: source.previewStretchFill ?? defaultStreamEnhancerConfig.previewStretchFill,
         streamTelemetryEnabled: source.streamTelemetryEnabled ?? defaultStreamEnhancerConfig.streamTelemetryEnabled,
         streamTelemetryIntervalSec: clamp(Math.round(source.streamTelemetryIntervalSec ?? defaultStreamEnhancerConfig.streamTelemetryIntervalSec), 1, 30),
         viewerResizeSliderEnabled: source.viewerResizeSliderEnabled ?? false,
@@ -1511,6 +1513,7 @@ export function StreamEnhancerControlPanel() {
 
             <SettingsSection title="Preview Controls">
                 <FormSwitch value={normalized.previewTweaksEnabled} onChange={value => set("previewTweaksEnabled", value)} title="Enable stream preview tweaks" />
+                <FormSwitch value={normalized.previewStretchFill} onChange={value => set("previewStretchFill", value)} title="Stretch custom preview to fill" />
                 <NumberEditor label="Preview scale (%)" value={normalized.previewScalePercent} min={80} max={160} markers={[80, 90, 100, 110, 120, 140, 160]} onChange={next => set("previewScalePercent", next)} />
                 <NumberEditor label="Preview saturation (%)" value={normalized.previewSaturationPercent} min={50} max={200} markers={[50, 75, 100, 125, 150, 175, 200]} onChange={next => set("previewSaturationPercent", next)} />
                 <NumberEditor label="Preview contrast (%)" value={normalized.previewContrastPercent} min={50} max={200} markers={[50, 75, 100, 125, 150, 175, 200]} onChange={next => set("previewContrastPercent", next)} />
@@ -1949,7 +1952,7 @@ const SpoofedStreamPanelPreview = ErrorBoundary.wrap(
         if (!url) return null;
 
         return (
-            <div className={coverCl("panel-preview")}>
+            <div className={coverCl("panel-preview", { "panel-preview-stretch": config.previewStretchFill })}>
                 <img src={url} alt="" draggable={false} />
             </div>
         );
