@@ -2,6 +2,15 @@
 
 Adds full-resolution avatars with configurable rounded corners to TestCord call tiles. Disable FullVCPFP before enabling RoundedVCPFP in the plugin settings.
 
-Only call tile components receive the avatar background. Avatar lookup uses the guild avatar, global avatar and default avatar fallbacks when needed. The corner radius setting snaps to whole even pixels from 0 to 36. The zoom setting scales the picture inside the tile; 100 keeps the full fill, lower values zoom out around the tile center.
+Only call tile components receive the avatar background. Avatar lookup uses the guild avatar, global avatar and default avatar fallbacks when needed.
+
+Settings, topmost first:
+
+- Profile picture corner rounding shapes the avatar itself. 0 is a flat square like FullVCPFP; 50 and higher is a full circle. The rounding scales with the picture.
+- Tile corner rounding shapes the whole tile box, in pixels, snapping to whole even values from 0 to 52.
+- Avatar zoom scales the picture inside the tile; 100 keeps the full fill, lower values zoom out around the tile center down to 25.
+- Turn off the tile background removes the background box behind profile pictures so only the picture shows. Focus and speaking highlights on the tile are hidden with it. Stream tiles keep their video.
+
+Changes apply when affected tiles re-render (layout changes, speaking state, participants joining or leaving) rather than the same frame.
 
 Adapted from Equicord FullVCPFP by mochienya, maintained by DavidHiFi. GPL-3.0-or-later. See LICENSE.

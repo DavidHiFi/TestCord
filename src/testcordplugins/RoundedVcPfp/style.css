@@ -16,11 +16,11 @@ div[data-selenium-video-tile] div[role="img"] {
     background: center / contain no-repeat;
     background-image: var(--full-res-avatar);
     transform: scale(var(--vc-pfp-zoom, 1)) !important;
-    -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='5'%20fill='%23fff'/%3E%3C/svg%3E");
+    -webkit-mask-image: var(--vc-pfp-avatar-mask, url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='5'%20fill='%23fff'/%3E%3C/svg%3E"));
     -webkit-mask-repeat: no-repeat;
     -webkit-mask-position: center;
     -webkit-mask-size: contain;
-    mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='5'%20fill='%23fff'/%3E%3C/svg%3E");
+    mask-image: var(--vc-pfp-avatar-mask, url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='5'%20fill='%23fff'/%3E%3C/svg%3E"));
     mask-repeat: no-repeat;
     mask-position: center;
     mask-size: contain;
@@ -34,5 +34,13 @@ div[data-selenium-video-tile] div[role="img"] {
    `border-radius: unset !important`, so the rounding wins even when
    both plugins are enabled. */
 div[data-selenium-video-tile] div[role="img"][role="img"] {
-    border-radius: var(--vc-pfp-radius, 12px) !important;
+    border-radius: var(--vc-pfp-avatar-radius, 5%) !important;
+}
+
+/* The hide-background switch also kills the per-user colored backdrop that
+   lights up behind focused tiles; the marker var is set inline on the tile
+   root by the patch, and generic matches inside one tile would otherwise be
+   a mangled class name. */
+div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] [class*="background"] {
+    background: none !important; /* user's hide-background switch */
 }
