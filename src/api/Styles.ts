@@ -83,6 +83,11 @@ function scheduleCompose() {
         if (css === composedCss) return;
 
         composedCss = css;
+        // Empty re-write first: a measured boot left the parsed sheet behind the
+        // node's own text, silently dropping later rules until the sheet was
+        // re-parsed (notes/2026-10-08-vcpfp-picture-roundings.md). Assigning from
+        // empty forces that re-parse on every compose.
+        managedStyleNode.textContent = "";
         managedStyleNode.textContent = css;
     });
 }
