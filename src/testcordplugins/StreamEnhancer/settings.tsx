@@ -1941,8 +1941,7 @@ const SpoofedStreamPanelPreview = ErrorBoundary.wrap(
         const config = getConfig();
         if (!config.previewTweaksEnabled || !config.customPreviewUrl) return null;
 
-        const caller = stream as Record<string, unknown> | null;
-        const streamObj = caller && typeof caller === "object" && "stream" in caller ? caller.stream : stream;
+        const streamObj = unwrapStreamArg(stream);
         const active = applicationStreamingStore?.getActiveStreamForApplicationStream?.(streamObj) ?? null;
         if (!active || active.state === "ENDED" || active.state === "FAILED") return null;
 
@@ -1957,6 +1956,16 @@ const SpoofedStreamPanelPreview = ErrorBoundary.wrap(
     },
     { noop: true }
 );
+
+const unwrapStreamArg = (value: unknown): unknown => {
+    if (!isObjectRecord(value)) return value;
+    if ("stream" in value && isObjectRecord(value.stream)) return value.stream;
+    if ("participant" in value && isObjectRecord(value.participant)) {
+        const participant = value.participant as Record<string, unknown>;
+        if ("stream" in participant && isObjectRecord(participant.stream)) return participant.stream;
+    }
+    return value;
+};
 
 export const renderSpoofedStreamPanelPreview = (stream: unknown) => <SpoofedStreamPanelPreview stream={stream} />;
 
