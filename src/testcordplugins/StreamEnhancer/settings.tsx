@@ -1940,23 +1940,11 @@ export const shouldSpoofStreamPanelPreview = () => {
 };
 
 const SpoofedStreamPanelPreview = ErrorBoundary.wrap(
-    ({ stream }: { stream: unknown }) => {
-        const config = getConfig();
-        if (!config.previewTweaksEnabled || !config.customPreviewUrl) return null;
-
-        const streamObj = unwrapStreamArg(stream);
-        const active = applicationStreamingStore?.getActiveStreamForApplicationStream?.(streamObj) ?? null;
-        if (!active || active.state === "ENDED" || active.state === "FAILED") return null;
-
-        const url = applicationStreamPreviewStore?.getPreviewURL?.(active.guildId, active.channelId, active.ownerId) ?? null;
-        if (!url) return null;
-
-        return (
-            <div className={coverCl("panel-preview", { "panel-preview-stretch": config.previewStretchFill })}>
-                <img src={url} alt="" draggable={false} />
-            </div>
-        );
-    },
+    ({ url, stretch }: { url: string; stretch: boolean }) => (
+        <div className={coverCl("panel-preview", { "panel-preview-stretch": stretch })}>
+            <img src={url} alt="" draggable={false} />
+        </div>
+    ),
     { noop: true }
 );
 
@@ -1970,7 +1958,23 @@ const unwrapStreamArg = (value: unknown): unknown => {
     return value;
 };
 
-export const renderSpoofedStreamPanelPreview = (stream: unknown) => <SpoofedStreamPanelPreview stream={stream} />;
+// Guards run in this plain function, not inside the boundary component: it must
+// return null when no preview URL is stored yet, so the patched site's `??`
+// falls back to Discord's stock node whose hook performs the preview fetch.
+// Keeping the element non-null starved that hook and left tiles empty.
+export const renderSpoofedStreamPanelPreview = (stream: unknown) => {
+    const config = getConfig();
+    if (!config.previewTweaksEnabled || !config.customPreviewUrl) return null;
+
+    const streamObj = unwrapStreamArg(stream);
+    const active = applicationStreamingStore?.getActiveStreamForApplicationStream?.(streamObj) ?? null;
+    if (!active || active.state === "ENDED" || active.state === "FAILED") return null;
+
+    const url = applicationStreamPreviewStore?.getPreviewURL?.(active.guildId, active.channelId, active.ownerId) ?? null;
+    if (!url) return null;
+
+    return <SpoofedStreamPanelPreview url={url} stretch={config.previewStretchFill} />;
+};
 
 const customPreviewCache: { url: string; canvas: HTMLCanvasElement | null } = { url: "", canvas: null };
 
