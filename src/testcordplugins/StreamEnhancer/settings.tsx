@@ -8,6 +8,7 @@ import { isPluginEnabled } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
 import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
+import ErrorBoundary from "@components/ErrorBoundary";
 import { ErrorCard } from "@components/ErrorCard";
 import { FormSwitch } from "@components/FormSwitch";
 import { Heading } from "@components/Heading";
@@ -82,6 +83,16 @@ interface ApplicationStreamingStoreLike {
         ownerId?: string | bigint;
         streamId?: string | bigint;
     }>;
+    getActiveStreamForApplicationStream?: (stream: unknown) => {
+        guildId?: string | bigint | null;
+        channelId?: string | bigint;
+        ownerId?: string | bigint;
+        state?: string;
+    } | null;
+}
+
+interface ApplicationStreamPreviewStoreLike {
+    getPreviewURL?: (guildId: unknown, channelId: unknown, ownerId: unknown) => string | null;
 }
 
 interface ChannelRTCStoreLike {
@@ -256,6 +267,7 @@ export const defaultStreamEnhancerConfig = {
 
 export type StreamEnhancerConfig = typeof defaultStreamEnhancerConfig;
 const applicationStreamingStore = findStoreLazy("ApplicationStreamingStore") as ApplicationStreamingStoreLike | undefined;
+const applicationStreamPreviewStore = findStoreLazy("ApplicationStreamPreviewStore") as ApplicationStreamPreviewStoreLike | undefined;
 const channelRtcStore = findStoreLazy("ChannelRTCStore") as ChannelRTCStoreLike | undefined;
 const mediaEngineStore = findStoreLazy("MediaEngineStore") as MediaEngineStoreLike | undefined;
 const goLiveSourceStore = findByPropsLazy("getGoLiveSource") as GoLiveSourceStoreLike;
@@ -263,6 +275,7 @@ const goLiveActionCreators = findByPropsLazy("setGoLiveSource") as GoLiveActionC
 const liveMicActionCreators = findByPropsLazy("setAutomaticGainControl", "setEchoCancellation", "setInputVolume") as LiveMicActionCreatorsLike;
 const conflictingPlugins = ["BetterMicrophone", "BetterScreenshare", "LimitlessScreenshare", "CustomStreamQuality"] as const;
 const cl = classNameFactory("vc-stream-enhancer-settings-");
+const coverCl = classNameFactory("vc-stream-enhancer-");
 const logger = new Logger("StreamEnhancer");
 
 const minStreamFps = 0;
@@ -1923,6 +1936,28 @@ export const shouldSpoofStreamPanelPreview = () => {
     return config.previewTweaksEnabled && !!config.customPreviewUrl;
 };
 
+const SpoofedStreamPanelPreview = ErrorBoundary.wrap(
+    ({ stream }: { stream: unknown }) => {
+        const config = getConfig();
+        if (!config.previewTweaksEnabled || !config.customPreviewUrl) return null;
+
+        const active = applicationStreamingStore?.getActiveStreamForApplicationStream?.(stream) ?? null;
+        if (!active || active.state === "ENDED" || active.state === "FAILED") return null;
+
+        const url = applicationStreamPreviewStore?.getPreviewURL?.(active.guildId, active.channelId, active.ownerId) ?? null;
+        if (!url) return null;
+
+        return (
+            <div className={coverCl("panel-preview")}>
+                <img src={url} alt="" draggable={false} />
+            </div>
+        );
+    },
+    { noop: true }
+);
+
+export const renderSpoofedStreamPanelPreview = (stream: unknown) => <SpoofedStreamPanelPreview stream={stream} />;
+
 const customPreviewCache: { url: string; canvas: HTMLCanvasElement | null } = { url: "", canvas: null };
 
 const ensureCustomPreviewCanvas = () => {
@@ -2083,6 +2118,7 @@ export const streamEnhancerRuntime = {
     getPreviewRetryIntervalMs,
     getPreviewUploadDataUrl,
     shouldSpoofStreamPanelPreview,
+    renderSpoofedStreamPanelPreview,
     applyPreviewUploadFilter,
     coerceParticipantResolution,
     getDisplayResolutionForLabel,
