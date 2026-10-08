@@ -12,6 +12,34 @@ import { ChannelRTCStore, ChannelStore, UserStore, VoiceStateStore } from "@webp
 
 import style from "./style.css?managed";
 
+// The mask is a rounded rect in a 100x100 viewbox, so its rx scales the slider
+// value with the painted picture; SVG clamps 52 to 50, which is the circle max.
+function avatarMask(rx: number): string {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='${rx}' fill='#fff'/></svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+
+const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+function parseHexColor(color: string): [number, number, number] | undefined {
+    const match = HEX_COLOR.exec(color.trim());
+    if (!match) return undefined;
+    let hex = match[1];
+    if (hex.length < 6) hex = [...hex.slice(0, 3)].map(c => c + c).join("");
+    const value = parseInt(hex, 16);
+    return [value >> 16 & 0xff, value >> 8 & 0xff, value & 0xff];
+}
+
+// The glow keeps the two-layer look from the theme's first version: one wide
+// soft halo plus one tight edge shell, both from the user's color. The glow
+// mix controls its own transparency, so an alpha channel in the hex is ignored.
+function glowFilter(color: string): string | undefined {
+    const rgb = parseHexColor(color);
+    if (!rgb) return undefined;
+    const [r, g, b] = rgb;
+    return `drop-shadow(0 0 14px rgba(${r}, ${g}, ${b}, 0.4)) drop-shadow(0 0 3px rgba(${r}, ${g}, ${b}, 0.6))`;
+}
+
 const settings = definePluginSettings({
     avatarRadius: {
         type: OptionType.SLIDER,
@@ -38,15 +66,22 @@ const settings = definePluginSettings({
         type: OptionType.BOOLEAN,
         description: "Turn off the background box behind profile pictures in call tiles and show only the picture.",
         default: false
+    },
+    enableGlow: {
+        type: OptionType.BOOLEAN,
+        description: "Turn the glow behind floating profile pictures on or off. Applies when the background switch is on.",
+        default: true
+    },
+    glowColor: {
+        type: OptionType.STRING,
+        description: "Hex color code for the glow, for example #45475a. The glow mixes its own transparency levels.",
+        placeholder: "#45475a",
+        default: "#45475a",
+        isValid(value: string) {
+            return HEX_COLOR.test(value.trim()) ? true : "Enter a hex color like #45475a.";
+        }
     }
 });
-
-// The mask is a rounded rect in a 100x100 viewbox, so its rx scales the slider
-// value with the painted picture; SVG clamps 52 to 50, which is the circle max.
-function avatarMask(rx: number): string {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='${rx}' fill='#fff'/></svg>`;
-    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-}
 
 export default definePlugin({
     name: "RoundedVCPFP",
@@ -92,6 +127,7 @@ export default definePlugin({
             || "https://cdn.discordapp.com/embed/avatars/0.png";
 
         const hideBg = settings.store.hideTileBackground;
+        const glow = hideBg && settings.store.enableGlow ? glowFilter(settings.store.glowColor ?? "") : undefined;
         return {
             "--full-res-avatar": `url("${avatarUrl}")`,
             "--vc-pfp-radius": `${Math.round(settings.store.cornerRadius)}px`,
@@ -101,7 +137,12 @@ export default definePlugin({
             // Empty string clears the inline background so the toggle off restores
             // Discord's paint; "none" hides the tile's own box when the switch is on.
             background: hideBg ? "none" : "",
-            "--vc-pfp-hide-bg": hideBg ? "1" : ""
+            "--vc-pfp-hide-bg": hideBg ? "1" : "",
+            // Marks this plugin version for theme handoff: themes drop their own
+            // fallback glow when the slot is present. The filter string carries the
+            // configured color; themes and any other stylesheet consume it.
+            "--vc-pfp-glow-slot": "1",
+            "--vc-pfp-glow-filter": glow ?? ""
         };
     },
 });

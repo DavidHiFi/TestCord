@@ -44,3 +44,23 @@ div[data-selenium-video-tile] div[role="img"][role="img"] {
 div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] [class*="background"] {
     background: none !important; /* user's hide-background switch */
 }
+
+/* The glow paints through the filter var the plugin emits only when the
+   floating state has it on, so a stream tile or a boxed tile stays untouched.
+   A filter on the unmasked wrapper sees the child's composited alpha and
+   trails the masked picture outline; a shadow on the picture element itself
+   would be inlined into the mask and vanish. */
+div[data-selenium-video-tile]:has(div[role="img"]) div[class*="background"] {
+    filter: var(--vc-pfp-glow-filter, none) !important; /* the glow var is set per tile by the plugin */
+}
+
+/* The halo must keep fading outside the tile box or it gets a hard straight
+   cut where the old box ended (both levels below clip it today). Only the
+   floating state needs it; video tiles keep their overflow clip so video
+   corners still stay inside the rounded ring. */
+div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"]:has(div[role="img"]) {
+    overflow: visible !important; /* halo past the tile box */
+}
+div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"]:has(div[role="img"]) [class*="content"] {
+    overflow: visible !important; /* one more clip level above the wrapper */
+}
