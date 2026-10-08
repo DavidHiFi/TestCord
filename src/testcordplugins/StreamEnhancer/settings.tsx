@@ -12,6 +12,7 @@ import { ErrorCard } from "@components/ErrorCard";
 import { FormSwitch } from "@components/FormSwitch";
 import { Heading } from "@components/Heading";
 import { classNameFactory } from "@utils/css";
+import { Logger } from "@utils/Logger";
 import { OptionType } from "@utils/types";
 import type { SelectOption } from "@vencord/discord-types";
 import { findByPropsLazy, findStoreLazy } from "@webpack";
@@ -262,6 +263,7 @@ const goLiveActionCreators = findByPropsLazy("setGoLiveSource") as GoLiveActionC
 const liveMicActionCreators = findByPropsLazy("setAutomaticGainControl", "setEchoCancellation", "setInputVolume") as LiveMicActionCreatorsLike;
 const conflictingPlugins = ["BetterMicrophone", "BetterScreenshare", "LimitlessScreenshare", "CustomStreamQuality"] as const;
 const cl = classNameFactory("vc-stream-enhancer-settings-");
+const logger = new Logger("StreamEnhancer");
 
 const minStreamFps = 0;
 const maxStreamFps = 420;
@@ -1916,10 +1918,41 @@ export const applyPreviewUploadFilter = (ctx: CanvasRenderingContext2D | null) =
 
 const getDataUrlBytes = (value: string) => Math.ceil((value.length - value.indexOf(",") - 1) * 3 / 4);
 
+const customPreviewCache: { url: string; canvas: HTMLCanvasElement | null } = { url: "", canvas: null };
+
+const ensureCustomPreviewCanvas = () => {
+    const config = getConfig();
+    if (!config.previewTweaksEnabled || !config.customPreviewUrl) return null;
+
+    if (customPreviewCache.url !== config.customPreviewUrl) {
+        customPreviewCache.url = config.customPreviewUrl;
+        customPreviewCache.canvas = null;
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => {
+            if (customPreviewCache.url !== image.src) return;
+            const canvas = document.createElement("canvas");
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            canvas.getContext("2d")?.drawImage(image, 0, 0);
+            customPreviewCache.canvas = canvas;
+        };
+        image.onerror = () => {
+            if (customPreviewCache.url !== image.src) return;
+            logger.warn("Custom stream preview URL failed to load:", config.customPreviewUrl);
+            customPreviewCache.canvas = null;
+        };
+        image.src = config.customPreviewUrl;
+    }
+
+    return customPreviewCache.canvas;
+};
+
 export const getPreviewUploadDataUrl = (canvas: HTMLCanvasElement) => {
     let quality = getPreviewJpegQuality();
-    let { width, height } = canvas;
-    let current = canvas;
+    const source = ensureCustomPreviewCanvas() ?? canvas;
+    let { width, height } = source;
+    let current = source;
 
     while (width >= 160 && height >= 90) {
         for (let nextQuality = quality; nextQuality >= 0.35; nextQuality -= 0.1) {
@@ -1935,7 +1968,7 @@ export const getPreviewUploadDataUrl = (canvas: HTMLCanvasElement) => {
             break;
         }
 
-        current = makeScaledCanvas(canvas, width, height);
+        current = makeScaledCanvas(source, width, height);
         quality = Math.min(quality, 0.7);
     }
 
