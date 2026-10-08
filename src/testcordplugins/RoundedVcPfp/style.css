@@ -46,21 +46,24 @@ div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] [class*="background"] {
 }
 
 /* The glow paints through the filter var the plugin emits only when the
-   floating state has it on, so a stream tile or a boxed tile stays untouched.
-   A filter on the unmasked wrapper sees the child's composited alpha and
-   trails the masked picture outline; a shadow on the picture element itself
-   would be inlined into the mask and vanish. */
-div[data-selenium-video-tile]:has(div[role="img"]) div[class*="background"] {
+   floating state has it on, so a boxed tile stays untouched. The content
+   backdrop wrapper exists only on picture tiles, which is what scopes the
+   rule to them. Selectors stay :has()-free on purpose: the composed managed
+   sheet can silently drop :has() rules from its parsed cascade at boot
+   (measured 2026-10-08 evening), while plain attribute and descendant
+   selectors survive every compose. */
+div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] div[class*="background"] {
     filter: var(--vc-pfp-glow-filter, none) !important; /* the glow var is set per tile by the plugin */
 }
 
 /* The halo must keep fading outside the tile box or it gets a hard straight
-   cut where the old box ended (both levels below clip it today). Only the
-   floating state needs it; video tiles keep their overflow clip so video
-   corners still stay inside the rounded ring. */
-div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"]:has(div[role="img"]) {
+   cut where the old box ended (this level and the content level below both
+   clip). Camera and stream tiles carry the marker too; their corners stay
+   rounded through the video's own border-radius, so releasing overflow is
+   safe for them. */
+div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] {
     overflow: visible !important; /* halo past the tile box */
 }
-div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"]:has(div[role="img"]) [class*="content"] {
+div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] [class*="content"] {
     overflow: visible !important; /* one more clip level above the wrapper */
 }

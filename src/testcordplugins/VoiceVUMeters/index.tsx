@@ -14,7 +14,7 @@ import { definePluginSettings } from "@api/Settings";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { TestcordDevs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
-import definePlugin, { OptionType } from "@utils/types";
+import definePlugin, { makeRange, OptionType } from "@utils/types";
 import { MediaEngineStore, React, SelectedChannelStore, UserStore, VoiceStateStore } from "@webpack/common";
 
 const logger = new Logger("VoiceVUMeters");
@@ -136,6 +136,28 @@ const settings = definePluginSettings({
         onChange() {
             lastScanAt = 0;
         }
+    },
+    tilePlacement: {
+        type: OptionType.SELECT,
+        description: "Where the meter sits on call tiles. Profile picture pins it to the bottom right corner of the user's avatar, so it stays on the picture when tile backgrounds are hidden.",
+        options: [
+            {
+                label: "Background",
+                value: "background",
+                default: true
+            },
+            {
+                label: "Profile picture",
+                value: "avatar"
+            }
+        ]
+    },
+    tileMeterHeight: {
+        type: OptionType.SLIDER,
+        description: "Tile meter height as a percent of the tile height. 50 is the default height.",
+        markers: makeRange(25, 100, 5),
+        default: 50,
+        stickToMarkers: true
     }
 }).withPrivateSettings<{ peakHoldEnabled?: boolean; }>();
 
@@ -652,10 +674,64 @@ const VoiceMeter = ErrorBoundary.wrap(({ userId, height = BAR_HEIGHT, width = BA
 }, { noop: true });
 
 function TileMeter({ userId }: { userId?: string; }) {
+    settings.use(["tilePlacement", "tileMeterHeight"]);
+    const onPicture = settings.store.tilePlacement === "avatar";
+    const boxRef = React.useRef<HTMLDivElement | null>(null);
+    const [pictureInset, setPictureInset] = React.useState<{ right: number; bottom: number; } | null>(null);
+
+    React.useLayoutEffect(() => {
+        if (!onPicture) return;
+
+        const box = boxRef.current;
+        const tile = box?.closest<HTMLElement>("div[data-selenium-video-tile]");
+        if (!box || !tile) return;
+
+        // Discord paints the tile picture as one role=img element that fills the tile
+        // box, and FullVCPFP scales that box. Mask and background both cover a centered
+        // square, so the visible picture is that square, and the meter must pin to it
+        // instead of the box. ResizeObserver misses style-only changes; a zoom or
+        // rounding change re-measures at the next remount.
+        const measure = () => {
+            const picture = tile.querySelector<HTMLElement>("div[role=img]");
+            if (!picture) return;
+
+            const tileBox = tile.getBoundingClientRect();
+            const pictureBox = picture.getBoundingClientRect();
+            if (!tileBox.width || !pictureBox.width) return;
+
+            const zoom = picture.clientHeight ? pictureBox.height / picture.clientHeight : 1;
+            const square = Math.min(picture.clientWidth, picture.clientHeight) * zoom;
+            if (!square) return;
+            const squareRight = pictureBox.left + (pictureBox.width + square) / 2;
+            const squareBottom = pictureBox.top + (pictureBox.height + square) / 2;
+
+            const right = Math.max(0, tileBox.right - squareRight);
+            const bottom = Math.max(0, tileBox.bottom - squareBottom);
+            if (!Number.isFinite(right) || !Number.isFinite(bottom)) return;
+            setPictureInset(prev => (prev && Math.abs(prev.right - right) < 0.5 && Math.abs(prev.bottom - bottom) < 0.5 ? prev : { right, bottom }));
+        };
+
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(tile);
+        return () => observer.disconnect();
+    }, [onPicture]);
+
     if (!userId) return null;
 
+    const height = `calc(${Math.round(settings.store.tileMeterHeight)}% - 10px)`;
+    let right = 18;
+    let bottom = 50;
+    if (onPicture) {
+        // Over a picture the meter hugs the visible square's corner. Camera and
+        // stream tiles have no picture box; pin them to the tile's own bottom
+        // right corner with the same inset, so the bars never float mid-tile.
+        right = pictureInset ? pictureInset.right + 14 : 14;
+        bottom = pictureInset ? pictureInset.bottom + 14 : 14;
+    }
+
     return (
-        <div style={{ position: "absolute", right: 18, bottom: 50, height: "calc(50% - 10px)", zIndex: 3, pointerEvents: "none" }}>
+        <div ref={boxRef} style={{ position: "absolute", right, bottom, height, zIndex: 3, pointerEvents: "none" }}>
             <VoiceMeter userId={userId} height="100%" width={8} />
         </div>
     );
