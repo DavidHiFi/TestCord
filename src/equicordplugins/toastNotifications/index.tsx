@@ -146,7 +146,12 @@ export default definePlugin({
             }
 
             // Retrieve the message component for the message.
-            const mockedMessage: Message | undefined = MessageStore.getMessages(message.channel_id)?.receiveMessage(message)?.get(message.id);
+            // Fast path: the reducer has usually already registered this message,
+            // so a plain lookup avoids the store mutation receiveMessage performs
+            // for every candidate. receiveMessage stays as the fallback for the
+            // rare case where the flux event arrives before the store catches up.
+            const list = MessageStore.getMessages(message.channel_id);
+            const mockedMessage: Message | undefined = list?.get(message.id) ?? list?.receiveMessage(message)?.get(message.id);
             if (!mockedMessage) return console.error(`[ToastNotifications] Failed to retrieve mocked message from MessageStore for message ID ${message.id}!`);
 
             showNotification({

@@ -8,7 +8,11 @@ import { TestcordDevs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin from "@utils/types";
 
-const RESCAN_MS = 120_000;
+const RESCAN_MS = 600_000;
+// The forced rescan catches CSSOM writes that bypass the DOM (insertRule on an
+// existing sheet). The MutationObserver path covers every DOM-level change
+// (new style tags, the theme watcher's reloads), so the long interval is the
+// only slower cadence here - it trades spike frequency for coverage latency.
 const DEBOUNCE_MS = 800;
 const logger = new Logger("HasStrip");
 
