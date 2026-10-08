@@ -1918,6 +1918,11 @@ export const applyPreviewUploadFilter = (ctx: CanvasRenderingContext2D | null) =
 
 const getDataUrlBytes = (value: string) => Math.ceil((value.length - value.indexOf(",") - 1) * 3 / 4);
 
+export const shouldSpoofStreamPanelPreview = () => {
+    const config = getConfig();
+    return config.previewTweaksEnabled && !!config.customPreviewUrl;
+};
+
 const customPreviewCache: { url: string; canvas: HTMLCanvasElement | null } = { url: "", canvas: null };
 
 const ensureCustomPreviewCanvas = () => {
@@ -2077,6 +2082,7 @@ export const streamEnhancerRuntime = {
     getPreviewRefreshIntervalMs,
     getPreviewRetryIntervalMs,
     getPreviewUploadDataUrl,
+    shouldSpoofStreamPanelPreview,
     applyPreviewUploadFilter,
     coerceParticipantResolution,
     getDisplayResolutionForLabel,

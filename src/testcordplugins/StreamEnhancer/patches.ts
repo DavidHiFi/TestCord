@@ -156,6 +156,13 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         }
     },
     {
+        find: "streamPreviewURL:g,videoSpinnerContext",
+        replacement: {
+            match: /(?=null!=\i&&\i\.Ay\.supports\(\i\.O5\.VIDEO\))/,
+            replace: "$self.shouldSpoofStreamPanelPreview()?C:"
+        }
+    },
+    {
         find: "updateVideoQuality(e){let t=this.videoStreamParameters.findIndex",
         replacement: {
             match: /-1===(\i)&&\(\1=0\);/,
