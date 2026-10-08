@@ -23,6 +23,7 @@ const store: Record<string, unknown> = {
     cornerRadius: 12,
     zoom: 100,
     hideTileBackground: false,
+    hideUserBackgrounds: false,
     enableGlow: false,
     glowColor: "#45475a"
 };
@@ -74,16 +75,37 @@ test("Picture masking follows the radius slider and the theme slot is always set
 test("The glow emits no filter while the box still shows or the toggle is off", () => {
     Object.assign(store, { hideTileBackground: false, enableGlow: true });
     const result = styles({ participantUserId: "1" });
-    assert.equal(result["background"], "");
+    assert.equal(result["backgroundColor"], "");
+    assert.equal("background" in result, false);
     assert.equal(result["--vc-pfp-hide-bg"], "");
     assert.equal(result["--vc-pfp-glow-filter"], "");
 
     Object.assign(store, { hideTileBackground: true, enableGlow: false });
     const floating = styles({ participantUserId: "1" });
-    assert.equal(floating["background"], "none");
+    assert.equal(floating["backgroundColor"], "transparent");
     assert.equal(floating["--vc-pfp-hide-bg"], "1");
     assert.equal(floating["--vc-pfp-glow-filter"], "");
     Object.assign(store, { enableGlow: false });
+});
+
+test("User backgrounds stay visible without their own switch and hide with it", () => {
+    Object.assign(store, { hideTileBackground: true, hideUserBackgrounds: false });
+    const keep = styles({ participantUserId: "1" });
+    assert.equal(keep["backgroundColor"], "transparent");
+    assert.equal("backgroundImage" in keep, false);
+
+    Object.assign(store, { hideTileBackground: false, hideUserBackgrounds: true });
+    const hideUser = styles({ participantUserId: "1" });
+    assert.equal(hideUser["backgroundImage"], "none");
+    assert.equal(hideUser["backgroundColor"], "");
+
+    Object.assign(store, { hideTileBackground: true, hideUserBackgrounds: true });
+    const both = styles({ participantUserId: "1" });
+    assert.equal(both["backgroundImage"], "none");
+    assert.equal(both["backgroundColor"], "transparent");
+
+    Object.assign(store, { hideTileBackground: false, hideUserBackgrounds: false });
+    assert.equal("backgroundImage" in styles({ participantUserId: "1" }), false);
 });
 
 test("The glow filter composes both layers from the configured hex", () => {

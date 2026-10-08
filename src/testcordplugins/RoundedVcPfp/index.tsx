@@ -67,6 +67,11 @@ const settings = definePluginSettings({
         description: "Turn off the background box behind profile pictures in call tiles and show only the picture.",
         default: false
     },
+    hideUserBackgrounds: {
+        type: OptionType.BOOLEAN,
+        description: "Also hide backgrounds that users set themselves, like USRBG banners. The background switch above only turns off Discord's own background.",
+        default: false
+    },
     enableGlow: {
         type: OptionType.BOOLEAN,
         description: "Turn the glow behind floating profile pictures on or off. Applies when the background switch is on.",
@@ -127,6 +132,7 @@ export default definePlugin({
             || "https://cdn.discordapp.com/embed/avatars/0.png";
 
         const hideBg = settings.store.hideTileBackground;
+        const hideUserBg = settings.store.hideUserBackgrounds;
         const glow = hideBg && settings.store.enableGlow ? glowFilter(settings.store.glowColor ?? "") : undefined;
         return {
             "--full-res-avatar": `url("${avatarUrl}")`,
@@ -134,9 +140,14 @@ export default definePlugin({
             "--vc-pfp-avatar-mask": avatarMask(Math.round(settings.store.avatarRadius)),
             "--vc-pfp-avatar-radius": `${Math.round(settings.store.avatarRadius)}%`,
             "--vc-pfp-zoom": `${Math.round(settings.store.zoom) / 100}`,
-            // Empty string clears the inline background so the toggle off restores
-            // Discord's paint; "none" hides the tile's own box when the switch is on.
-            background: hideBg ? "none" : "",
+            // The background shorthand resets every background key in the merged
+            // style object and erased USRBG's inline banner with Discord's own
+            // paint (measured live, work/rvcpfp-usrbg-toggle-20261008). The color
+            // longhand clears only the native box, and the image key is sent only
+            // when user backgrounds are meant to hide, so USRBG's own keys
+            // survive untouched otherwise.
+            backgroundColor: hideBg ? "transparent" : "",
+            ...(hideUserBg ? { backgroundImage: "none" } : {}),
             "--vc-pfp-hide-bg": hideBg ? "1" : "",
             // Marks this plugin version for theme handoff: themes drop their own
             // fallback glow when the slot is present. The filter string carries the
