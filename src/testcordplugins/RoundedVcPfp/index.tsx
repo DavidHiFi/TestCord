@@ -33,8 +33,13 @@ export default definePlugin({
         {
             find: "\"data-selenium-video-tile\":",
             replacement: {
-                match: /function \i?\s*\((\i)(?:,\i)?\)\{(?=let[^;]+?style:)/,
-                replace: "$&Object.assign($1.style=$1.style||{},$self.getVoiceBackgroundStyles($1));",
+                // USRBG patches this component from the function head and wins the
+                // patch-order race, so a head-anchored lookahead stops matching after
+                // its Object.assign lands (notes/2026-10-08-voice-tile-avatars.md).
+                // Anchor after the destructuring like the local userplugin copy;
+                // Object.assign merges the style keys in any apply order.
+                match: /(?<=let\{children:(\i),className:(\i),style:(\i),noBorder:(\i)=!1,participantUserId:(\i),ref:(\i)\}=(\i);)/,
+                replace: "Object.assign($3=$3||{},$self.getVoiceBackgroundStyles($7));",
             }
         },
     ],

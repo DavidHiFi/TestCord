@@ -425,8 +425,9 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
     {
         find: '"useMaxQuality"',
         replacement: {
-            match: /(\i===\i\.user\.id\?\{maxFrameRate:)(\i)\.fps,maxResolution:(\(0,\i\.\i\)\("useMaxQuality",\i,\{[^{}]+\},\i\.fps\))/,
-            replace: "$1$self.badgeFps($self.getConfiguredStreamFps($2.fps)),maxResolution:$self.badgeResolution($3)"
+            match: /(\i===\i\.user\.id\?)(\{maxFrameRate:)(\i)\.fps,maxResolution:(\(0,\i\.\i\)\("useMaxQuality",\i,\{[^{}]+\},\i\.fps\))(\})/,
+            // Closing brace is captured so the branch can evaluate to null when the badge is hidden.
+            replace: "$1($self.isBadgeVisible()?$2$self.badgeFps($self.getConfiguredStreamFps($3.fps)),maxResolution:$self.badgeResolution($4)$5:null)"
         }
     },
     {

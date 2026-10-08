@@ -26,6 +26,15 @@ const STATS_MS = 100;
 const HOLD_MS = 1500;
 const RELEASE_MS = 120;
 const PEAK_FALL_DB_PER_SECOND = 12;
+// Self-tap/outbound mismatch guard: the self tap reads the OS device before
+// Discord processing, so bleed Discord removes downstream (echo cancellation,
+// noise suppression) still pins it. Raw must stay this loud (normalized) while
+// outbound stays this quiet (linear) for SELF_MISMATCH_HOLD_MS before the tap
+// is dropped in favor of outbound levels.
+const SELF_MISMATCH_HOLD_MS = 5000;
+const SELF_MISMATCH_RAW_FLOOR = 0.5;
+const SELF_MISMATCH_OUTBOUND_CEILING = 0.02;
+const SELF_MISMATCH_RETRY_MS = 30000;
 const BAR_HEIGHT = 18;
 const BAR_WIDTH = 4;
 const GRADIENT = "linear-gradient(to top, #21c55d 0%, #21c55d 50%, #eab308 75%, #ef4444 100%)";
@@ -84,6 +93,7 @@ interface Meter {
     sampleAt: [number, number];
     ownsInput?: boolean;
     inputContext?: AudioContext;
+    mismatchSince?: number;
 }
 
 const meters = new Map<string, Meter>();
@@ -102,6 +112,9 @@ let inputKey = "";
 let inputRetryAt = 0;
 let participantBridge: ParticipantBridge | undefined;
 let bridgeChecked = false;
+let selfOutboundLinear = 0;
+let inputMismatchDrops = 0;
+let inputSuspendKey: string | null = null;
 
 const settings = definePluginSettings({
     floorDb: {
@@ -217,8 +230,13 @@ function dropAll() {
 async function syncSelfInput(conn: VoiceConnection) {
     const userId = UserStore.getCurrentUser()?.id;
     const deviceKey = MediaEngineStore.getInputDeviceId();
-    if (!userId || !settings.store.showSelf) return;
+    if (!userId) return;
+    if (!settings.store.showSelf) {
+        inputSuspendKey = null;
+        return;
+    }
     if (inputKey === deviceKey && meters.get(userId)?.ownsInput) return;
+    if (inputSuspendKey != null && inputSuspendKey === deviceKey) return;
     if (inputPending || Date.now() < inputRetryAt) return;
 
     dropMeter(userId);
@@ -256,6 +274,8 @@ async function syncSelfInput(conn: VoiceConnection) {
             meter.ownsInput = true;
             meter.inputContext = audioContext;
             adopted = true;
+            inputMismatchDrops = 0;
+            inputSuspendKey = null;
         }
         inputKey = deviceKey;
     } catch (error) {
@@ -353,7 +373,11 @@ function readLevels(conn: VoiceConnection, stats: any) {
 
     const me = UserStore.getCurrentUser()?.id;
     const outbound = audioEntry(stats?.rtp?.outbound);
-    if (me && outbound) setAmplitude(me, MediaEngineStore.isSelfMute() ? 0 : outbound.audioLevel);
+    if (me && outbound) {
+        const level = MediaEngineStore.isSelfMute() ? 0 : toLinear(outbound.audioLevel);
+        selfOutboundLinear = level;
+        setAmplitude(me, level);
+    }
 }
 
 async function pollStats(conn: VoiceConnection) {
@@ -469,6 +493,31 @@ function notifySubscribers() {
     for (const subscriber of subscribers) subscriber();
 }
 
+// The self tap reads the OS device before Discord processing, so bleed that
+// Discord removes downstream still pins it while outbound stays silent. After
+// a sustained mismatch the tap is dropped (showing outbound instead) with a
+// delayed retry; after two drops the input stays on outbound until the Discord
+// input device changes.
+function checkSelfMismatch(meter: Meter, muted: boolean, raw: number, now: number) {
+    if (!meter.ownsInput || muted || now - lastStatsAt > 1000) {
+        meter.mismatchSince = undefined;
+        return;
+    }
+    if (raw < SELF_MISMATCH_RAW_FLOOR || selfOutboundLinear > SELF_MISMATCH_OUTBOUND_CEILING) {
+        meter.mismatchSince = undefined;
+        inputMismatchDrops = 0;
+        return;
+    }
+    if (meter.mismatchSince == null) meter.mismatchSince = now;
+    if (now - meter.mismatchSince < SELF_MISMATCH_HOLD_MS) return;
+    const me = UserStore.getCurrentUser()?.id;
+    logger.warn("self input tap disagrees with voice outbound; falling back to outbound levels");
+    if (me) dropMeter(me);
+    inputMismatchDrops++;
+    inputRetryAt = Date.now() + SELF_MISMATCH_RETRY_MS;
+    if (inputMismatchDrops >= 2) inputSuspendKey = MediaEngineStore.getInputDeviceId();
+}
+
 function tick() {
     try {
         const conn = getConnection();
@@ -509,6 +558,7 @@ function tick() {
 
                 smooth(meter, 0, left, now);
                 smooth(meter, 1, right, now);
+                checkSelfMismatch(meter, muted === true, Math.max(left.rms, right.rms), now);
             } else if (meter.nativeAvailable) {
                 const value = meter.native;
                 smooth(meter, 0, { rms: normalize(value?.rmsLeft ?? 0, floorDb), peak: normalize(value?.peakLeft ?? 0, floorDb) }, now);
@@ -630,7 +680,12 @@ export default definePlugin({
         {
             find: "data-selenium-video-tile",
             replacement: {
-                match: /(?<=participantUserId:(\i)\}=\i;return.{0,200}?children:)(\i)(?=\}\)\}\))/,
+                // 1.0.9261 moved `ref` after participantUserId in the tile
+                // destructuring and now closes the JSX call with `})}}`. USRBG and
+                // the tile-avatar plugins inject Object.assign statements right
+                // after the destructuring when they patch first, so also skip past
+                // any of those before `return` (notes/2026-10-08-voice-tile-avatars.md).
+                match: /(?<=participantUserId:(\i).{0,40}?\}=\i;(?:[^;\n]{0,220}?Object\.assign\([^;\n]+?\);){0,3}return.{0,200}?children:)(\i)(?=\}\)\}\})/,
                 replace: "[$2,$self.renderTileMeter($1)]"
             }
         }
@@ -663,5 +718,8 @@ export default definePlugin({
         statsInFlight = false;
         participantBridge = undefined;
         bridgeChecked = false;
+        selfOutboundLinear = 0;
+        inputMismatchDrops = 0;
+        inputSuspendKey = null;
     }
 });

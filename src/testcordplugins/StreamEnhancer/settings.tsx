@@ -18,7 +18,7 @@ import { findByPropsLazy, findStoreLazy } from "@webpack";
 import { FluxDispatcher, Select, Slider, TextInput, Toasts, useEffect, UserStore, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
-import { advertiseBadge, badgeFps, badgeFpsPresets, badgeResolution, badgeResolutionPresets, maxBadgeFps, maxBadgeHeight, normalizeBadgeConfig } from "./badge";
+import { advertiseBadge, badgeFps, badgeFpsPresets, badgeResolution, badgeResolutionPresets, maxBadgeFps, maxBadgeHeight, normalizeBadgeConfig, sanitizeBadgeVisibility } from "./badge";
 import { installMicrophoneInterceptor, syncLiveMicrophoneEffects } from "./microphone";
 import { badgeSize, choiceAt, nearestChoice, showChoiceLabel, sliderChoices } from "./slider";
 
@@ -310,6 +310,11 @@ export const micChannelRoutingOptions: SelectOption[] = [
     { label: "Dual mono from channel 1", value: "dualMonoLeft" },
     { label: "Dual mono from channel 2", value: "dualMonoRight" },
     { label: "Mono mix from both channels", value: "monoMix" }
+] as const;
+export const badgeVisibilityOptions: SelectOption[] = [
+    { label: "Show badge", value: "shown" },
+    { label: "Hide for me", value: "local" },
+    { label: "Hide for everyone", value: "all" }
 ] as const;
 const codecButtons = ["auto", "av1", "vp9", "h264"] as const satisfies readonly StreamCodec[];
 export const streamResolutionOptions = [
@@ -1476,6 +1481,13 @@ export function StreamEnhancerControlPanel() {
             </SettingsSection>
 
             <SettingsSection title="Spoofed stream badge">
+                <div className={cl("label")}>Badge visibility</div>
+                <Select
+                    options={badgeVisibilityOptions}
+                    select={option => set("badgeVisibility", sanitizeBadgeVisibility(option))}
+                    isSelected={option => option === normalized.badgeVisibility}
+                    serialize={option => option}
+                />
                 <FormSwitch value={normalized.spoofBadgeEnabled} onChange={value => set("spoofBadgeEnabled", value)} title="Show spoofed resolution and FPS" />
                 <div>Changes your screen-share badge for you and viewers. Actual capture quality, bitrate, and camera settings stay the same. Start a new screen share after changing these values to update viewers.</div>
                 <NumberEditor label="Badge resolution" value={normalized.spoofBadgeHeight} min={144} max={maxBadgeHeight} markers={badgeResolutionPresets} markerFormatter={next => `${next}p`} onChange={next => { streamEnhancerSettings.store.config = normalizeConfig({ ...normalized, ...badgeSize(next) }); }} />
@@ -1980,10 +1992,13 @@ export const streamEnhancerRuntime = {
     advertise(rtc: { context?: string; }, streams: unknown) {
         return advertiseBadge(rtc, streams, getConfig());
     },
+    isBadgeVisible() {
+        return getConfig().badgeVisibility === "shown";
+    },
     badgeFps(fps: number) {
         return badgeFps(fps, getConfig());
     },
-    badgeResolution(resolution: { width: number; height: number; type: number; }) {
+    badgeResolution(resolution: { width: number; height: number; type: unknown; }) {
         return badgeResolution(resolution, getConfig());
     },
     shouldOverrideStreamResolution,
