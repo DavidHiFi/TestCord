@@ -154,7 +154,8 @@ export function Updatable(props: CommonProps) {
     const isOutdated = (updates?.length ?? 0) > 0;
 
     function showDiscardForError(error: any) {
-        if (typeof error?.cmd === "string" && error.cmd.includes("git") || error?.message || updateError)
+        const gitFailed = typeof error?.cmd === "string" && error.cmd.includes("git");
+        if (gitFailed || hasDiverged())
             setShowDiscardLocalChanges(true);
     }
 

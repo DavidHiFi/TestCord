@@ -16,9 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+import { Logger } from "@utils/Logger";
 import type * as t from "@vencord/discord-types";
-import { _resolveReady, filters, findByCodeLazy, findByPropsLazy, findLazy, mapMangledModuleLazy, proxyLazyWebpack, waitFor } from "@webpack";
+import { _resolveReady, filters, findByCodeLazy, findByProps, findByPropsLazy, findLazy, mapMangledModule, mapMangledModuleLazy, proxyLazyWebpack, waitFor } from "@webpack";
 import type * as TSPattern from "ts-pattern";
+
+const logger = new Logger("WebpackCommon");
 
 export let FluxDispatcher: t.FluxDispatcher;
 waitFor(["dispatch", "subscribe"], m => {
@@ -93,11 +96,11 @@ const ToastPosition = {
 
 export interface ToastData {
     message: string,
-    id: string,
+    id?: string,
     /**
      * Toasts.Type
      */
-    type: string,
+    type?: string,
     options?: ToastOptions;
 }
 
@@ -111,21 +114,94 @@ export interface ToastOptions {
 }
 
 interface ToastsExports {
-    showToast: (data: ToastData) => void;
-    popToast(): void;
+    showToast: (data: any) => void;
+    popToast(context?: string): void;
+    createToast?: (...args: any[]) => any;
 }
 
-// Anchor on Discord's own toast entry point, not on the store. Discord now ships two
-// stores holding a `currentToastMap`, and both contain `.currentToastMap.has(`, so that
-// anchor resolved to whichever has the lower module id — the new one. It wants an
-// already normalised entry (`text`/`variant`/`icon`) and renders anything else as an
-// empty grey pill: `message`, `type` and `id` are simply ignored and the icon lookup
-// misses, which is what turned every toast into a blank dot. This module takes the
-// legacy `{message, type, options}` shape, normalises it and routes it to whichever
-// store is live, and its pop clears both.
-const ToastsExports = mapMangledModuleLazy('("showToast")', {
-    showToast: filters.byCode('("showToast")'),
-    popToast: filters.byCode("arguments.length>0")
+let cachedToasts: ToastsExports | undefined;
+let cachedCreateToast: ((...args: any[]) => any) | undefined;
+let probedCreateToast = false;
+let lastToastLookupFailed = 0;
+
+function hasShowToast(mod: any): mod is ToastsExports {
+    return typeof mod?.showToast === "function";
+}
+
+// the pair is only exported together by Discord's own toast module
+function isToastsModule(mod: any): mod is ToastsExports {
+    return hasShowToast(mod) && typeof mod.popToast === "function";
+}
+
+// Discord's normaliser. It ships inside the toast module on some builds and in a
+// module of its own on others, and builds predating the split don't have it at all.
+// The code anchor resolves to a lazy proxy that looks callable even when the find
+// fails, so it gets probed instead of trusted.
+function resolveCreateToast(mod: ToastsExports): ((...args: any[]) => any) | undefined {
+    if (typeof mod.createToast === "function") return mod.createToast;
+    if (probedCreateToast) return cachedCreateToast;
+
+    probedCreateToast = true;
+    try {
+        const byCode = findByCodeLazy('variant:"default",icon:', ".duration");
+        const probe = byCode({ message: "", type: "message" });
+        if (typeof probe?.text === "string") cachedCreateToast = byCode;
+    } catch {
+        // no normaliser in this build, the legacy payload is all there is
+    }
+    return cachedCreateToast;
+}
+
+// builds that ship createToast want a normalised entry and ignore message/type/id
+function normalizeToast(data: ToastData, mod: ToastsExports): any {
+    const create = resolveCreateToast(mod);
+    if (create) {
+        try {
+            // current builds take one object, older ones took positional args
+            const normalized = create.length > 1
+                ? create(data.message, data.type, data.options)
+                : create(data);
+            if (normalized != null && typeof normalized === "object") {
+                // progress toasts re-show the same id to update in place
+                if (data.id) normalized.id = data.id;
+                return normalized;
+            }
+        } catch {
+            // fall through to the legacy payload
+        }
+    }
+    return data;
+}
+
+// a miss is never cached, since the module may simply not be loaded yet
+function resolveToasts(): ToastsExports | undefined {
+    if (cachedToasts) return cachedToasts;
+
+    // resolving walks the whole module cache, so don't retry on every call
+    const now = Date.now();
+    if (now - lastToastLookupFailed < 250) return undefined;
+    lastToastLookupFailed = now;
+
+    try {
+        const byProps = findByProps("showToast", "popToast");
+        if (hasShowToast(byProps)) return (cachedToasts = byProps);
+
+        const byCode = mapMangledModule(".currentToastMap.has(", {
+            showToast: filters.byCode(".currentToastMap.has("),
+            popToast: filters.byCode(".delete(")
+        });
+        if (hasShowToast(byCode)) return (cachedToasts = byCode);
+    } catch {
+        // dev builds throw out of findModuleId when an anchor is missing
+    }
+
+    logger.warn("Failed to find Discord's toast module. This toast cannot be shown.");
+    return undefined;
+}
+
+// resolves the moment the module loads, so startup toasts aren't dropped
+waitFor(isToastsModule, mod => {
+    cachedToasts = mod;
 });
 
 export function createToast(message: string, type: string, options?: ToastOptions): ToastData {
@@ -148,8 +224,14 @@ export const Toasts = {
     Position: ToastPosition,
     genId: () => (Math.random() || Math.random()).toString(36).slice(2),
 
-    show: ToastsExports.showToast,
-    pop: ToastsExports.popToast,
+    show(data: ToastData) {
+        const toasts = resolveToasts();
+        if (!toasts) return;
+        toasts.showToast(normalizeToast(data, toasts));
+    },
+    pop() {
+        resolveToasts()?.popToast?.();
+    },
     create: createToast
 };
 
