@@ -5,7 +5,6 @@
  */
 
 import { plugins } from "@api/PluginManager";
-import { isStyleEnabled } from "@api/Styles";
 import { UserAreaButton, type UserAreaRenderProps } from "@api/UserArea";
 import { ScreenshareIcon } from "@components/Icons";
 import { openPluginModal } from "@components/settings";
@@ -29,13 +28,11 @@ import {
     wrapMicrophoneStream
 } from "./microphone";
 import { streamEnhancerPatches } from "./patches";
-import { streamEnhancerRuntime, streamEnhancerSettings } from "./settings";
+import { refreshCustomPreview, stopCustomPreviewLoader, streamEnhancerRuntime, streamEnhancerSettings } from "./settings";
 import * as streamState from "./state";
 import managedStyle from "./styles.css?managed";
 import type { StreamParticipant } from "./types";
 import { installOutgoingVideoFilterInterceptor, uninstallOutgoingVideoFilterInterceptor } from "./videoFilters";
-
-let sheetRecomposeTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function StreamEnhancerButton({ iconForeground, hideTooltips, nameplate }: UserAreaRenderProps) {
     const { showPanelButton } = streamEnhancerSettings.use(["showPanelButton"]);
@@ -65,24 +62,13 @@ const streamEnhancer = definePlugin({
     start() {
         installMicrophoneInterceptor();
         installOutgoingVideoFilterInterceptor();
+        refreshCustomPreview();
         streamState.startAutoWatch();
-        // The boot-time compose leaves the parsed managed sheet short of the node's
-        // text (tail rules like the preview-stretch :has() selector silently dropped);
-        // the Styles compose dedupes identical strings, so force the re-parse by
-        // rewriting the managed node's own text once the document has settled.
-        sheetRecomposeTimer = setTimeout(() => {
-            if (!isStyleEnabled(managedStyle)) return;
-            const node = document.querySelector<HTMLElement>("vencord-managed-styles style");
-            if (!node?.textContent) return;
-            const text = node.textContent;
-            node.textContent = "";
-            node.textContent = text;
-        }, 2500);
     },
     stop() {
-        clearTimeout(sheetRecomposeTimer);
         uninstallOutgoingVideoFilterInterceptor();
         uninstallMicrophoneInterceptor();
+        stopCustomPreviewLoader();
         streamState.stopStreamEnhancerState();
     },
     isMediaParticipant: streamState.isMediaParticipant,

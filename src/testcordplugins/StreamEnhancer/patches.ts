@@ -152,14 +152,7 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         find: "Failed to post stream preview",
         replacement: {
             match: /(\i)===(\i)&&\((\i)\?(\i)\.start\(6e4,(\i)\):\4\.start\(3e5,\5\)\)/,
-            replace: "$1===$2&&($3?$4.start($self.getPreviewRetryIntervalMs(),$5):$4.start($self.getPreviewRefreshIntervalMs(),$5))"
-        }
-    },
-    {
-        find: "streamPreviewURL:g,videoSpinnerContext",
-        replacement: {
-            match: /(?=null!=\i&&\i\.Ay\.supports\(\i\.O5\.VIDEO\))/,
-            replace: "$self.renderSpoofedStreamPanelPreview(arguments[0])||C:"
+            replace: "$1===$2&&($3?$4.start($self.getPreviewRetryIntervalMs(),$5):$4.start($self.getPreviewRefreshIntervalMs(),$5)),$self.setPreviewUploadTrigger($5)"
         }
     },
     {
@@ -168,20 +161,8 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
             {
                 match: /\(0,\i\.jsx\)\("div",\{className:\i\.Rh,children:\(0,\i\.jsx\)\(\i\.A,\{noText:!0,className:\i\.HL,stream:(\i)\.stream\}\)\}\)/,
                 replace: "$self.renderSpoofedStreamPanelPreview($1.stream)??$&"
-            },
-            {
-                match: /\(0,\i\.jsx\)\(\i,\{onResize:\i,.{0,220}?streamKey:\i\.id\},\i\)/,
-                replace: "$&,$self.renderSpoofedStreamPanelPreview(arguments[0])",
-                noWarn: true
             }
         ]
-    },
-    {
-        find: "hasActiveStream:u,onEnablePin",
-        replacement: {
-            match: /\(0,\i\.jsx\)\(\i,\{onResize:\i,.{0,220}?streamKey:\i\.id\},\i\)/,
-            replace: "$&,$self.renderSpoofedStreamPanelPreview(arguments[0])"
-        }
     },
     {
         find: "Stream Tile State - activeStream",

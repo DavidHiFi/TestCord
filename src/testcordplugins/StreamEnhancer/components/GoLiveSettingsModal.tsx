@@ -37,7 +37,8 @@ import {
     streamPresetButtons,
     streamResolutionOptions,
     syncCurrentGoLiveSource,
-    syncCurrentLiveMicConnections
+    syncCurrentLiveMicConnections,
+    syncCustomPreviewForKey
 } from "../settings";
 import { choiceAt, nearestChoice, showChoiceLabel, sliderChoices } from "../slider";
 
@@ -351,6 +352,7 @@ function GoLiveQuickPanel({ selectedAudioSourceId }: { selectedAudioSourceId?: s
             ...next
         });
         applyConfig(updated);
+        for (const key of Object.keys(next)) syncCustomPreviewForKey(key);
 
         if ("streamCodec" in next) {
             syncCurrentGoLiveSource(updated);
