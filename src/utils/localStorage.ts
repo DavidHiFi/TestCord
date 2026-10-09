@@ -16,4 +16,77 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-export const { localStorage } = window;
+function createMemoryStorage(): Storage {
+    const data = new Map<string, string>();
+
+    const target = {
+        get length() {
+            return data.size;
+        },
+        clear() {
+            data.clear();
+        },
+        getItem(key: string) {
+            const value = data.get(key);
+            return value === undefined ? null : value;
+        },
+        key(index: number) {
+            return Array.from(data.keys())[index] ?? null;
+        },
+        removeItem(key: string) {
+            data.delete(key);
+        },
+        setItem(key: string, value: string) {
+            data.set(key, String(value));
+        }
+    };
+
+    const isNamed = (prop: string | symbol): prop is string => typeof prop === "string" && !(prop in target);
+
+    return new Proxy(target, {
+        get(t, prop, receiver) {
+            if (isNamed(prop)) {
+                const value = data.get(prop);
+                return value === undefined ? undefined : value;
+            }
+            return Reflect.get(t, prop, receiver);
+        },
+        set(t, prop, value) {
+            if (isNamed(prop)) {
+                data.set(prop, String(value));
+                return true;
+            }
+            return Reflect.set(t, prop, value);
+        },
+        deleteProperty(t, prop) {
+            if (isNamed(prop)) {
+                data.delete(prop);
+                return true;
+            }
+            return Reflect.deleteProperty(t, prop);
+        },
+        has(t, prop) {
+            return isNamed(prop) ? data.has(prop) : Reflect.has(t, prop);
+        },
+        ownKeys() {
+            return Array.from(data.keys());
+        },
+        getOwnPropertyDescriptor(t, prop) {
+            if (isNamed(prop)) {
+                return { configurable: true, enumerable: true, value: data.get(prop), writable: true };
+            }
+            return Reflect.getOwnPropertyDescriptor(t, prop);
+        }
+    }) as Storage;
+}
+
+let localStorage: Storage;
+try {
+    const storage = window.localStorage;
+    storage.getItem("");
+    localStorage = storage;
+} catch {
+    localStorage = createMemoryStorage();
+}
+
+export { localStorage };

@@ -143,6 +143,16 @@ if (!IS_VANILLA) {
                 }
             });
 
+            this.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+                if (isMainFrame) {
+                    console.error(`[Testcord] Main frame failed to load (${errorCode}): ${errorDescription} - ${validatedURL}`);
+                }
+            });
+
+            this.webContents.on("preload-error", (_event, preloadPath, error) => {
+                console.error(`[Testcord] Preload failed to load (${preloadPath}):`, error);
+            });
+
             if (disableMinSize) {
                 // Disable the Electron call entirely so that Discord can't dynamically change the size
                 this.setMinimumSize = (_width: number, _height: number) => { };

@@ -389,6 +389,8 @@ export function PrivacySecurityPanel() {
     const [selectedDns, setSelectedDns] = useState("Cloudflare 1.1.1.1");
     const [activeTestBtn, setActiveTestBtn] = useState<"doh" | "dot" | "auto" | null>(null);
     const [dnsEngineEnabled, setDnsEngineEnabled] = useState(true);
+    const [dnsApplied, setDnsApplied] = useState(false);
+    const [dnsError, setDnsError] = useState<string | null>(null);
     const [rendererDnsActive, setRendererDnsActive] = useState(false);
     const [nativeCalls, setNativeCalls] = useState(0);
     const [dnsCacheStats, setDnsCacheStats] = useState({ size: 0, maxCapacity: 256, ttlMinutes: 15, hits: 0, misses: 0 });
@@ -489,6 +491,8 @@ export function PrivacySecurityPanel() {
                     if (data.dnsProviders) setDnsProviders(data.dnsProviders);
                     if (data.selectedDnsProvider) setSelectedDns(data.selectedDnsProvider);
                     if (typeof data.dnsEnabled === "boolean") setDnsEngineEnabled(data.dnsEnabled);
+                    if (typeof data.dnsApplied === "boolean") setDnsApplied(data.dnsApplied);
+                    if (typeof data.dnsLastError === "string") setDnsError(data.dnsLastError);
                     if (data.dnsCacheStats) setDnsCacheStats(data.dnsCacheStats);
 
                     const fetchedLogs: BlockedLog[] = data.logs || [];
@@ -629,7 +633,11 @@ export function PrivacySecurityPanel() {
         setSelectedDns(name);
         setDiagnosticLogs(prev => [...prev, `Secure Connect now uses ${name}.`]);
         if (VencordNative?.privacy?.setDnsProvider) {
-            await VencordNative.privacy.setDnsProvider(name);
+            const applied = await VencordNative.privacy.setDnsProvider(name);
+            setDnsApplied(applied);
+            if (typeof applied === "boolean" && !applied && dnsEngineEnabled) {
+                setDiagnosticLogs(prev => [...prev, `[ERROR] ${name} could not be verified; the system resolver is still in use.`]);
+            }
         }
     };
 
@@ -796,17 +804,26 @@ export function PrivacySecurityPanel() {
     const toggleDns = async () => {
         const next = !dnsEngineEnabled;
         setDnsEngineEnabled(next);
-        if (settings.plugins?.CustomDNS) {
-            settings.plugins.CustomDNS.autoStart = next;
-        }
         if (VencordNative?.privacy?.setDnsEnabled) {
             try {
-                const updated = await VencordNative.privacy.setDnsEnabled(next);
-                if (typeof updated === "boolean") {
-                    setDnsEngineEnabled(updated);
+                const applied = await VencordNative.privacy.setDnsEnabled(next);
+                if (typeof applied === "boolean") {
+                    setDnsEngineEnabled(applied);
+                    setDnsApplied(applied);
+                    if (settings.plugins?.CustomDNS) {
+                        settings.plugins.CustomDNS.autoStart = applied;
+                    }
+                    if (next && !applied) {
+                        setDiagnosticLogs(prev => [...prev, `[ERROR] ${selectedDns} could not be reached. Encrypted DNS stays disabled, the system resolver is in use.`]);
+                    } else if (next) {
+                        setDiagnosticLogs(prev => [...prev, `Encrypted DNS applied using ${selectedDns}.`]);
+                    } else {
+                        setDiagnosticLogs(prev => [...prev, "Encrypted DNS disabled; the app is using the system resolver."]);
+                    }
                 }
             } catch (err) {
                 console.error("[Privacy] Failed to toggle DNS", err);
+                setDiagnosticLogs(prev => [...prev, "[ERROR] Failed to change the encrypted DNS setting."]);
             }
         }
     };
@@ -814,6 +831,12 @@ export function PrivacySecurityPanel() {
     const toggleDnsRewrite = () => {
         settings.plugins.CustomDNS.rewriteFetch = !dnsRewrite;
     };
+
+    const dnsStatus = dnsApplied
+        ? "Applied (with plain DNS fallback)"
+        : dnsEngineEnabled
+            ? `Unavailable - ${dnsError || "provider unreachable"}`
+            : "Disabled - system resolver";
 
     function openmodal() {
         openModal(modalProps => (
@@ -1177,7 +1200,7 @@ export function PrivacySecurityPanel() {
                             <h2 className="ps-card-title-text">Privacy Protection</h2>
                             <span className="ps-badge ps-badge-green">
                                 <span className="ps-badge-dot"></span>
-                                {noTrackOn && dnsEngineEnabled ? "Active" : "Partial"}
+                                {noTrackOn && dnsApplied ? "Active" : "Partial"}
                             </span>
                         </div>
                     </div>
@@ -1201,7 +1224,7 @@ export function PrivacySecurityPanel() {
                         <div className="ps-toggle-row">
                             <div className="ps-toggle-info">
                                 <span className="ps-toggle-title">Custom DNS</span>
-                                <span className="ps-toggle-desc">Resolve Discord hosts through encrypted DNS on startup.</span>
+                                <span className="ps-toggle-desc">Resolve client hosts through the selected encrypted DNS provider. The provider is verified before it is used, with plain DNS as a fallback.</span>
                             </div>
                             <button
                                 type="button"
@@ -1304,9 +1327,9 @@ export function PrivacySecurityPanel() {
                             <div className="ps-card-header">
                                 <div className="ps-header-title-group">
                                     <h2 className="ps-card-title-text">Secure Connect</h2>
-                                    <span className={`ps-badge ${dnsEngineEnabled ? "ps-badge-green" : "ps-badge-muted"}`}>
+                                    <span className={`ps-badge ${dnsApplied ? "ps-badge-green" : "ps-badge-muted"}`}>
                                         <span className="ps-badge-dot"></span>
-                                        {dnsEngineEnabled ? "Active" : "Disabled"}
+                                        {dnsApplied ? "Active" : dnsEngineEnabled ? "Unavailable" : "Disabled"}
                                     </span>
                                 </div>
                             </div>
@@ -1371,6 +1394,10 @@ export function PrivacySecurityPanel() {
                                         <div className="ps-meta-row">
                                             <span className="ps-meta-label">Engine</span>
                                             <span className="ps-meta-val">{rendererDnsActive ? "CustomDNS (renderer)" : "Main resolver"}</span>
+                                        </div>
+                                        <div className="ps-meta-row">
+                                            <span className="ps-meta-label">Encrypted DNS</span>
+                                            <span className="ps-meta-val" title={dnsError || undefined}>{dnsStatus}</span>
                                         </div>
                                         <div className="ps-meta-row">
                                             <span className="ps-meta-label">Endpoint</span>

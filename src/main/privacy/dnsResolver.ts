@@ -13,6 +13,9 @@ import { SETTINGS_DIR } from "../utils/constants";
 
 const PRIVACY_SETTINGS_FILE = join(SETTINGS_DIR, "privacy.json");
 
+const VERIFY_HOSTNAME = "discord.com";
+const VERIFY_TIMEOUT_MS = 2000;
+
 export interface DnsProviderConfig {
     doh: string;
     fallback: string;
@@ -66,15 +69,21 @@ class DnsResolverEngine {
     private abortDiagnosticController: AbortController | null = null;
     private isInitialized = false;
     private dnsEnabled = true;
+    private appliedDns = false;
+    private lastApplyError: string | null = null;
 
     constructor() {
         this.loadSettings();
-        this.addLog("info", `Encrypted DNS Resolver initialized. Primary provider: ${this.selectedProviderName}`);
+        this.addLog("info", `Encrypted DNS Resolver initialized. Opt-in: ${this.dnsEnabled ? "enabled" : "disabled"} (provider: ${this.selectedProviderName}).`);
         if (app.isReady()) {
-            this.applyToElectronSession();
+            this.applySafely();
         } else {
-            app.whenReady().then(() => this.applyToElectronSession());
+            app.whenReady().then(() => this.applySafely());
         }
+    }
+
+    private applySafely(): void {
+        void this.applyToElectronSession().catch(() => { });
     }
 
     public init() {
@@ -83,44 +92,68 @@ class DnsResolverEngine {
         this.loadSettings();
 
         if (app.isReady()) {
-            this.applyToElectronSession();
+            this.applySafely();
         } else {
-            app.whenReady().then(() => this.applyToElectronSession());
+            app.whenReady().then(() => this.applySafely());
         }
     }
 
-    public applyToElectronSession() {
-        if (!this.dnsEnabled) {
-            this.addLog("info", "Encrypted DNS is disabled; the app is using the system resolver.");
-            this.disableElectronSession();
-            return;
-        }
-        try {
-            const providers = this.getAllProviders();
-            const primary = providers[this.selectedProviderName] || DNS_PROVIDERS["Cloudflare 1.1.1.1"];
+    private async verifyProvider(config: DnsProviderConfig): Promise<string | null> {
+        const settle = <T>(promise: Promise<T>): Promise<T> => new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error(`Verification timed out after ${VERIFY_TIMEOUT_MS}ms.`)), VERIFY_TIMEOUT_MS + 1000);
+            promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+        });
 
-            if (typeof app.configureHostResolver === "function") {
-                try {
-                    app.configureHostResolver({
-                        enableBuiltInResolver: true,
-                        secureDnsMode: "secure",
-                        secureDnsServers: [primary.doh]
-                    });
-                    this.addLog("info", `Applied Encrypted DNS (DoH) to Electron session in SECURE mode: ${primary.doh}`);
-                } catch (err) {
-                    app.configureHostResolver({
-                        enableBuiltInResolver: true,
-                        secureDnsMode: "automatic",
-                        secureDnsServers: [primary.doh]
-                    });
-                    this.addLog("info", `Applied Encrypted DNS (DoH) to Electron session in AUTOMATIC mode: ${primary.doh}`);
-                }
-            } else {
-                this.addLog("warn", "app.configureHostResolver is not supported in this Electron environment.");
-            }
+        try {
+            const address = await settle(this.queryDoH(config.doh, VERIFY_HOSTNAME, VERIFY_TIMEOUT_MS));
+            if (address) return null;
+            return `The encrypted DNS provider (${config.doh}) did not return an address for ${VERIFY_HOSTNAME}.`;
         } catch (e: any) {
+            return `Could not reach the encrypted DNS provider (${config.doh}): ${e?.message || e}`;
+        }
+    }
+
+    public async applyToElectronSession(): Promise<boolean> {
+        this.appliedDns = false;
+
+        if (!this.dnsEnabled) {
+            this.lastApplyError = null;
+            return false;
+        }
+
+        if (typeof app.configureHostResolver !== "function") {
+            this.lastApplyError = "This Electron build does not support app.configureHostResolver.";
+            this.addLog("warn", this.lastApplyError);
+            return false;
+        }
+
+        const providers = this.getAllProviders();
+        const primary = providers[this.selectedProviderName] || DNS_PROVIDERS["Cloudflare 1.1.1.1"];
+
+        const verificationError = await this.verifyProvider(primary);
+        if (verificationError) {
+            this.lastApplyError = verificationError;
+            this.addLog("error", `${verificationError} Keeping the system resolver.`);
+            console.error("[Privacy] Encrypted DNS was not applied:", verificationError);
+            return false;
+        }
+
+        try {
+            app.configureHostResolver({
+                enableBuiltInResolver: true,
+                secureDnsMode: "automatic",
+                secureDnsServers: [primary.doh]
+            });
+            this.lastApplyError = null;
+            this.appliedDns = true;
+            this.addLog("info", `Applied Encrypted DNS (DoH) to Electron session in AUTOMATIC mode: ${primary.doh}`);
+            return true;
+        } catch (e: any) {
+            const message = e?.message || String(e);
+            this.lastApplyError = `Failed to apply encrypted DNS: ${message}`;
+            this.addLog("error", `Failed to apply DNS configuration to Electron session: ${message}`);
             console.error("[Privacy] Failed to apply DNS configuration to Electron session", e);
-            this.addLog("error", `Failed to apply DNS configuration to Electron session: ${e?.message || e}`);
+            return false;
         }
     }
 
@@ -168,15 +201,35 @@ class DnsResolverEngine {
         return this.dnsEnabled;
     }
 
-    public setEnabled(enabled: boolean): boolean {
-        this.dnsEnabled = enabled;
-        this.saveSettings();
-        if (enabled) {
-            this.applyToElectronSession();
-        } else {
+    /** Whether encrypted DNS is actually in effect (verified + applied). */
+    public isApplied(): boolean {
+        return this.appliedDns;
+    }
+
+    /** Why encrypted DNS could not be applied, if it could not. */
+    public getLastError(): string | null {
+        return this.lastApplyError;
+    }
+
+    public async setEnabled(enabled: boolean): Promise<boolean> {
+        if (!enabled) {
+            this.dnsEnabled = false;
+            this.appliedDns = false;
+            this.lastApplyError = null;
+            this.saveSettings();
             this.disableElectronSession();
+            this.addLog("info", "Encrypted DNS disabled by the user; the app is using the system resolver.");
+            return false;
         }
-        return this.dnsEnabled;
+
+        this.dnsEnabled = true;
+        const applied = await this.applyToElectronSession();
+        if (!applied) {
+            this.dnsEnabled = false;
+            this.addLog("error", "Encrypted DNS was left disabled because the selected provider could not be verified.");
+        }
+        this.saveSettings();
+        return applied;
     }
 
     private disableElectronSession() {
@@ -201,30 +254,24 @@ class DnsResolverEngine {
         return this.selectedProviderName;
     }
 
-    public setSelectedProvider(name: string): boolean {
+    public async setSelectedProvider(name: string): Promise<boolean> {
         const providers = this.getAllProviders();
-        if (providers[name]) {
-            this.selectedProviderName = name;
-            this.saveSettings();
-            if (this.dnsEnabled) {
-                this.applyToElectronSession();
-            }
-            this.addLog("info", `DNS Provider switched to: ${name}`);
-            return true;
-        }
-        return false;
+        if (!providers[name]) return false;
+
+        this.selectedProviderName = name;
+        this.saveSettings();
+        this.addLog("info", `DNS Provider switched to: ${name}`);
+        return this.dnsEnabled ? await this.applyToElectronSession() : false;
     }
 
-    public addCustomEndpoint(name: string, doh: string, fallback: string): boolean {
+    public async addCustomEndpoint(name: string, doh: string, fallback: string): Promise<boolean> {
         if (!name || !doh) return false;
+
         this.customEndpoints[name] = { doh, fallback: fallback || "1.1.1.1" };
         this.selectedProviderName = name;
         this.saveSettings();
-        if (this.dnsEnabled) {
-            this.applyToElectronSession();
-        }
         this.addLog("success", `Custom DNS endpoint added & selected: ${name} (${doh})`);
-        return true;
+        return this.dnsEnabled ? await this.applyToElectronSession() : false;
     }
 
     public getLatencies(): Record<string, number> {

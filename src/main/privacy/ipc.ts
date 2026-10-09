@@ -24,6 +24,8 @@ export function registerPrivacyIpcHandlers() {
             dnsProviders: dnsResolver.getAllProviders(),
             selectedDnsProvider: dnsResolver.getSelectedProviderName(),
             dnsEnabled: dnsResolver.isEnabled(),
+            dnsApplied: dnsResolver.isApplied(),
+            dnsLastError: dnsResolver.getLastError(),
             dnsLatencies: dnsResolver.getLatencies(),
             dnsCacheStats: dnsResolver.getCacheStats(),
             dnsDiagnosticLogs: dnsResolver.getDiagnosticLogs()
