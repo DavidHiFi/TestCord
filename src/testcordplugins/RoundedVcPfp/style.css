@@ -57,6 +57,10 @@ div[data-selenium-video-tile] div[class*="background"] {
     transition: filter 250ms ease; /* the speaking ring fades instead of popping */
 }
 
+div[data-selenium-video-tile] video {
+    transition: box-shadow 250ms ease;
+}
+
 /* Speaking indicator moved onto the picture: the green glow rides the same
    filter string as the user glow (the patch composes both layers while the
    user speaks), and the drop-shadow trails the masked picture outline, which
@@ -74,11 +78,6 @@ div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"][style*="--vc-pfp-speak
     box-shadow: inset 0 0 0 3px var(--green-360, #23a55a) !important; /* Discord's own speaking green */
 }
 
-/* The video edge ring fades with the box-shadow state change. */
-div[data-selenium-video-tile] video {
-    transition: box-shadow 250ms ease;
-}
-
 /* Screen shares are not voice: the marker var is set per tile by the patch,
    and the extra attribute outranks the rule above. */
 div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"][style*="--vc-pfp-speaking: 1"][style*="--vc-pfp-stream"] video {
@@ -93,6 +92,7 @@ div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"][style*="--vc-pfp-speak
 div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] {
     overflow: visible !important; /* halo past the tile box */
 }
+
 div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] [class*="content"] {
     overflow: visible !important; /* one more clip level above the wrapper */
 }
