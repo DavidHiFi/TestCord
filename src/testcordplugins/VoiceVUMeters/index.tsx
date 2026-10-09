@@ -37,6 +37,7 @@ const SELF_MISMATCH_HOLD_MS = 5000;
 const SELF_MISMATCH_RAW_FLOOR = 0.5;
 const SELF_MISMATCH_OUTBOUND_CEILING = 0.02;
 const SELF_MISMATCH_RETRY_MS = 30000;
+const STREAM_RELEASE_MS = 3000;
 const BAR_HEIGHT = 18;
 const BAR_WIDTH = 4;
 const GRADIENT = "linear-gradient(to top, #21c55d 0%, #21c55d 50%, #eab308 75%, #ef4444 100%)";
@@ -54,6 +55,10 @@ interface VoiceConnection {
     // Discord Desktop: native PCM bridge, with scalar stats as a fallback.
     localSpeakingFlags?: Record<string, number>;
     localPans?: Record<string, { left: number; right: number; }>;
+    // Go live streams ride their own connection: it names the streamer and
+    // carries the soundshare on its outbound when the stream has audio.
+    soundshareActive?: boolean;
+    streamUserId?: string;
     getStats?: () => Promise<any>;
     getUserIdBySsrc?: (ssrc: number) => string | null | undefined;
 }
@@ -96,6 +101,7 @@ interface Meter {
     ownsInput?: boolean;
     inputContext?: AudioContext;
     mismatchSince?: number;
+    lastStreamAt?: number;
 }
 
 const meters = new Map<string, Meter>();
@@ -139,6 +145,25 @@ const settings = definePluginSettings({
             lastScanAt = 0;
         }
     },
+    tileSurfaces: {
+        type: OptionType.SELECT,
+        description: "Which call tiles show VU meters. Screen share tiles meter the stream's own audio and show nothing while it has none.",
+        options: [
+            {
+                label: "Voice profiles only",
+                value: "voice"
+            },
+            {
+                label: "Screen shares only",
+                value: "streams"
+            },
+            {
+                label: "Both",
+                value: "both",
+                default: true
+            }
+        ]
+    },
     tilePlacement: {
         type: OptionType.SELECT,
         description: "Where the meter sits on call tiles. Profile picture pins it to the bottom right corner of the user's avatar, so it stays on the picture when tile backgrounds are hidden.",
@@ -151,6 +176,21 @@ const settings = definePluginSettings({
             {
                 label: "Profile picture",
                 value: "avatar"
+            }
+        ]
+    },
+    tileMeterSide: {
+        type: OptionType.SELECT,
+        description: "Which side of the tile anchors the meter, for both the background position and the profile picture. The meter always sits centered vertically so it clears the strip and the labels.",
+        options: [
+            {
+                label: "Right",
+                value: "right",
+                default: true
+            },
+            {
+                label: "Left",
+                value: "left"
             }
         ]
     },
@@ -349,7 +389,7 @@ function syncDesktopMeters() {
     }
 
     for (const userId of [...meters.keys()]) {
-        if (!members.has(userId)) dropMeter(userId);
+        if (!members.has(userId) && !userId.startsWith("stream:")) dropMeter(userId);
     }
 }
 
@@ -373,6 +413,44 @@ function setAmplitude(userId: string | null | undefined, level: unknown) {
 
     const meter = meters.get(userId);
     if (meter && !meter.tap) meter.amplitude = toLinear(level);
+}
+
+const STREAM_KEY = (ownerId: string) => `stream:${ownerId}`;
+
+// Stream meters only exist while the stream actually carries audio, so a
+// soundless stream shows no meter instead of a flat or microphone-driven one.
+function setStreamAmplitude(ownerId: string, level: unknown) {
+    const key = STREAM_KEY(ownerId);
+    let meter = meters.get(key);
+    if (!meter || meter.tap) {
+        dropMeter(key);
+        meter = newMeter(true);
+        meters.set(key, meter);
+    }
+    meter.lastStreamAt = Date.now();
+    meter.amplitude = toLinear(level);
+}
+
+// Go live audio rides its own RTC connection, which names the streamer. The
+// streamer sends the soundshare on that connection's outbound; a viewer
+// receives the stream's audio as its inbound.
+function readStreamLevels(conn: VoiceConnection, stats: any) {
+    const owner = conn.streamUserId;
+    if (!owner) return;
+
+    if (conn.soundshareActive) {
+        const outbound = audioEntry(stats?.rtp?.outbound);
+        if (outbound) setStreamAmplitude(owner, outbound.audioLevel);
+        return;
+    }
+
+    const inbound = stats?.rtp?.inbound;
+    const entries = Array.isArray(inbound) ? inbound : inbound && typeof inbound === "object" ? Object.values(inbound) : [];
+    for (const entry of entries) {
+        const audio = audioEntry(entry);
+        if (!audio?.ssrc) continue;
+        setStreamAmplitude(owner, audio.audioLevel);
+    }
 }
 
 function readLevels(conn: VoiceConnection, stats: any) {
@@ -404,16 +482,26 @@ function readLevels(conn: VoiceConnection, stats: any) {
     }
 }
 
-async function pollStats(conn: VoiceConnection) {
-    if (statsInFlight || typeof conn.getStats !== "function") return;
+async function pollStats() {
+    if (statsInFlight) return;
+    const engine = MediaEngineStore.getMediaEngine();
+    const connections = engine?.connections ? [...engine.connections as Iterable<VoiceConnection>] : [];
+    if (!connections.length) return;
 
     statsInFlight = true;
     try {
-        const stats = await conn.getStats();
-        if (stats && conn === connection) readLevels(conn, stats);
-    } catch (e) {
-        if (!statsFailed) logger.error("failed to read voice stats", e);
-        statsFailed = true;
+        for (const conn of connections) {
+            if (typeof conn.getStats !== "function") continue;
+            try {
+                const stats = await conn.getStats();
+                if (!stats) continue;
+                if (conn === connection) readLevels(conn, stats);
+                readStreamLevels(conn, stats);
+            } catch (e) {
+                if (!statsFailed) logger.error("failed to read voice stats", e);
+                statsFailed = true;
+            }
+        }
     } finally {
         statsInFlight = false;
     }
@@ -568,10 +656,14 @@ function tick() {
 
         if (!web && subscribers.size && !document.hidden && now - lastStatsAt >= STATS_MS) {
             lastStatsAt = now;
-            void pollStats(connection);
+            void pollStats();
         }
 
         if (!web) readNativeLevels();
+
+        for (const userId of [...meters.keys()]) {
+            if (userId.startsWith("stream:") && now - (meters.get(userId)?.lastStreamAt ?? 0) > STREAM_RELEASE_MS) dropMeter(userId);
+        }
 
         const { floorDb } = settings.store;
         for (const [userId, meter] of meters) {
@@ -656,7 +748,9 @@ const VoiceMeter = ErrorBoundary.wrap(({ userId, height = BAR_HEIGHT, width = BA
     const { showPeak } = settings.store;
     const gap = Math.max(2, Math.round(width / 2));
     const measured = (meter.tap != null || meter.nativeAvailable === true) && !meter.mono;
-    const title = meter.ownsInput
+    const title = userId.startsWith("stream:")
+        ? "Screen share audio. Left | Right"
+        : meter.ownsInput
         ? "Your selected input before Discord encoding. Left | Right"
         : meter.nativeAvailable
             ? "Participant decoded audio channels before your local pan. Left | Right"
@@ -675,11 +769,60 @@ const VoiceMeter = ErrorBoundary.wrap(({ userId, height = BAR_HEIGHT, width = BA
     );
 }, { noop: true });
 
+// A tile renders stream audio only when a content component above it received
+// the stream id (CallTile passes streamId for stream participants and null for
+// camera participants), which holds for watched and preview states alike.
+interface ReactFiberNode {
+    memoizedProps?: { streamId?: unknown; participant?: { streamId?: unknown; }; };
+    return?: ReactFiberNode | null;
+}
+
+function fiberHasStreamId(tile: HTMLElement): boolean {
+    const key = Object.keys(tile).find(k => k.startsWith("__reactFiber$"));
+    if (!key) return false;
+    let fiber = Reflect.get(tile, key) as ReactFiberNode | undefined;
+    for (let hops = 0; fiber && hops < 40; hops++, fiber = fiber.return ?? undefined) {
+        const props = fiber.memoizedProps;
+        if (!props || typeof props !== "object") continue;
+        if (props.streamId != null) return true;
+        if (props.participant?.streamId != null) return true;
+    }
+    return false;
+}
+
 function TileMeter({ userId }: { userId?: string; }) {
-    settings.use(["tilePlacement", "tileMeterHeight"]);
+    settings.use(["tilePlacement", "tileMeterSide", "tileMeterHeight", "tileSurfaces"]);
     const onPicture = settings.store.tilePlacement === "avatar";
+    const fromLeft = settings.store.tileMeterSide === "left";
+    const surfaces = settings.store.tileSurfaces;
     const boxRef = React.useRef<HTMLDivElement | null>(null);
     const [pictureInset, setPictureInset] = React.useState<{ right: number; bottom: number; } | null>(null);
+    const [isStreamSlot, setIsStreamSlot] = React.useState(false);
+    const [isStreamTile, setIsStreamTile] = React.useState(false);
+
+    React.useLayoutEffect(() => {
+        const tile = boxRef.current?.closest<HTMLElement>("div[data-selenium-video-tile]");
+        if (!tile) return;
+
+        // Stream PREVIEW slots (the plugin's video wrapper with an idle video
+        // element) hide their meter until the stream is opened: unopened
+        // streams are inaudible, so a meter there lies. Camera tiles and opened
+        // streams have a live video element and keep theirs; avatar tiles carry
+        // no wrapper class at all. Stream tiles are marked by their content
+        // component receiving the stream id: the live indicator class also
+        // shows on avatar-only tiles and disappears on watched streams.
+        const syncStreamState = () => {
+            const hasStreamWrapper = !!tile.querySelector("[class*='vc-stream-enhancer-wrapper']");
+            const video = tile.querySelector("video");
+            const playing = video != null && video.srcObject != null && video.videoWidth > 0;
+            setIsStreamTile(fiberHasStreamId(tile));
+            setIsStreamSlot(hasStreamWrapper && !playing);
+        };
+        syncStreamState();
+        const observer = new MutationObserver(syncStreamState);
+        observer.observe(tile, { childList: true, subtree: true, attributes: true });
+        return () => observer.disconnect();
+    }, []);
 
     React.useLayoutEffect(() => {
         if (!onPicture) return;
@@ -720,30 +863,26 @@ function TileMeter({ userId }: { userId?: string; }) {
     }, [onPicture]);
 
     if (!userId) return null;
+    if (isStreamSlot) return null;
+    if (isStreamTile && surfaces === "voice") return null;
+    if (!isStreamTile && surfaces === "streams") return null;
 
     const height = `calc(${Math.round(settings.store.tileMeterHeight)}% - 10px)`;
-    let right = 18;
-    let bottom = 50;
-    if (onPicture) {
-        // Over a picture the meter hugs the visible square's corner. Camera and
-        // stream tiles have no picture box; pin them to the tile's own bottom
-        // right corner with the same inset, so the bars never float mid-tile.
-        right = pictureInset ? pictureInset.right + 14 : 14;
-        bottom = pictureInset ? pictureInset.bottom + 14 : 14;
+    // 18px is the native seat (bars centered in the background strip); the
+    // mirrored left seat uses the same inset from the tile's left edge, and the
+    // picture seat hugs the measured square's corner. Every meter is centered
+    // vertically (top 50% + translateY), which clears the strip and the labels.
+    const inset = pictureInset ? pictureInset.right + 14 : 14;
+    const style: React.CSSProperties = { position: "absolute", height, zIndex: 3, pointerEvents: "none", top: "50%", transform: "translateY(-50%)" };
+    if (fromLeft) {
+        style.left = onPicture ? inset : 18;
+    } else {
+        style.right = onPicture ? (pictureInset ? pictureInset.right + 14 : 14) : 18;
     }
 
-    // Meters that sit inside Discord's hover controls strip get lifted above it
-    // while the strip is showing (tile hover), so the bars and the Options
-    // buttons never paint on top of each other.
-    const nearControls = onPicture && (!pictureInset || pictureInset.right < 48);
-
     return (
-        <div
-            ref={boxRef}
-            data-vu-meter-near={nearControls ? "" : undefined}
-            style={{ position: "absolute", right, bottom, height, zIndex: 3, pointerEvents: "none" }}
-        >
-            <VoiceMeter userId={userId} height="100%" width={8} />
+        <div ref={boxRef} style={style}>
+            <VoiceMeter userId={isStreamTile ? `stream:${userId}` : userId} height="100%" width={8} />
         </div>
     );
 }

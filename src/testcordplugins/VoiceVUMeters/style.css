@@ -1,15 +1,3 @@
-/* Tile meters that sit inside Discord's hover controls strip lift above it while
-   the strip is showing (the strip fades in on tile hover), so the bars and the
-   Options buttons never paint over each other. The lift clears the strip's top
-   edge 44px up plus a small gap. */
-div[data-selenium-video-tile] [data-vu-meter-near] {
-    transition: bottom 0.12s ease, right 0.12s ease;
-}
-
-div[data-selenium-video-tile]:hover [data-vu-meter-near] {
-    /* Discord's hover controls strip tops out 44px above the tile edge; the
-       Options pill is 32px wide at 12px in, so the 20px meter centers over it
-       at 18px (12 + 16 - 10). */
-    bottom: 52px !important; /* clears the strip's top edge with a small gap */
-    right: 18px !important; /* centers the bars over the Options pill */
-}
+/* Tile meters are centered vertically (set inline by the component), which
+   keeps them clear of the hover controls strip and the nameplate row, so no
+   hover repositioning is needed. */
