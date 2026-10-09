@@ -16,7 +16,7 @@ export const settings = defineModuleSettings("discordDevBanner", {
     format: {
         component: ({ setValue }) => FormatSetting({ setValue }),
         type: OptionType.COMPONENT,
-        default: "{testcordIcon} Testcord {testcordVersion} ({testcordHash})",
+        default: "[{testcordBranch}] {testcordIcon} Testcord {testcordVersion} ({testcordHash})",
         restartNeeded: true
     },
     color: {
@@ -66,6 +66,7 @@ export const settingVariables = [
     "{testcordName} - Testcord name (Testcord)",
     "{testcordVersion} - Version of Testcord (e.g. 1.0.0)",
     "{testcordHash} - Testcord build hash (e.g. 123456789)",
+    "{testcordBranch} - Testcord branch (e.g. dev2)",
     "{testcordPlatform} - Platform Testcord is running on (e.g. Dev Build)",
     "",
     "Equibop Specific Variables:",

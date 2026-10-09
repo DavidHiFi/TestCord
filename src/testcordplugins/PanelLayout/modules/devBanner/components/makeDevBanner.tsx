@@ -11,6 +11,8 @@ import { gitHashShort } from "@shared/vencordUserAgent";
 import { React } from "@webpack/common";
 import { JSX } from "react";
 
+import gitBranch from "~git-branch";
+
 import { isModuleEnabled } from "../../state";
 import { ChromiumIcon, ClientIcon, DevBannerIcon, DiscordIcon, ElectronIcon, names, settings } from ".";
 
@@ -24,6 +26,8 @@ export function makeDevBanner(state?: string): string | JSX.Element | null {
 
     const clientInfo = detectClient();
 
+    const branchLabel = gitBranch === "main" || gitBranch === "master" ? "release" : gitBranch;
+
     const replaced = baseFormat
         .replace(/{buildChannel}/g, buildChannel)
         .replace(/{buildNumber}/g, BUILD_NUMBER)
@@ -31,6 +35,7 @@ export function makeDevBanner(state?: string): string | JSX.Element | null {
         .replace(/{testcordName}|{equicordName}|{vencordName}/g, "Testcord")
         .replace(/{testcordVersion}|{equicordVersion}|{vencordVersion}/g, VERSION)
         .replace(/{testcordHash}|{equicordHash}|{vencordHash}/g, gitHashShort)
+        .replace(/{testcordBranch}|{equicordBranch}|{vencordBranch}/g, branchLabel)
         .replace(/{testcordPlatform}|{equicordPlatform}|{vencordPlatform}/g, getVersionInfo(false))
         .replace(/{electronVersion}/g, electronVersion)
         .replace(/{chromiumVersion}/g, chromiumVersion)
