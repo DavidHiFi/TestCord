@@ -67,7 +67,18 @@ function currentGitBranch() {
         const branch = execSync("git rev-parse --abbrev-ref HEAD", {
             encoding: "utf-8",
         }).trim();
-        return branch === "HEAD" ? "" : branch;
+        if (branch !== "HEAD") return branch;
+    } catch {
+        return "";
+    }
+    // detached (or unborn) HEAD: a local branch pointing at the built commit names
+    // the build; for-each-ref refs/heads avoids git 2.55's "(HEAD detached ...)"
+    // pseudo-branch that git branch --points-at lists first
+    try {
+        const branches = execSync('git for-each-ref refs/heads --points-at HEAD --format="%(refname:short)"', {
+            encoding: "utf-8",
+        }).trim();
+        return branches.split("\n")[0]?.trim() || "";
     } catch {
         return "";
     }
