@@ -4,11 +4,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { isPluginEnabled } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
+import usrbg from "@plugins/usrbg";
 import { EquicordDevs, TestcordDevs } from "@utils/constants";
+import { fetchUserProfile } from "@utils/discord";
 import { getUserAvatarUrl } from "@utils/misc";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
-import { ChannelRTCStore, ChannelStore, UserStore, VoiceStateStore } from "@webpack/common";
+import { ChannelRTCStore, ChannelStore, IconUtils, UserProfileStore, UserStore, useStateFromStores,VoiceStateStore } from "@webpack/common";
 
 import style from "./style.css?managed";
 
@@ -38,6 +41,32 @@ function glowFilter(color: string): string | undefined {
     if (!rgb) return undefined;
     const [r, g, b] = rgb;
     return `drop-shadow(0 0 14px rgba(${r}, ${g}, ${b}, 0.4)) drop-shadow(0 0 3px rgba(${r}, ${g}, ${b}, 0.6))`;
+}
+
+const bannerFetches = new Set<string>();
+
+function getProfileBannerUrl(userId: string): string | undefined {
+    const banner = UserProfileStore.getUserProfile(userId)?.banner;
+    if (!banner) {
+        if (!bannerFetches.has(userId)) {
+            bannerFetches.add(userId);
+            fetchUserProfile(userId).catch(() => bannerFetches.delete(userId));
+        }
+        return undefined;
+    }
+    return IconUtils.getUserBannerURL({ id: userId, banner, canAnimate: false, size: 1024 }) ?? undefined;
+}
+
+// The wrapper's children carry the participant: stream participants have a
+// streamId, so a stream tile is detectable without touching the DOM.
+function childrenHaveStreamId(children: unknown, depth = 0): boolean {
+    if (!children || typeof children !== "object" || depth > 6) return false;
+    if (Array.isArray(children)) return children.some(child => childrenHaveStreamId(child, depth + 1));
+    const { props } = children as { props?: { children?: unknown; streamId?: unknown; participant?: { streamId?: unknown; }; }; };
+    if (!props) return false;
+    if (props.streamId != null) return true;
+    if (props.participant?.streamId != null) return true;
+    return childrenHaveStreamId(props.children, depth + 1);
 }
 
 const settings = definePluginSettings({
@@ -70,6 +99,16 @@ const settings = definePluginSettings({
     hideUserBackgrounds: {
         type: OptionType.BOOLEAN,
         description: "Also hide backgrounds that users set themselves, like USRBG banners. The background switch above only turns off Discord's own background.",
+        default: false
+    },
+    showUserBanners: {
+        type: OptionType.BOOLEAN,
+        description: "Fill the tile background with the user's profile banner when they have no USRBG background. Users without a banner keep the default look.",
+        default: true
+    },
+    preferBanners: {
+        type: OptionType.BOOLEAN,
+        description: "Show profile banners even when the user has a USRBG background, painting over it in the same spot.",
         default: false
     },
     speakingIndicator: {
@@ -118,14 +157,20 @@ export default definePlugin({
                 // patch-order race, so a head-anchored lookahead stops matching after
                 // its Object.assign lands (notes/2026-10-08-voice-tile-avatars.md).
                 // Anchor after the destructuring like the local userplugin copy;
-                // Object.assign merges the style keys in any apply order.
+                // Object.assign merges the style keys in any apply order. The hook
+                // call before the assign re-renders the tile when the participant's
+                // profile banner arrives, and stays unconditional so hook order holds.
                 match: /(?<=let\{children:(\i),className:(\i),style:(\i),noBorder:(\i)=!1,participantUserId:(\i),ref:(\i)\}=(\i);)/,
-                replace: "Object.assign($3=$3||{},$self.getVoiceBackgroundStyles($7));",
+                replace: "$self.useTileBanner($7);Object.assign($3=$3||{},$self.getVoiceBackgroundStyles($7));",
             }
         },
     ],
 
-    getVoiceBackgroundStyles({ className, participantUserId }: { className?: string; participantUserId?: string; }) {
+    useTileBanner({ participantUserId }: { participantUserId?: string; }) {
+        useStateFromStores([UserProfileStore], () => UserProfileStore.getUserProfile(participantUserId ?? "")?.banner, [participantUserId]);
+    },
+
+    getVoiceBackgroundStyles({ className, participantUserId, children }: { className?: string; participantUserId?: string; children?: unknown; }) {
         if (!className?.includes("tile") || !participantUserId) return;
 
         const user = UserStore.getUser(participantUserId);
@@ -134,7 +179,8 @@ export default definePlugin({
 
         const channelId = VoiceStateStore.getVoiceStateForUser(participantUserId)?.channelId;
         const guildId = channelId ? ChannelStore.getChannel(channelId)?.guild_id : undefined;
-        const isSpeaking = channelId
+        const isStream = childrenHaveStreamId(children);
+        const isSpeaking = channelId && !isStream
             ? ChannelRTCStore.getSpeakingParticipants(channelId).some(p => p.user.id === participantUserId && p.speaking)
             : false;
 
@@ -148,6 +194,13 @@ export default definePlugin({
 
         const hideBg = settings.store.hideTileBackground;
         const hideUserBg = settings.store.hideUserBackgrounds;
+        let bannerUrl: string | undefined;
+        if (settings.store.showUserBanners && !hideUserBg) {
+            const usrbgWins = !settings.store.preferBanners
+                && isPluginEnabled(usrbg.name)
+                && usrbg.userHasBackground(participantUserId);
+            if (!usrbgWins) bannerUrl = getProfileBannerUrl(participantUserId);
+        }
         // The glow is independent of the background switch: it wraps the picture
         // whether the tile box is visible or not.
         const glow = settings.store.enableGlow ? glowFilter(settings.store.glowColor ?? "") : undefined;
@@ -171,9 +224,18 @@ export default definePlugin({
             // survive untouched otherwise.
             backgroundColor: hideBg ? "transparent" : "",
             ...(hideUserBg ? { backgroundImage: "none" } : {}),
+            ...(bannerUrl ? {
+                backgroundImage: `url("${bannerUrl}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat"
+            } : {}),
             "--vc-pfp-hide-bg": hideBg ? "1" : "",
             "--vc-pfp-speaking": isSpeaking ? "1" : "",
             "--vc-pfp-ring-pic": ringPic ? "1" : "",
+            // Stream tiles are not voice: their video never carries the
+            // speaking ring, the stylesheet keys on this marker.
+            "--vc-pfp-stream": isStream ? "1" : "",
             // Marks this plugin version for theme handoff: themes drop their own
             // fallback glow when the slot is present. The filter string carries the
             // configured color; themes and any other stylesheet consume it.

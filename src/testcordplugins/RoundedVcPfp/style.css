@@ -54,6 +54,7 @@ div[data-selenium-video-tile][style*="--vc-pfp-hide-bg"] [class*="background"] {
     descendant selectors survive every compose. */
 div[data-selenium-video-tile] div[class*="background"] {
     filter: var(--vc-pfp-glow-filter, none) !important; /* the glow var is set per tile by the plugin */
+    transition: filter 250ms ease; /* the speaking ring fades instead of popping */
 }
 
 /* Speaking indicator moved onto the picture: the green glow rides the same
@@ -71,6 +72,17 @@ div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"] [class*="border__"] {
    carries the rounded corners. */
 div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"][style*="--vc-pfp-speaking: 1"] video {
     box-shadow: inset 0 0 0 3px var(--green-360, #23a55a) !important; /* Discord's own speaking green */
+}
+
+/* The video edge ring fades with the box-shadow state change. */
+div[data-selenium-video-tile] video {
+    transition: box-shadow 250ms ease;
+}
+
+/* Screen shares are not voice: the marker var is set per tile by the patch,
+   and the extra attribute outranks the rule above. */
+div[data-selenium-video-tile][style*="--vc-pfp-ring-pic"][style*="--vc-pfp-speaking: 1"][style*="--vc-pfp-stream"] video {
+    box-shadow: none !important;
 }
 
 /* The halo must keep fading outside the tile box or it gets a hard straight
