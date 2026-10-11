@@ -144,7 +144,14 @@ function resolveCreateToast(mod: ToastsExports): ((...args: any[]) => any) | und
     probedCreateToast = true;
     try {
         const byCode = findByCodeLazy('variant:"default",icon:', ".duration");
-        const probe = byCode({ message: "", type: "message" });
+        // builds taking (message, type, options) answer the object probe with a
+        // non-string text, older ones answer the positional probe with junk, so
+        // try both before rejecting the normaliser
+        let probe: { text?: unknown } | undefined;
+        try { probe = byCode("", "message"); } catch { /* wrong shape */ }
+        if (typeof probe?.text !== "string") {
+            try { probe = byCode({ message: "", type: "message" }); } catch { /* wrong shape */ }
+        }
         if (typeof probe?.text === "string") cachedCreateToast = byCode;
     } catch {
         // no normaliser in this build, the legacy payload is all there is
