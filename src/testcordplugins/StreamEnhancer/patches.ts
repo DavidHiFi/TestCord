@@ -478,7 +478,7 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         find: "showParticipants:S=!0,width:R,height:L,idle:O,mode:P,popoutType:M,awaitingRemoteSessionInfo:w,callContainerDimensions:U}=e;l.useEffect",
         replacement: {
             match: /showParticipants:(\i)=!0,width:(\i),height:(\i),idle:(\i),mode:(\i),popoutType:(\i),awaitingRemoteSessionInfo:(\i),callContainerDimensions:(\i)\}=e;/,
-            replace: "showParticipants:$1=!0,width:$2,height:$3,idle:$4,mode:$5,popoutType:$6,awaitingRemoteSessionInfo:$7,callContainerDimensions:$8}=e;vcShowParticipants=$self.useShowStreamParticipants($1);"
+            replace: "showParticipants:$1=!0,width:$2,height:$3,idle:$4,mode:$5,popoutType:$6,awaitingRemoteSessionInfo:$7,callContainerDimensions:$8}=e;globalThis.vcShowParticipants=$self.useShowStreamParticipants($1);"
         }
     },
     {
@@ -613,7 +613,9 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         find: "Q=D<=2*b+144,J=M&&!Q",
         replacement: {
             match: /J=(\i)&&!(\i)/,
-            replace: "J=vcShowParticipants&&!$2"
+            // vcShowParticipants is only bound after a writer patch has rendered, so read it
+            // with typeof and fall back to the stock prop until then.
+            replace: 'J=(typeof vcShowParticipants<"u"?vcShowParticipants:$1)&&!$2'
         }
     },
     {
