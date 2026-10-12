@@ -537,7 +537,7 @@ export default definePlugin({
             if (settings.store.source === "tidal") settings.store.source = "auto";
             loadCustomSongDelays();
             void refreshDopamineBridge();
-            bridgeIntervalId = setInterval(refreshDopamineBridge, 1000);
+            bridgeIntervalId = setInterval(refreshDopamineBridge, 3000);
             FluxDispatcher.subscribe("SPOTIFY_PLAYER_STATE", onSpotifyPlayerState as any);
             FluxDispatcher.subscribe("SPOTIFY_LYRICS_DELAYS_LOADED", loadCustomSongDelays as any);
             FluxDispatcher.subscribe("SPOTIFY_LYRICS_CUSTOM_DELAY_CHANGE", onCustomDelayChange as any);
