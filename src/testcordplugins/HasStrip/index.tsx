@@ -19,6 +19,7 @@ const logger = new Logger("HasStrip");
 let observer: MutationObserver | undefined;
 let intervalId: ReturnType<typeof setInterval> | undefined;
 let debounceId: ReturnType<typeof setTimeout> | undefined;
+let rescanId: ReturnType<typeof setTimeout> | undefined;
 let totalRemoved = 0;
 let processed = new WeakSet<CSSStyleSheet>();
 const removedRules: Array<{ owner: CSSStyleSheet | CSSGroupingRule; index: number; text: string; }> = [];
@@ -50,10 +51,27 @@ function stripSheet(sheet: CSSStyleSheet): number {
     return removed;
 }
 
+function rescan(sheets: CSSStyleSheet[], index: number, removed: number) {
+    if (index < sheets.length) {
+        processed.add(sheets[index]);
+        rescanId = setTimeout(rescan, 0, sheets, index + 1, removed + stripSheet(sheets[index]));
+        return;
+    }
+    rescanId = undefined;
+    if (removed > 0) {
+        totalRemoved += removed;
+        logger.info(`Removed ${removed} :has() rules; total ${totalRemoved}`);
+    }
+}
+
 function scan(force: boolean) {
+    if (force) {
+        if (rescanId === undefined) rescanId = setTimeout(rescan, 0, Array.from(document.styleSheets), 0, 0);
+        return;
+    }
     let removed = 0;
     for (const sheet of Array.from(document.styleSheets)) {
-        if (!force && processed.has(sheet)) continue;
+        if (processed.has(sheet)) continue;
         processed.add(sheet);
         removed += stripSheet(sheet);
     }
@@ -83,7 +101,8 @@ export default definePlugin({
         observer = undefined;
         if (intervalId !== undefined) clearInterval(intervalId);
         if (debounceId !== undefined) clearTimeout(debounceId);
-        intervalId = debounceId = undefined;
+        if (rescanId !== undefined) clearTimeout(rescanId);
+        intervalId = debounceId = rescanId = undefined;
         for (const { owner, index, text } of removedRules.reverse()) {
             try {
                 owner.insertRule(text, Math.min(index, owner.cssRules.length));

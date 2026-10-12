@@ -820,8 +820,9 @@ function TileMeter({ userId }: { userId?: string; }) {
         };
         syncStreamState();
         let syncTimer: ReturnType<typeof setTimeout> | undefined;
-        const observer = new MutationObserver(() => {
+        const observer = new MutationObserver(records => {
             if (syncTimer !== undefined) return;
+            if (records.every(record => boxRef.current?.contains(record.target))) return;
             syncTimer = setTimeout(() => {
                 syncTimer = undefined;
                 syncStreamState();
