@@ -11,7 +11,7 @@ import { ChannelStore, FluxDispatcher, lodash, MessageStore, SelectedChannelStor
 
 import { applyBatch, clearLogs, clearUnprotectedLogs, getAllHistoryForChannel, getChannelLogsAfter, getDatabase, getGuildLogs, getLogById, repairEditedRecords, runMaintenance, stripUncloneable } from "./db";
 import { invalidateMessageClassCache } from "./render";
-import { ensureAttachmentSaved } from "./saveImage";
+import { ensureAttachmentSaved, pruneSavedAttachments } from "./saveImage";
 import { settings } from "./settings";
 import { EditRecord, LoggedMessage, LogRecord, LogStatus, MessageCreatePayload, MessageDeleteBulkPayload, MessageDeletePayload, MessageUpdatePayload } from "./types";
 import { embedFingerprint, embedHasBody, withValidEmbedTimestamps } from "./utils";
@@ -679,6 +679,7 @@ async function performMaintenance() {
             ? SelectedChannelStore.getChannelId()
             : undefined;
         await runMaintenance(settings.store.messageLimit, settings.store.retentionDays, preservedChannelId);
+        await pruneSavedAttachments(preservedChannelId);
         lastMaintenance = Date.now();
     } finally {
         maintenanceRunning = false;

@@ -531,3 +531,27 @@ export async function runMaintenance(messageLimit: number, retentionDays: number
         }
     }
 }
+
+export async function getKeptAttachmentIds(cutoffMs: number, preservedChannelId?: string) {
+    const cutoff = new Date(cutoffMs).toISOString();
+    const database = await getDatabase();
+    const index = database.transaction("messages").store.index("by_timestamp");
+    const kept = new Set<string>();
+    let cursor = await index.openCursor(IDBKeyRange.upperBound(cutoff));
+
+    while (cursor) {
+        const record = cursor.value;
+        if (record.protected || record.channel_id === preservedChannelId) {
+            for (const att of record.message.attachments) {
+                if (att.id) kept.add(att.id);
+            }
+            for (const rev of record.message.editHistory ?? []) {
+                for (const att of rev.attachments ?? []) {
+                    if (att.id) kept.add(att.id);
+                }
+            }
+        }
+        cursor = await cursor.continue();
+    }
+    return kept;
+}

@@ -162,6 +162,11 @@ export const settings = definePluginSettings({
         description: "Save deleted attachments to disk so they stay viewable after the CDN link expires.",
         default: false
     },
+    pruneSavedAttachmentFiles: {
+        type: OptionType.BOOLEAN,
+        description: "Delete saved attachment files once they pass the retention age.",
+        default: true
+    },
     imageCacheDir: {
         type: OptionType.STRING,
         description: "Folder for saved attachments. Empty uses Testcord's data folder. Pick with the button below.",

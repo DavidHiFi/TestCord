@@ -15,6 +15,7 @@ interface NativeApi {
     writeImageNative(filename: string, content: Uint8Array, dir: string): Promise<{ success: boolean; error?: string; }>;
     getImageNative(filename: string, dir: string): Promise<Uint8Array | null>;
     downloadAttachment(attachment: { url: string; oldUrl?: string; id: string; ext: string; }, dir: string): Promise<DownloadResult>;
+    pruneAttachmentFiles(dir: string, cutoffMs: number, keepIds: string[]): Promise<{ deleted: number; failed: number; }>;
     pickSavePath(defaultName: string): Promise<string>;
     writeFileAt(filePath: string, contents: string): Promise<{ success: boolean; error?: string; }>;
 }
@@ -26,6 +27,7 @@ const webFallback: NativeApi = {
     async writeImageNative() { return { success: false, error: "web" }; },
     async getImageNative() { return null; },
     async downloadAttachment() { return { success: false, error: "web" }; },
+    async pruneAttachmentFiles() { return { deleted: 0, failed: 0 }; },
     async pickSavePath() { return ""; },
     async writeFileAt() { return { success: false, error: "web" }; }
 };

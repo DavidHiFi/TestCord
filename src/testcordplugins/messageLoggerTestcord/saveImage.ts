@@ -4,9 +4,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Logger } from "@utils/Logger";
+
+import { getKeptAttachmentIds } from "./db";
 import { Native } from "./nativeShim";
 import { settings } from "./settings";
 import { LoggedAttachment } from "./types";
+
+const log = new Logger("MessageLoggerTestcord");
 
 const blobUrlCache = new Map<string, string>();
 
@@ -112,5 +117,27 @@ export async function restoreAttachmentBlobs(attachments: LoggedAttachment[]): P
         try {
             await getAttachmentBlobUrl(att);
         } catch { /* ignore individual failures */ }
+    }
+}
+
+let lastPruneAt = 0;
+
+export async function pruneSavedAttachments(preservedChannelId?: string): Promise<void> {
+    if (!settings.store.pruneSavedAttachmentFiles || !settings.store.saveImages) return;
+    const retentionDays = settings.store.retentionDays;
+    if (retentionDays <= 0) return;
+    if (Date.now() - lastPruneAt < 24 * 86_400_000) return;
+    lastPruneAt = Date.now();
+
+    const dir = getAttachmentDir() || await ensureDefaultDir();
+    if (!dir) return;
+
+    try {
+        const cutoffMs = Date.now() - retentionDays * 86_400_000;
+        const kept = await getKeptAttachmentIds(cutoffMs, preservedChannelId);
+        const result = await Native.pruneAttachmentFiles(dir, cutoffMs, [...kept]);
+        if (result.deleted > 0 || result.failed > 0) log.info(`Pruned ${result.deleted} saved attachment files, ${result.failed} failed.`);
+    } catch (error) {
+        log.warn("Attachment file pruning failed.", error);
     }
 }

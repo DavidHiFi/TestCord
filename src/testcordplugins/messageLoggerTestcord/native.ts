@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import type { Dirent } from "node:fs";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { DATA_DIR } from "@main/utils/constants";
@@ -191,4 +192,44 @@ export async function writeFileAt(_event: IpcMainInvokeEvent, filePath: unknown,
     } catch {
         return { success: false, error: "Could not write the logs to disk." };
     }
+}
+
+export async function pruneAttachmentFiles(
+    _event: IpcMainInvokeEvent,
+    dir: unknown,
+    cutoffMs: unknown,
+    keepIds: unknown
+): Promise<{ deleted: number; failed: number; }> {
+    const safeDirPath = safeDir(dir);
+    if (!safeDirPath || typeof cutoffMs !== "number" || !Number.isFinite(cutoffMs) || !Array.isArray(keepIds) || keepIds.length > 200_000) {
+        return { deleted: 0, failed: 0 };
+    }
+    const keep = new Set(keepIds.filter((id: unknown): id is string => typeof id === "string" && /^\d{15,25}$/.test(id)));
+
+    let entries: Dirent[];
+    try {
+        entries = await readdir(safeDirPath, { withFileTypes: true });
+    } catch {
+        return { deleted: 0, failed: 0 };
+    }
+
+    let deleted = 0;
+    let failed = 0;
+    for (const entry of entries) {
+        const dot = entry.name.lastIndexOf(".");
+        const id = dot === -1 ? "" : entry.name.slice(0, dot);
+        if (!entry.isFile() || !/^\d{15,25}$/.test(id) || keep.has(id)) continue;
+
+        const filePath = path.join(safeDirPath, entry.name);
+        try {
+            const info = await stat(filePath);
+            if (info.mtimeMs < cutoffMs) {
+                await rm(filePath, { force: true });
+                deleted++;
+            }
+        } catch {
+            failed++;
+        }
+    }
+    return { deleted, failed };
 }
