@@ -21,10 +21,10 @@ import meterStyle from "./style.css?managed";
 
 const logger = new Logger("VoiceVUMeters");
 
-const POLL_MS = 50;
-const NOTIFY_MS = 33;
+const POLL_MS = 100;
+const NOTIFY_MS = 100;
 const SCAN_MS = 500;
-const STATS_MS = 100;
+const STATS_MS = 250;
 const HOLD_MS = 1500;
 const RELEASE_MS = 120;
 const PEAK_FALL_DB_PER_SECOND = 12;
@@ -819,9 +819,19 @@ function TileMeter({ userId }: { userId?: string; }) {
             setIsStreamSlot(hasStreamWrapper && !playing);
         };
         syncStreamState();
-        const observer = new MutationObserver(syncStreamState);
+        let syncTimer: ReturnType<typeof setTimeout> | undefined;
+        const observer = new MutationObserver(() => {
+            if (syncTimer !== undefined) return;
+            syncTimer = setTimeout(() => {
+                syncTimer = undefined;
+                syncStreamState();
+            }, 200);
+        });
         observer.observe(tile, { childList: true, subtree: true, attributes: true });
-        return () => observer.disconnect();
+        return () => {
+            if (syncTimer !== undefined) { clearTimeout(syncTimer); syncTimer = undefined; }
+            observer.disconnect();
+        };
     }, []);
 
     React.useLayoutEffect(() => {
