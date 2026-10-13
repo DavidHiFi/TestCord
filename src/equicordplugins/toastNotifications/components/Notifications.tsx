@@ -60,6 +60,10 @@ export interface SystemNotification extends BaseNotification {
 export type NotificationData = MessageNotification | SystemNotification;
 
 export async function showNotification(notification: NotificationData) {
+    // Callers run inside a flux dispatch. Creating the root here would attach
+    // React's root listeners during that dispatch, so mount after it returns.
+    await new Promise<void>(resolve => queueMicrotask(resolve));
+
     const root = getNotificationContainer();
     const thisNotificationID = notificationID++;
 
