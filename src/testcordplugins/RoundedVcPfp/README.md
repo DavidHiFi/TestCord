@@ -15,7 +15,7 @@ Settings, topmost first:
 - Prefer banners shows the profile banner even when a USRBG background exists, painting over it in the same spot.
 - Turn the glow on shapes a two-layer glow that trails the masked picture outline (radius, zoom and mask all carry along). It works whether the background switch is on or not.
 - Glow color takes the hex code of that glow, for example #45475a. The glow mixes its own transparency levels, so an alpha channel in the hex is ignored.
-- Speaking indicator chooses where the green speaking glow lives: Box border keeps Discord's native ring around the tile, Profile picture moves the green glow onto the picture edge instead (the tile's own ring stands down; camera tiles follow the video edge with the same green). The ring fades in and out over 250ms, and screen-share tiles never show it.
+- Speaking indicator chooses where the green speaking glow lives: Box border keeps Discord's native ring around the tile, Profile picture moves the green glow onto the picture edge instead (the tile's own ring stands down for picture tiles; camera tiles keep the native tile ring). The ring fades in and out over 250ms, and screen-share tiles never show it.
 
 Changes apply when affected tiles re-render (layout changes, speaking state, participants joining or leaving) rather than the same frame.
 

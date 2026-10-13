@@ -122,6 +122,7 @@ interface ToastsExports {
 let cachedToasts: ToastsExports | undefined;
 let cachedCreateToast: ((...args: any[]) => any) | undefined;
 let probedCreateToast = false;
+let cachedCreateToastPositional = false;
 let lastToastLookupFailed = 0;
 
 function hasShowToast(mod: any): mod is ToastsExports {
@@ -149,10 +150,13 @@ function resolveCreateToast(mod: ToastsExports): ((...args: any[]) => any) | und
         // try both before rejecting the normaliser
         let probe: { text?: unknown } | undefined;
         try { probe = byCode("", "message"); } catch { /* wrong shape */ }
-        if (typeof probe?.text !== "string") {
+        if (typeof probe?.text === "string") {
+            cachedCreateToast = byCode;
+            cachedCreateToastPositional = true;
+        } else {
             try { probe = byCode({ message: "", type: "message" }); } catch { /* wrong shape */ }
+            if (typeof probe?.text === "string") cachedCreateToast = byCode;
         }
-        if (typeof probe?.text === "string") cachedCreateToast = byCode;
     } catch {
         // no normaliser in this build, the legacy payload is all there is
     }
@@ -163,18 +167,22 @@ function resolveCreateToast(mod: ToastsExports): ((...args: any[]) => any) | und
 function normalizeToast(data: ToastData, mod: ToastsExports): any {
     const create = resolveCreateToast(mod);
     if (create) {
-        try {
-            // current builds take one object, older ones took positional args
-            const normalized = create.length > 1
-                ? create(data.message, data.type, data.options)
-                : create(data);
-            if (normalized != null && typeof normalized === "object") {
-                // progress toasts re-show the same id to update in place
-                if (data.id) normalized.id = data.id;
-                return normalized;
+        // the probe records which shape answers with a string text. create.length
+        // is not read: property reads on the lazy proxy throw in some builds.
+        const shapes = cachedCreateToastPositional ? ["positional", "object"] : ["object", "positional"];
+        for (const shape of shapes) {
+            try {
+                const normalized = shape === "positional"
+                    ? create(data.message, data.type, data.options)
+                    : create(data);
+                if (normalized != null && typeof normalized === "object" && typeof normalized.text === "string") {
+                    // progress toasts re-show the same id to update in place
+                    if (data.id) normalized.id = data.id;
+                    return normalized;
+                }
+            } catch {
+                // wrong shape, try the other one
             }
-        } catch {
-            // fall through to the legacy payload
         }
     }
     return data;

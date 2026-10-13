@@ -57,16 +57,29 @@ function getProfileBannerUrl(userId: string): string | undefined {
     return IconUtils.getUserBannerURL({ id: userId, banner, canAnimate: false, size: 1024 }) ?? undefined;
 }
 
-// The wrapper's children carry the participant: stream participants have a
-// streamId, so a stream tile is detectable without touching the DOM.
-function childrenHaveStreamId(children: unknown, depth = 0): boolean {
-    if (!children || typeof children !== "object" || depth > 6) return false;
-    if (Array.isArray(children)) return children.some(child => childrenHaveStreamId(child, depth + 1));
-    const { props } = children as { props?: { children?: unknown; streamId?: unknown; participant?: { streamId?: unknown; }; }; };
-    if (!props) return false;
-    if (props.streamId != null) return true;
-    if (props.participant?.streamId != null) return true;
-    return childrenHaveStreamId(props.children, depth + 1);
+// Discord's participant kinds, read from the live client on 2026-10-11: STREAM 0,
+// HIDDEN_STREAM 1, USER 2, ACTIVITY 3. Camera tiles are USER participants that
+// also carry a streamId, so a streamId alone cannot tell a screen share apart.
+const STREAM_PARTICIPANT_TYPES = new Set([0, 1]);
+
+interface TileParticipant {
+    type?: number;
+    streamId?: unknown;
+}
+
+// The wrapper's children carry the participant somewhere below the tile root.
+function findParticipant(children: unknown, depth = 0): TileParticipant | undefined {
+    if (!children || typeof children !== "object" || depth > 6) return undefined;
+    if (Array.isArray(children)) {
+        for (const child of children) {
+            const found = findParticipant(child, depth + 1);
+            if (found) return found;
+        }
+        return undefined;
+    }
+    const { props } = children as { props?: { children?: unknown; participant?: TileParticipant; }; };
+    if (!props) return undefined;
+    return props.participant ?? findParticipant(props.children, depth + 1);
 }
 
 const settings = definePluginSettings({
@@ -113,7 +126,7 @@ const settings = definePluginSettings({
     },
     speakingIndicator: {
         type: OptionType.SELECT,
-        description: "Where the green speaking glow shows on call tiles. Profile picture moves it from the tile border onto the picture edge.",
+        description: "Where the green speaking glow shows on call tiles. Profile picture moves it from the tile border onto the picture edge; camera tiles keep the tile border.",
         options: [
             {
                 label: "Box border",
@@ -179,7 +192,12 @@ export default definePlugin({
 
         const channelId = VoiceStateStore.getVoiceStateForUser(participantUserId)?.channelId;
         const guildId = channelId ? ChannelStore.getChannel(channelId)?.guild_id : undefined;
-        const isStream = childrenHaveStreamId(children);
+        const participant = findParticipant(children);
+        const participantType = participant?.type;
+        const isStream = participantType !== undefined && STREAM_PARTICIPANT_TYPES.has(participantType);
+        // Camera tiles keep Discord's own tile ring even in picture mode, since
+        // the picture glow has no picture box to land on while the camera is on.
+        const isCamera = !isStream && participant?.streamId != null;
         const isSpeaking = channelId && !isStream
             ? ChannelRTCStore.getSpeakingParticipants(channelId).some(p => p.user.id === participantUserId && p.speaking)
             : false;
@@ -236,6 +254,9 @@ export default definePlugin({
             // Stream tiles are not voice: their video never carries the
             // speaking ring, the stylesheet keys on this marker.
             "--vc-pfp-stream": isStream ? "1" : "",
+            // Camera tiles keep the native tile border in picture mode; the
+            // stylesheet hides that border only where this marker is absent.
+            "--vc-pfp-camera": isCamera ? "1" : "",
             // Marks this plugin version for theme handoff: themes drop their own
             // fallback glow when the slot is present. The filter string carries the
             // configured color; themes and any other stylesheet consume it.

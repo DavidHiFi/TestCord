@@ -205,7 +205,7 @@ test("The glow filter composes both layers from the configured hex", () => {
 test("Stream tiles do not inherit their owner's speaking glow", () => {
     Object.assign(store, { speakingIndicator: "picture", enableGlow: false });
     voiceState.channelId = "channel-1";
-    const children = { props: { children: [{ props: { participant: { streamId: "stream-1" } } }] } };
+    const children = { props: { children: [{ props: { participant: { type: 0, streamId: "stream-1" } } }] } };
     const stream = plugin.getVoiceBackgroundStyles({ className: "tile", participantUserId: "1", children });
     assert.equal(stream?.["--vc-pfp-stream"], "1");
     assert.equal(stream?.["--vc-pfp-speaking"], "");
@@ -214,6 +214,20 @@ test("Stream tiles do not inherit their owner's speaking glow", () => {
     assert.equal(person["--vc-pfp-stream"], "");
     assert.equal(person["--vc-pfp-speaking"], "1");
     assert.ok(person["--vc-pfp-glow-filter"].includes("--green-360"));
+    Object.assign(store, { speakingIndicator: "box" });
+    delete voiceState.channelId;
+});
+
+test("Camera tiles keep their speaking state and tile border in picture mode", () => {
+    Object.assign(store, { speakingIndicator: "picture", enableGlow: false });
+    voiceState.channelId = "channel-1";
+    const children = { props: { children: [{ props: { participant: { type: 2, streamId: "camera-1" } } }] } };
+    const camera = plugin.getVoiceBackgroundStyles({ className: "tile", participantUserId: "1", children });
+    assert.equal(camera?.["--vc-pfp-stream"], "");
+    assert.equal(camera?.["--vc-pfp-camera"], "1");
+    assert.equal(camera?.["--vc-pfp-speaking"], "1");
+    const person = styles({ participantUserId: "1" });
+    assert.equal(person["--vc-pfp-camera"], "");
     Object.assign(store, { speakingIndicator: "box" });
     delete voiceState.channelId;
 });

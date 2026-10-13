@@ -373,6 +373,33 @@ export default definePlugin({
             ]
         },
         {
+            // Must run before the voice-channel patch below: that patch's catch-all render rewrite
+            // would rewrite these sites first and leave every match here with no effect
+            find: "renderContent(e){let{popoutType:",
+            replacement: [
+                {
+                    match: /(\i)&&\(S=(\(0,\i\.jsx\)\(\i\.\i,\{channel:(\i),inCall:\i,hasConnectPermission:\i,hasSpeakers:\i\.length>0,children:\i\}\))\)/,
+                    replace: (_m, stage, content, channel) => `${stage}&&(S=$self.isHiddenChannel(${channel},true)?$self.HiddenChannelLockScreen(${channel}):${content})`
+                },
+                {
+                    match: /renderBottomCenter:this\.renderBottomCenter/,
+                    replace: "renderBottomCenter:this.props?.channel?.isGuildStageVoice?.()&&$self.isHiddenChannel(this.props.channel,true)?()=>null:this.renderBottomCenter"
+                },
+                {
+                    match: /renderBottomRight:this\.renderBottomRight/,
+                    replace: "renderBottomRight:this.props?.channel?.isGuildStageVoice?.()&&$self.isHiddenChannel(this.props.channel,true)?()=>null:this.renderBottomRight"
+                },
+                {
+                    match: /renderChatToasts:(\i)\.isGuildVoiceOrThread\(\)\|\|(\i)\?this\.renderChatToasts:void 0/,
+                    replace: (_m, channel, stage) => `renderChatToasts:(${channel}.isGuildVoiceOrThread()||${stage})?(${stage}&&$self.isHiddenChannel(${channel},true)?void 0:this.renderChatToasts):void 0`
+                },
+                {
+                    match: /disableGradients:!(\i)\|\|(\i)/,
+                    replace: (_m, inCall, minimumLayout) => `disableGradients:!${inCall}||${minimumLayout}||this.props?.channel?.isGuildStageVoice?.()&&$self.isHiddenChannel(this.props.channel,true)`
+                }
+            ]
+        },
+        {
             find: "#{intl::EMBEDDED_ACTIVITIES_DEVELOPER_ACTIVITY_SHELF_FETCH_ERROR}",
             replacement: [
                 {
@@ -394,46 +421,6 @@ export default definePlugin({
                     // Disable bad CSS class which mess up hidden voice channels styling
                     match: /(?=\i\|\|\i!==\i\.\i\.FULL_SCREEN.{0,100}?this\._callContainerRef)/,
                     replace: '$&!this?.props?.inCall&&$self.isHiddenChannel(this?.props?.channel,true)?"":'
-                }
-            ]
-        },
-        {
-            find: '"HasBeenInStageChannel"',
-            replacement: [
-                {
-                    // Render our HiddenChannelLockScreen component instead of the main stage channel component
-                    match: /screenMessage:(\i)\?.+?children:(?=!\1)(?<=let \i,{channel:(\i).+?)/,
-                    replace: (m, _isPopoutOpen, channel) => `${m}$self.isHiddenChannel(${channel})?$self.HiddenChannelLockScreen(${channel}):`
-                },
-                {
-                    // Disable useless components for the HiddenChannelLockScreen of stage channels
-                    match: /render(?:BottomLeft|BottomCenter|BottomRight|ChatToasts):\(\)=>(?<=let \i,{channel:(\i).+?)/g,
-                    replace: (m, channel) => `${m}$self.isHiddenChannel(${channel})?null:`
-                },
-                {
-                    // Disable gradients for the HiddenChannelLockScreen of stage channels
-                    match: /"124px".+?disableGradients:(?<=let \i,{channel:(\i).+?)/,
-                    replace: (m, channel) => `${m}$self.isHiddenChannel(${channel})||`
-                },
-                {
-                    // Disable strange styles applied to the header for the HiddenChannelLockScreen of stage channels
-                    match: /"124px".+?style:(?<=let \i,{channel:(\i).+?)/,
-                    replace: (m, channel) => `${m}$self.isHiddenChannel(${channel})?void 0:`
-                }
-            ]
-        },
-        {
-            find: "#{intl::STAGE_FULL_MODERATOR_TITLE}",
-            replacement: [
-                {
-                    // Remove the divider and amount of users in stage channel components for the HiddenChannelLockScreen
-                    match: /\(0,\i\.jsx\)\(\i\.\i\.Divider.+?}\)]}\)(?=.+?:(\i)\.guild_id)/,
-                    replace: (m, channel) => `$self.isHiddenChannel(${channel})?null:(${m})`
-                },
-                {
-                    // Remove the open chat button for the HiddenChannelLockScreen
-                    match: /(?<=numRequestToSpeak:\i\}\)\}\):null,!\i&&)\(0,\i\.jsxs?\).{0,280}?iconClassName:/,
-                    replace: "!$self.isHiddenChannel(arguments[0]?.channel,true)&&$&"
                 }
             ]
         },
