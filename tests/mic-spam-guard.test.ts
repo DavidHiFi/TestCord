@@ -446,7 +446,7 @@ test("Old low thresholds cannot mute everyday speech", () => {
     assert(v(t) > 0);
 });
 
-test("Fresh safe speech restores protection smoothly after the configured hold", () => {
+test("A muted user who stops producing audio returns to the saved volume after the hold", () => {
     const t = setup({ "2": 155 });
     t.run("poll()");
     t.store.autoMute = true;
@@ -454,15 +454,11 @@ test("Fresh safe speech restores protection smoothly after the configured hold",
     t.store.dynamicUserVolume = false;
     t.speech(0, 1000);
     assert.equal(t.volumes.get("2"), 0);
-    t.advance(10000);
-    t.run("poll()");
+    t.advance(1000);
     assert.equal(t.volumes.get("2"), 0);
-    t.speech(-20, 3000);
-    assert.equal(t.volumes.get("2"), 0);
-    t.speech(-20, 500);
-    assert(v(t) > 0 && v(t) < 100);
-    t.speech(-20, 1200);
+    t.advance(6000);
     assert.equal(t.volumes.get("2"), 155);
+    assert.equal(t.run("volumeHolds.size"), 0);
 });
 
 test("Continuous blasts cannot periodically reopen a held volume", () => {
@@ -477,15 +473,31 @@ test("Continuous blasts cannot periodically reopen a held volume", () => {
     assert(t.writes.slice(count).every(w => w.value === 0));
 });
 
-test("Zero and missing readings cannot falsely prove safe speech", () => {
+test("Dead-quiet audio reopens a held volume after the configured hold", () => {
     const t = setup();
     t.run("poll()");
     t.store.autoMute = true;
     t.store.autoUnmute = 3;
     t.speech(0, 1000);
-    t.speech(-Infinity, 12000);
-    t.advance(12000);
     assert.equal(t.volumes.get("2"), 0);
+    t.speech(-Infinity, 5000);
+    assert.equal(t.volumes.get("2"), 100);
+    assert.equal(t.run("volumeHolds.size"), 0);
+});
+
+test("An automatic unmute hands the user back to dynamic balancing", () => {
+    const t = setup();
+    t.run("poll()");
+    t.store.autoMute = true;
+    t.store.autoUnmute = 3;
+    t.store.dynamicUserVolume = true;
+    t.speech(0, 1000);
+    assert.equal(t.volumes.get("2"), 0);
+    t.speech(-Infinity, 5000);
+    assert.equal(t.volumes.get("2"), 100);
+    t.speech(-3, 2000);
+    assert(v(t) < 65);
+    assert.equal(t.run("mutedByUs.size"), 0);
 });
 
 test("A returning blast closes partial recovery before the next full-volume write", () => {
@@ -516,16 +528,20 @@ test("Brief natural speech pauses do not reset verified safe recovery", () => {
     assert.equal(t.volumes.get("2"), 100);
 });
 
-test("Evidence gaps restart the complete safe interval", () => {
+test("Fresh loud audio restarts the hold instead of finishing an old recovery", () => {
     const t = setup();
     t.run("poll()");
     t.store.autoMute = true;
     t.store.autoUnmute = 3;
+    t.store.dynamicUserVolume = false;
     t.speech(0, 1000);
     t.speech(-20, 2500);
-    t.advance(2500);
-    t.speech(-20, 1500);
+    t.speech(0, 200);
     assert.equal(t.volumes.get("2"), 0);
+    t.speech(-20, 2500);
+    assert.equal(t.volumes.get("2"), 0);
+    t.speech(-20, 600);
+    assert(v(t) > 0);
 });
 
 test("Auto restore off never raises volume despite continuous safe speech", () => {
@@ -540,17 +556,21 @@ test("Auto restore off never raises volume despite continuous safe speech", () =
 
 test("Duplicated timestamps cannot fabricate continuing safe evidence", () => {
     const t = setup();
-    t.run("poll()");
-    t.store.autoMute = true;
-    t.store.autoUnmute = 3;
-    t.speech(0, 1000);
-    t.sample(-20);
-    const at = t.run("Date.now()") as number;
-    for (let i = 0; i < 50; i++) {
-        t.run(`volumeHolds.get("2").observe(true, ${at})`);
-        t.advance(100);
+    const hold = t.run("new VolumeHold(100, 100000, 2000)");
+    hold.observe(true, 101000);
+    for (let at = 101100; at <= 110000; at += 100) {
+        hold.observe(true, 101000);
+        assert.equal(hold.tick(at, 3000).done, false);
+        assert.equal(hold.tick(at, 3000).volume, 0);
     }
-    assert.equal(t.volumes.get("2"), 0);
+    let next = { volume: 0, done: false };
+    for (let at = 110100; at <= 130000 && !next.done; at += 250) {
+        hold.observe(true, at);
+        next = hold.tick(at, 3000);
+    }
+    assert(next.volume > 0);
+    assert(next.done);
+    assert.equal(next.volume, 100);
 });
 
 test("Manual volume changes during protection remain the user's choice", () => {

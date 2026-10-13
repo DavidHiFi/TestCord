@@ -38,6 +38,7 @@ const AUTO_CEILING = 200;
 const AUTO_GATE_DB = -48;
 const VOLUME_DEADBAND = 0.05;
 const PERSIST_DEBOUNCE_MS = 1000;
+const SILENCE_SAFE_MS = 500;
 
 const MIC_GUARD_KEYS = ["enabled"] as const;
 
@@ -142,7 +143,7 @@ const settings = definePluginSettings({
     autoUnmute: {
         type: OptionType.SELECT,
         displayName: "Auto unmute",
-        description: "How long fresh safe voice audio must continue before volume returns smoothly. Silence or missing samples cannot reopen a held volume. Off requires manual restore.",
+        description: "How long safe voice audio must continue before volume returns smoothly. A user who stops talking also reopens the hold after this long. Off requires manual restore.",
         hidden: () => !settings.store.autoMute,
         options: [
             { label: "Off (stay muted)", value: 0 },
@@ -344,6 +345,9 @@ function updateProtection(now: number) {
             persistHeld();
             continue;
         }
+        // A user who stopped talking produces no samples at all. Fresh silence counts as
+        // safe evidence, otherwise a held volume could only reopen once they talk again.
+        if (now - (levelAt.get(userId) ?? 0) >= SILENCE_SAFE_MS) hold.observe(true, now);
         const next = hold.tick(now, settings.store.autoUnmute * 1000);
         if (next.done) {
             unmute(userId, "auto");
@@ -482,8 +486,9 @@ function onStats(payload: VoiceStats) {
         levels.set(userId, percent);
         levelAt.set(userId, now);
 
-        // A zero reading while held can be post-volume silence. Require safe positive source audio.
-        if (amplitude > 0) volumeHolds.get(userId)?.observe(percent <= threshold - 10, now);
+        // A held volume only reopens on loudness or on the user going quiet. A zero reading
+        // here is a quiet mic, so it keeps the recovery clock running instead of freezing it.
+        volumeHolds.get(userId)?.observe(percent <= threshold - 10, now);
 
         if (!enabled) continue;
 
