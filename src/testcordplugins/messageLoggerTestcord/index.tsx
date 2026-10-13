@@ -1035,8 +1035,8 @@ export default definePlugin({
         {
             find: ".PREMIUM_REFERRAL&&(",
             replacement: {
-                match: /deleted:\i\.deleted, editHistory:\i\.editHistory,/,
-                replace: "deleted:$self.getDeleted(...arguments), editHistory:$self.getEdited(...arguments),"
+                match: /content:\i,referralTrialOfferId:\i,premiumGroupInviteId:\i,/,
+                replace: "$&deleted:$self.getDeleted(...arguments),editHistory:$self.getEdited(...arguments),"
             }
         },
         // dont fetch messages for deleted logged messages when jumping
@@ -1053,8 +1053,8 @@ export default definePlugin({
             find: ".handleImageLoad)",
             noWarn: true,
             replacement: {
-                match: /(componentDidMount\(\){)(.{1,150}===(.+?)\.LOADING)/,
-                replace: "$1if(this.props?.src?.startsWith('blob:') && this.props?.item?.type === 'VIDEO')return this.setState({readyState: $3.READY});$2"
+                match: /(componentDidMount\(\)\{)(let\{readyState:\i\}=this\.state;if\(\i===)([\w.$]+)\.LOADING/,
+                replace: "$1if(this.props?.src?.startsWith('blob:') && this.props?.item?.type === 'VIDEO')return this.setState({readyState: $3.READY});$2$3.LOADING"
             }
         },
         // only check for expired attachments if the message is not deleted

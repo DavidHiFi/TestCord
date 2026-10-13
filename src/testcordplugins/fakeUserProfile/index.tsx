@@ -1220,6 +1220,7 @@ export default definePlugin({
         },
         {
             find: "renderNameTag",
+            noWarn: true,
             replacement: [
                 {
                     match: /(?<=\i\)\({avatarDecoration:)\i(?=,)(?<=currentUser:(\i).+?)/,

@@ -78,7 +78,10 @@ export default definePlugin({
         }
 
         const entries = Object.entries(messages);
-        const [lastMessageId, lastMessage] = entries[entries.length - 1];
+        const lastEntry = entries[entries.length - 1];
+        if (!lastEntry) return;
+
+        const [lastMessageId, lastMessage] = lastEntry;
 
         const channel = ChannelStore.getChannel(channelId);
 

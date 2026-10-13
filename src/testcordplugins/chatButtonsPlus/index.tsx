@@ -359,7 +359,7 @@ export default definePlugin({
     async start() {
         const storedEntries = await DataStore.get(BUTTON_ENTRIES_KEY) ?? [];
 
-        if (Settings.plugins?.Woof.enabled) {
+        if (Settings.plugins?.Woof?.enabled) {
             storedEntries.push({
                 id: generateId(),
                 label: "Woof",
@@ -371,7 +371,7 @@ export default definePlugin({
             Settings.plugins.Woof.enabled = false;
         }
 
-        if (Settings.plugins?.Meow.enabled) {
+        if (Settings.plugins?.Meow?.enabled) {
             storedEntries.push({
                 id: generateId(),
                 label: "Meow",

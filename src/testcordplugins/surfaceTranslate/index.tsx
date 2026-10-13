@@ -352,7 +352,7 @@ export default definePlugin({
         {
             find: '.CUSTOM_GIFT?""',
             replacement: {
-                match: /message:(\i),message:\{id:\i\}.{0,200}renderContentOnly:\i.{0,30}\}=\i;/,
+                match: /message:(\i),message:\{id:\i\}.{0,200}renderContentOnly:\i,hideInviteEmbedBanner:\i,hideActivityInvite:\i\}=\i;/,
                 replace: "$&$1=$self.transformSearchMessage($1,arguments[0]);",
             },
         },

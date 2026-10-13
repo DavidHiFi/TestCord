@@ -474,8 +474,8 @@ export default definePlugin({
         {
             find: "multiAccountUsers",
             replacement: {
-                match: /(\w+)\.default\.track\((\w+)\.HAw\.MULTI_ACCOUNT_SWITCH_ATTEMPT[^)]+\),(\w+)\.Mx\((\w+)\)/,
-                replace: "$1.default.track($2.HAw.MULTI_ACCOUNT_SWITCH_ATTEMPT,{location:{section:$2.JJy.USER_PROFILE}}),$self.handleSwitch($3.Mx.bind($3),$4)"
+                match: /(\w+)\.default\.track\((\w+)\.HAw\.MULTI_ACCOUNT_SWITCH_ATTEMPT[^)]+\),(\w+)\.Mx\((\w+),[^)]*\)/,
+                replace: "$1.default.track($2.HAw.MULTI_ACCOUNT_SWITCH_ATTEMPT,{location:{section:$2.JJy.USER_PROFILE}}),$self.handleSwitch((...a)=>$3.Mx(...a),$4)"
             }
         }
     ],
@@ -501,13 +501,14 @@ export default definePlugin({
         }).filter(Boolean)];
     },
 
-    handleSwitch(originalFn: (id: string) => void, userId: string) {
+    handleSwitch(originalFn: (...args: any[]) => void, ...args: any[]) {
+        const userId = args[0];
         const acc = parseFakeAccounts().find(a => a.id === userId);
         if (acc) {
             activateFakeSession(acc);
         } else {
             if (_fakeSessionActive) deactivateFakeSession();
-            originalFn(userId);
+            originalFn(...args);
         }
     }
 });

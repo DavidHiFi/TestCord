@@ -917,6 +917,7 @@ export default definePlugin({
         },
         {
             find: "data-selenium-video-tile",
+            noWarn: true,
             replacement: {
                 // 1.0.9261 moved `ref` after participantUserId in the tile
                 // destructuring and now closes the JSX call with `})}}`. USRBG and

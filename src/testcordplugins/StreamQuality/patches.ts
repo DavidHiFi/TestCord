@@ -10,6 +10,7 @@ export const patches = [
     // Voice gateway opcode 12. Viewers build the stream badge from these stream parameters.
     {
         find: "this._sentVideo&&",
+        noWarn: true,
         replacement: {
             match: /this\._sentVideo&&(\i)\.video\((\i),(\i),(\i),(\i)\)/,
             replace: "this._sentVideo&&$1.video($2,$3,$4,$self.advertise(this,$5))"
@@ -18,6 +19,7 @@ export const patches = [
     // Your own stream tile builds its badge from local settings, not from the gateway.
     {
         find: '"useMaxQuality"',
+        noWarn: true,
         replacement: {
             match: /(\i===\i\.user\.id\?\{maxFrameRate:)(\i)\.fps,maxResolution:(\(0,\i\.\i\)\("useMaxQuality",\i,\{[^{}]+\},\i\.fps\))/,
             replace: "$1$self.badgeFps($2.fps),maxResolution:$self.badgeResolution($3)"
@@ -34,6 +36,7 @@ export const patches = [
     // Native stream connection: capture size, frame rate, bitrate, codec, keyframes and HDR.
     {
         find: "lastDesktopEncodingOptions",
+        noWarn: true,
         replacement: [
             {
                 match: /(setDesktopEncodingOptions\((\i),(\i),(\i)\)\{if\(this\.destroyed\)return;this\.lastDesktopEncodingOptions=\{[^{}]+\};)(let (\i)=this\.calcMaxBitrateFunc\(\{[^{}]+\}\);null==\6&&\(\6=[^;]+\);)/,

@@ -20,6 +20,7 @@ export default definePlugin({
     patches: [
         {
             find: "\"data-selenium-video-tile\":",
+            noWarn: true,
             replacement: {
                 // Local deviation from upstream's head anchor: USRBG also
                 // patches this component from the head and applies first,

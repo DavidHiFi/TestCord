@@ -38,7 +38,7 @@ export default definePlugin({
         {
             find: "Audio codecs",
             replacement: {
-                match: /channels:\d+(?:\.\d+)?,/,
+                match: /channels:\d+(?:\.\d+)?,/g,
                 replace: "channels:1,",
                 predicate: () => settings.store.forceMono,
             },
@@ -52,10 +52,10 @@ export default definePlugin({
             },
         },
         {
-            find: "AudioContext",
+            find: "getAudioContext()",
             replacement: {
-                match: /sampleRate:\s*\d+/g,
-                replace: "sampleRate:48000",
+                match: /new AudioContext(?=\))/,
+                replace: "new AudioContext({sampleRate:48000})",
                 predicate: () => settings.store.forceMono,
             },
         },

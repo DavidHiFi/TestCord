@@ -22,8 +22,8 @@ export default definePlugin({
             find: "[FAST CONNECT] successfully took over websocket",
             replacement: [{
                 // i know its bad but i do not care
-                match: /(\i)\.unpack\(e\)(.*?)case (\i)\.(\i)\.DISPATCH:/,
-                replace: "$1.unpack(e)$2case $3.$4.DISPATCH:$self.log($1.unpack(e));"
+                match: /(\i)\.unpack\(e\)(.{0,700}?)case (\i)\.DISPATCH:/,
+                replace: "$1.unpack(e)$2case $3.DISPATCH:$self.log($1.unpack(e));"
             }]
         }
     ],

@@ -173,9 +173,9 @@ export default definePlugin({
             }
         },
         {
-            find: "messageContent:",
+            find: "__invalid_messageContent",
             replacement: {
-                match: /(\.messageContent,children:)(\w+)\.content/,
+                match: /(childrenMessageContent:\(0,\i\.jsx\)\(\i\.\i,\{className:\i\(\)\(\i\.__invalid_messageContent,\{\[\i\.oE\]:\i\}\),message:(\i),content:)\i/,
                 replace: "$1$self.getContent($2)"
             }
         }

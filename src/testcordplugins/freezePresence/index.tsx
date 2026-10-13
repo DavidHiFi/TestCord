@@ -95,8 +95,8 @@ export default definePlugin({
             // This covers offline users not in the presence store
             find: "isMobileOnline",
             replacement: {
-                match: /return (E\[(\i)\])\?\?(\i);/,
-                replace: "return $self.fakeOnlineStatus($2) ?? $1 ?? $3;"
+                match: /return (\i)\[(\i)\]\?\?(\i);/,
+                replace: "return $self.fakeOnlineStatus($2) ?? $1[$2] ?? $3;"
             }
         },
         {

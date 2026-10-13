@@ -2159,6 +2159,7 @@ const plugin = definePlugin({
         },
         {
             find: "getUserAvatarURL:",
+            noWarn: true,
             replacement: {
                 match: /(getUserAvatarURL:)([^,]+),/,
                 replace: "$1$self.wrapAvatar($2),"
@@ -2166,6 +2167,7 @@ const plugin = definePlugin({
         },
         {
             find: "getAvatarDecorationURL:",
+            noWarn: true,
             replacement: {
                 match: /(?<=function \i\(\i\){)(?=let{avatarDecoration)/,
                 replace: "const vcFupDeco=$self.getAvatarDecorationURL(arguments[0]);if(vcFupDeco)return vcFupDeco;"
@@ -2177,6 +2179,7 @@ const plugin = definePlugin({
             // above fires too late and Discord shows the placeholder preset.
             find: "isAvatarDecorationAnimating:",
             group: true,
+            noWarn: true,
             replacement: [
                 {
                     match: /(?<=\.avatarDecoration,guildId:\i\}\)\),)(?<=user:(\i).+?)/,
@@ -2218,6 +2221,7 @@ const plugin = definePlugin({
         })),
         {
             find: "UserProfileStore",
+            noWarn: true,
             replacement: {
                     match: /(?<=getUserProfile\(\i\){return )(.{0,150}?)(?=})/,
                 replace: "$self.profileHook(arguments[0],$1)"
@@ -2296,6 +2300,7 @@ const plugin = definePlugin({
         },
         {
             find: "getIsValidatingUsers",
+            noWarn: true,
             replacement: {
                 match: /getUsers\(\)\{return (\i)\}/,
                 replace: "getUsers(){return $self.injectFakes($1)}"

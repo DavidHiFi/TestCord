@@ -202,7 +202,7 @@ export default definePlugin({
         {
             find: ".NITRO_NOTIFICATION,[",
             replacement: {
-                match: /renderContentOnly:\i}=\i;/,
+                match: /renderContentOnly:\i,hideInviteEmbedBanner:\i,hideActivityInvite:\i\}=\i;/,
                 replace: "$&if($self.shouldHideUser(arguments[0].message.author.id)) return null; "
             }
         },

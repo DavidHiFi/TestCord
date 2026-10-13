@@ -35,8 +35,8 @@ export default definePlugin({
     patches: [{
         find: ".jumboable=",
         replacement: {
-            match: /,(\i)>30\)/g,
-            replace: ",$self.calculate($1))"
+            match: /(\i)>\i\.MAX_EMOJI_TO_BE_JUMBO\|\|/g,
+            replace: "$self.calculate($1)||"
         }
     }],
     calculate(emojiCount: number) {
