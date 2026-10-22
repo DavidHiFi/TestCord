@@ -107,10 +107,11 @@ export const streamEnhancerPatches: Array<Omit<Patch, "plugin">> = [
         }
     },
     {
-        find: "go-live-modal",
+        find: "onOneClickGoLive:",
         replacement: {
-            match: /onBeforeShowModal:(\i),onOneClickGoLive:(\i)/,
-            replace: "onBeforeShowModal:$1,onOneClickGoLive:$2,onContextMenu:e=>$self.openGoLiveButtonContextMenu(e,null)"
+            match: /onBeforeShowModal:(\i),onOneClickGoLive:(\i)(?=[^{}]*\}\))/,
+            replace: "onBeforeShowModal:$1,onOneClickGoLive:$2,onContextMenu:e=>$self.openGoLiveButtonContextMenu(e,null)",
+            noWarn: true
         }
     },
     {
