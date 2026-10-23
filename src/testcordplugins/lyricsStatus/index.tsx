@@ -290,7 +290,11 @@ function saveStatus(payload: ReturnType<typeof buildStatusPayload>, batched: boo
         try {
             const { updateAsync } = UserSettingsActionCreators.PreloadedUserSettingsActionCreators;
             if (typeof updateAsync === "function") {
-                return Promise.resolve(updateAsync("status", (s: { customStatus: unknown; }) => { s.customStatus = payload; }, LYRIC_SAVE_DELAY_S));
+                // Discord's batched save can reject inside its own code (loadIfNecessary, 2026-10-24); fall back to the plain save.
+                return Promise.resolve(updateAsync("status", (s: { customStatus: unknown; }) => { s.customStatus = payload; }, LYRIC_SAVE_DELAY_S)).catch(err => {
+                    logger.warn("Batched status save failed, saving now:", err);
+                    return CustomStatusSetting.updateSetting(payload);
+                });
             }
         } catch {
             // Settings module not found; the plain setting below still works.
@@ -607,17 +611,22 @@ function findDopamineActivity(): RpcActivity | undefined {
     return local.find(isDopamine) ?? (userId ? (PresenceStore.getActivities(userId) ?? []).find(isDopamine) : undefined);
 }
 
+// Stock Dopamine sends no timestamps, so the clock starts when the plugin first sees the track.
+let dopamineFirstSeen = { id: "", ts: 0 };
+
 function getDopaminePlayback() {
     const activity = findDopamineActivity();
     if (!activity?.details) return null;
+    const id = `dopamine:${activity.details}:${activity.state ?? ""}`;
     const start = activity.timestamps?.start;
     const startMillis = start ? start < 1e12 ? start * 1000 : start : 0;
+    if (!startMillis && dopamineFirstSeen.id !== id) dopamineFirstSeen = { id, ts: Date.now() };
     return {
-        id: `dopamine:${activity.details}:${activity.state ?? ""}`,
+        id,
         name: activity.details,
         artist: (activity.state ?? "").split(/[;,]/)[0].trim(),
-        playing: !!startMillis,
-        position: startMillis ? Math.max(0, Date.now() - startMillis) : lastPosition,
+        playing: true,
+        position: startMillis ? Math.max(0, Date.now() - startMillis) : Date.now() - dopamineFirstSeen.ts,
     };
 }
 
