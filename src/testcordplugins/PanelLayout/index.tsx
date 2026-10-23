@@ -944,7 +944,7 @@ function buildCSS(): string {
                 transform: none;
             }
 
-            [class*=hoverRoll]:not([class*="rtcConnectionStatusConnected"])>[class*=default] {
+            [class*=hoverRoll]:not([class*="rtcConnectionStatus"])>[class*=default] {
                 margin-top: 15px;
             }
         `);
