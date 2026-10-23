@@ -150,6 +150,7 @@ export const CspPolicies: PolicyMap = {
     "http:": ImageSrc,
     "*": ImageSrc,
     "lrclib.net": ConnectSrc,
+    "itunes.apple.com": ConnectSrc, // LyricsStatus album covers for Dopamine
     "api.spicylyrics.org": ConnectSrc,
     "spicylyrics.org": ConnectSrc,
     "nekos.best": ConnectSrc,
