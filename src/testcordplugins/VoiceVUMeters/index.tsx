@@ -21,11 +21,32 @@ import meterStyle from "./style.css?managed";
 
 const logger = new Logger("VoiceVUMeters");
 
-const POLL_MS = 50;
-const NOTIFY_MS = 33;
+const POLL_MS = 100;
+// Subscriber sync is structural only (meters created or dropped, source and
+// mono flips). Level values ride the rAF loop and never touch React.
+const NOTIFY_MS = 500;
 const SCAN_MS = 500;
-const STATS_MS = 100;
+// Stats are the desktop fallback level source, polled only while a meter draws from them (see statsPollMs)
+const STATS_MS = 250;
+// Self tap cadence: the input meter only shows while Discord sends the mic, so its send state is polled quickly
+const SELF_STATS_MS = 250;
+// Outbound above this level means Discord is sending (silence reads about 0.00003). The self tap stays open
+// for SELF_SEND_HOLD_MS after the last send so gaps between stats polls do not flicker.
+const SELF_SEND_FLOOR = 0.001;
+const SELF_SEND_HOLD_MS = 500;
+// Stats cadence for stream meters alone. getStats runs on the renderer main
+// thread and took 9ms to 8s per call here, so stream meters poll sparsely.
+const STREAM_STATS_MS = 2000;
+// A flagged speaker with no bridge level for this long falls back to stats.
+// Shorter gaps are the speaking hangover or the first frames after a flip.
+const NATIVE_GAP_MS = 500;
+// Raw (unsmoothed, normalized) level that counts a participant as audibly active, and how long it
+// holds. The glow reads this instead of the smoothed bar so it starts with the first audio and ends promptly.
+const ACTIVE_LEVEL = 0.05;
+const ACTIVE_HOLD_MS = 200;
 const HOLD_MS = 1500;
+// Visual ballistics, advanced per frame from timestamps.
+const ATTACK_MS = 25;
 const RELEASE_MS = 120;
 const PEAK_FALL_DB_PER_SECOND = 12;
 // Self-tap/outbound mismatch guard: the self tap reads the OS device before
@@ -37,6 +58,11 @@ const SELF_MISMATCH_HOLD_MS = 5000;
 const SELF_MISMATCH_RAW_FLOOR = 0.5;
 const SELF_MISMATCH_OUTBOUND_CEILING = 0.02;
 const SELF_MISMATCH_RETRY_MS = 30000;
+// The opposite mismatch: the tap reads nothing above the floor for this long while
+// Discord keeps sending, so the device Chromium opens is not the audio Discord sends.
+const SELF_SILENT_HOLD_MS = 3000;
+// voice activity events older than this hand the self meter back to stats
+const SELF_VAD_STALE_MS = 500;
 const STREAM_RELEASE_MS = 3000;
 const BAR_HEIGHT = 18;
 const BAR_WIDTH = 4;
@@ -93,6 +119,9 @@ interface Meter {
     amplitude: number;
     native?: NativeLevel;
     nativeAvailable?: boolean;
+    nativeMissAt?: number;
+    nativeGap?: boolean;
+    activeUntil?: number;
     mono: boolean;
     display: [number, number];
     peak: [number, number];
@@ -101,16 +130,20 @@ interface Meter {
     ownsInput?: boolean;
     inputContext?: AudioContext;
     mismatchSince?: number;
+    silentSince?: number;
     lastStreamAt?: number;
 }
 
 const meters = new Map<string, Meter>();
 const subscribers = new Set<() => void>();
+// Remembered SSRC resolutions; getUserIdBySsrc can miss for a while in packed calls.
+const ssrcUserCache = new Map<number, string>();
 
 let connection: VoiceConnection | null = null;
 let intervalId: ReturnType<typeof setInterval> | undefined;
 let lastScanAt = 0;
 let lastNotifyAt = 0;
+let lastMeterCount = 0;
 let lastStatsAt = 0;
 let statsInFlight = false;
 let statsFailed = false;
@@ -121,8 +154,110 @@ let inputRetryAt = 0;
 let participantBridge: ParticipantBridge | undefined;
 let bridgeChecked = false;
 let selfOutboundLinear = 0;
+let selfSentAt = 0;
 let inputMismatchDrops = 0;
 let inputSuspendKey: string | null = null;
+// Discord's own processed mic level, about 10 Hz, the source of its settings mic test
+let vadEngine: { on(event: string, fn: (...args: any[]) => void): void; removeListener(event: string, fn: (...args: any[]) => void): void; } | undefined;
+let selfVadAt = 0;
+let selfVadSpeaking = false;
+let selfVadLinear = 0;
+
+// Mounted meter DOM, driven by one requestAnimationFrame loop that writes
+// transforms straight to refs, so levels never re-render React. A user can have
+// several meters mounted (list row, call tile, popout), and Discord re-parents
+// voice rows constantly, so the registry holds a set per user.
+interface MeterDom {
+    root: HTMLElement;
+    fills: [HTMLElement, HTMLElement];
+    peaks: [HTMLElement | null, HTMLElement | null];
+    colors: [string, string];
+    lastFill: [string, string];
+    lastPeak: [string, string];
+    lastPeakOpacity: [string, string];
+    height: number;
+}
+
+const meterDoms = new Map<string, Set<MeterDom>>();
+const meterDomByRoot = new WeakMap<HTMLElement, MeterDom>();
+let frameId: number | undefined;
+let frameTimer: ReturnType<typeof setTimeout> | undefined;
+let domResize: ResizeObserver | undefined;
+// Levels arrive at 4-10 Hz, so 30 fps keeps the bars smooth. Running at the
+// display rate (165 Hz here) repainted the panel every vsync for no visible gain.
+const FRAME_MS = 33;
+
+// Live counters for diagnostics over the CDP port
+const debugState = (globalThis as { __vumDebug?: Record<string, number>; }).__vumDebug ??= {};
+
+// The loop stays parked while nothing is mounted or the tab is hidden
+function ensureFrameLoop() {
+    if (frameId === undefined && frameTimer === undefined && meterDoms.size && meters.size && !document.hidden) {
+        frameId = requestAnimationFrame(frameTick);
+    }
+}
+
+function scheduleNextFrame() {
+    frameTimer = setTimeout(() => {
+        frameTimer = undefined;
+        ensureFrameLoop();
+    }, FRAME_MS);
+}
+
+function parkFrameLoop() {
+    if (frameTimer !== undefined) {
+        clearTimeout(frameTimer);
+        frameTimer = undefined;
+    }
+    if (frameId !== undefined) {
+        cancelAnimationFrame(frameId);
+        frameId = undefined;
+    }
+}
+
+function onVisibilityChange() {
+    if (document.hidden) parkFrameLoop();
+    else ensureFrameLoop();
+}
+
+function peakColor(peak: number) {
+    return peak > 0.995 ? "#ef4444" : peak > 0.916 ? "#ffa500" : "#d3d3d3";
+}
+
+function writeMeterDom(meter: Meter, dom: MeterDom) {
+    const { showPeak } = settings.store;
+    const peakRange = Math.max(0, dom.height - 2);
+    for (let channel = 0; channel < 2; channel++) {
+        // skip unchanged writes so a silent call causes no style churn
+        const fill = dom.fills[channel];
+        if (fill) {
+            const transform = `translateY(${((1 - meter.display[channel]) * 100).toFixed(2)}%)`;
+            if (dom.lastFill[channel] !== transform) {
+                dom.lastFill[channel] = transform;
+                fill.style.transform = transform;
+            }
+        }
+        const peakLine = dom.peaks[channel];
+        if (showPeak && peakLine) {
+            const shown = meter.peak[channel] > 0.01;
+            const transform = `translateY(${(shown ? (1 - meter.peak[channel]) * peakRange : peakRange + 2).toFixed(1)}px)`;
+            if (dom.lastPeak[channel] !== transform) {
+                dom.lastPeak[channel] = transform;
+                peakLine.style.transform = transform;
+            }
+            const opacity = shown ? "1" : "0";
+            if (dom.lastPeakOpacity[channel] !== opacity) {
+                dom.lastPeakOpacity[channel] = opacity;
+                peakLine.style.opacity = opacity;
+            }
+            const color = peakColor(meter.peak[channel]);
+            if (dom.colors[channel] !== color) {
+                dom.colors[channel] = color;
+                peakLine.style.background = color;
+            }
+        }
+    }
+}
 
 const settings = definePluginSettings({
     floorDb: {
@@ -288,6 +423,7 @@ function dropMeter(userId: string) {
 
 function dropAll() {
     inputGeneration++;
+    ssrcUserCache.clear();
     for (const userId of [...meters.keys()]) dropMeter(userId);
 }
 
@@ -338,7 +474,7 @@ async function syncSelfInput(conn: VoiceConnection) {
             meter.ownsInput = true;
             meter.inputContext = audioContext;
             adopted = true;
-            inputMismatchDrops = 0;
+            // drops reset only once the tap carries sound, so a dead device still gets suspended
             inputSuspendKey = null;
         }
         inputKey = deviceKey;
@@ -453,20 +589,34 @@ function readStreamLevels(conn: VoiceConnection, stats: any) {
     }
 }
 
+// getUserIdBySsrc can miss in packed calls, so remember every resolution
+function resolveSsrc(conn: VoiceConnection, ssrc: unknown) {
+    const numeric = Number(ssrc);
+    if (!Number.isFinite(numeric)) return undefined;
+
+    const mapped = conn.getUserIdBySsrc?.(numeric);
+    if (mapped) {
+        ssrcUserCache.set(numeric, mapped);
+        return mapped;
+    }
+
+    return ssrcUserCache.get(numeric);
+}
+
 function readLevels(conn: VoiceConnection, stats: any) {
     const inbound = stats?.rtp?.inbound;
 
     if (Array.isArray(inbound)) {
         for (const value of inbound) {
             const entry = audioEntry(value);
-            if (entry) setAmplitude(conn.getUserIdBySsrc?.(Number(entry.ssrc)), entry.audioLevel);
+            if (entry) setAmplitude(resolveSsrc(conn, entry.ssrc), entry.audioLevel);
         }
     } else if (inbound && typeof inbound === "object") {
         for (const [key, value] of Object.entries(inbound)) {
             const entry = audioEntry(value);
             if (!entry) continue;
 
-            const mapped = conn.getUserIdBySsrc?.(Number(entry.ssrc));
+            const mapped = resolveSsrc(conn, entry.ssrc);
             const userId = mapped ?? (meters.has(key) ? key : null);
             if (mapped && meters.has(key) && mapped !== key) continue;
             setAmplitude(userId, entry.audioLevel);
@@ -478,8 +628,65 @@ function readLevels(conn: VoiceConnection, stats: any) {
     if (me && outbound) {
         const level = MediaEngineStore.isSelfMute() ? 0 : toLinear(outbound.audioLevel);
         selfOutboundLinear = level;
+        // audioDetected is Discord's own voice detection on the sent audio, true while the VAD flags stay 0
+        if (outbound.audioDetected && !MediaEngineStore.isSelfMute()) {
+            selfSentAt = Date.now();
+            selfVadSpeaking = true;
+        }
+        if (selfVadLive(Date.now())) return;
+        if (level > SELF_SEND_FLOOR) selfSentAt = Date.now();
         setAmplitude(me, level);
     }
+}
+
+function selfVadLive(now: number) {
+    return now - selfVadAt <= SELF_VAD_STALE_MS;
+}
+
+// levelDb is -100 when silent; flags is Discord's own speaking state for the local user
+function onVoiceActivity(levelDb: number, flags: number) {
+    const now = Date.now();
+    const muted = MediaEngineStore.isSelfMute();
+    selfVadAt = now;
+    const level = muted || !Number.isFinite(levelDb) || levelDb <= -100 ? 0 : Math.min(10 ** (levelDb / 20), 1);
+    // flags stayed 0 through speech at -15 dB (measured 2026-10-25), so a clear level counts as speaking too
+    selfVadSpeaking = !muted && (!!flags || level > SELF_SEND_FLOOR);
+    if (selfVadSpeaking) selfSentAt = now;
+    selfVadLinear = level;
+    setAmplitude(UserStore.getCurrentUser()?.id, level);
+}
+
+// Listening makes the native engine emit levels, so subscribe only while a desktop self meter needs them
+function syncVoiceActivity(want: boolean) {
+    const engine = want ? MediaEngineStore.getMediaEngine() as unknown as typeof vadEngine : undefined;
+    if (engine === vadEngine) return;
+    vadEngine?.removeListener("voiceactivity", onVoiceActivity);
+    vadEngine = undefined;
+    selfVadAt = 0;
+    selfVadSpeaking = false;
+    if (typeof engine?.on !== "function" || typeof engine.removeListener !== "function") return;
+    engine.on("voiceactivity", onVoiceActivity);
+    vadEngine = engine;
+}
+
+// 0 means taps or the native bridge already feed every voice meter. Otherwise
+// the cadence follows the neediest consumer.
+function statsPollMs() {
+    let voiceFallback = false;
+    let stream = false;
+    let selfTap = false;
+    for (const [userId, meter] of meters) {
+        if (meter.tap) {
+            if (meter.ownsInput) selfTap = true;
+            continue;
+        }
+        if (userId.startsWith("stream:")) stream = true;
+        else if (!meter.nativeAvailable || meter.nativeGap) voiceFallback = true;
+    }
+    if (voiceFallback) return STATS_MS;
+    // the self send gate needs fast stats even while a stream meter is up
+    if (selfTap) return SELF_STATS_MS;
+    return stream ? STREAM_STATS_MS : 0;
 }
 
 async function pollStats() {
@@ -550,11 +757,13 @@ function readNativeLevels() {
     const snapshot = participantBridge.getParticipantStereoLevels();
     const me = UserStore.getCurrentUser()?.id;
     for (const [userId, meter] of meters) {
-        if (meter.tap || userId === me) continue;
+        // Stream meters ride the stats path; the bridge only carries voice participants.
+        if (meter.tap || userId === me || userId.startsWith("stream:")) continue;
         meter.nativeAvailable = snapshot.installed && snapshot.connection > 0;
         meter.native = undefined;
     }
     if (!snapshot.installed || !snapshot.connection) return;
+    debugState.native = snapshot.levels.length;
     for (const level of snapshot.levels) {
         const meter = meters.get(level.userId);
         if (!meter || meter.tap || level.userId === me || level.ageMs < 0 || level.ageMs > 150
@@ -562,6 +771,18 @@ function readNativeLevels() {
             || ![level.rmsLeft, level.rmsRight, level.peakLeft, level.peakRight].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) continue;
         meter.native = level;
         meter.mono = level.channels === 1;
+    }
+
+    // nativeAvailable is connection-wide, so track flagged speakers the bridge
+    // skips and hand them to stats instead of drawing a flat bar
+    const now = Date.now();
+    const flags = connection?.localSpeakingFlags;
+    for (const [userId, meter] of meters) {
+        if (meter.tap || userId === me || userId.startsWith("stream:")) continue;
+        const flagged = !!flags && userId in flags && flags[userId] !== 0;
+        if (meter.native || !flagged) meter.nativeMissAt = undefined;
+        else meter.nativeMissAt ??= now;
+        meter.nativeGap = meter.nativeMissAt !== undefined && now - meter.nativeMissAt > NATIVE_GAP_MS;
     }
 }
 
@@ -584,15 +805,18 @@ function readChannel(analyser: AnalyserNode, buffer: Float32Array<ArrayBuffer>, 
     return { rms: normalize(Math.sqrt(sum / buffer.length), floorDb), peak: normalize(peak, floorDb) };
 }
 
-function smooth(meter: Meter, channel: 0 | 1, level: { rms: number; peak: number; }, now: number) {
+function smooth(meter: Meter, channel: 0 | 1, rms: number, peak: number, now: number) {
     const previousAt = meter.sampleAt[channel] || now;
     const elapsed = Math.max(0, now - previousAt);
     meter.sampleAt[channel] = now;
     const display = meter.display[channel];
-    meter.display[channel] = level.rms >= display ? level.rms : level.rms + (display - level.rms) * Math.exp(-elapsed / RELEASE_MS);
+    const tau = rms >= display ? ATTACK_MS : RELEASE_MS;
+    // zero elapsed is the first sample, jump to the target
+    meter.display[channel] = rms >= display && elapsed <= 0 ? rms
+        : rms + (display - rms) * Math.exp(-elapsed / tau);
 
-    if (level.peak >= meter.peak[channel]) {
-        meter.peak[channel] = level.peak;
+    if (peak >= meter.peak[channel]) {
+        meter.peak[channel] = peak;
         meter.peakAt[channel] = now;
     } else if (now - meter.peakAt[channel] > HOLD_MS) {
         const fallMs = Math.max(0, now - Math.max(previousAt, meter.peakAt[channel] + HOLD_MS));
@@ -605,25 +829,158 @@ function notifySubscribers() {
     for (const subscriber of subscribers) subscriber();
 }
 
+// Mic audio activity per user id, for consumers that need more than Discord's
+// speaking flag. Stream meters stay out: soundshare is not the person's mic.
+// Changes dispatch a window event.
+const audioActiveUsers = new Set<string>();
+let audioActiveDirty = false;
+function noteActive(meter: Meter, rawLevel: number, now: number) {
+    if (rawLevel >= ACTIVE_LEVEL) meter.activeUntil = now + ACTIVE_HOLD_MS;
+}
+
+function updateAudioActive() {
+    const seen = new Set<string>();
+    const now = Date.now();
+    for (const [userId, meter] of meters) {
+        if (userId.startsWith("stream:")) continue;
+        seen.add(userId);
+        const active = (meter.activeUntil ?? 0) > now;
+        if (active && debugState.firstActiveAt == null) debugState.firstActiveAt = now;
+        if (active !== audioActiveUsers.has(userId)) {
+            if (active) audioActiveUsers.add(userId);
+            else audioActiveUsers.delete(userId);
+            audioActiveDirty = true;
+        }
+    }
+    for (const userId of audioActiveUsers) {
+        if (!seen.has(userId)) {
+            audioActiveUsers.delete(userId);
+            audioActiveDirty = true;
+        }
+    }
+    if (audioActiveDirty) {
+        audioActiveDirty = false;
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("testcord-vu-audio-change"));
+    }
+}
+
+function isAudioActive(userId: string) {
+    return audioActiveUsers.has(userId);
+}
+
+if (typeof window !== "undefined") {
+    (window as unknown as { __testcordAudio: unknown }).__testcordAudio = {
+        isActive: isAudioActive,
+        active: () => [...audioActiveUsers]
+    };
+}
+
+// Advance every meter's envelopes for `now`. Called per frame and from tick(),
+// both dt-based, so mixing the cadences is safe.
+function advanceEnvelopes(now: number) {
+    const { floorDb } = settings.store;
+    const me = UserStore.getCurrentUser()?.id;
+    for (const [userId, meter] of meters) {
+        if (meter.tap) {
+            // The input meter shows only while Discord is sending, so it matches what people hear
+            const muted = meter.ownsInput && (MediaEngineStore.isSelfMute() || now - selfSentAt > SELF_SEND_HOLD_MS);
+            let left = muted ? { rms: 0, peak: 0 } : readChannel(meter.tap.left, meter.tap.bufLeft, floorDb);
+            let right = muted || meter.mono ? left : readChannel(meter.tap.right, meter.tap.bufRight, floorDb);
+            const tapRaw = Math.max(left.rms, right.rms);
+
+            // A tap that reads nothing while Discord hears speech (muted capture session, wrong device) would
+            // leave the bars flat until it is dropped, so show Discord's own level meanwhile
+            if (meter.ownsInput && !muted && tapRaw === 0 && selfVadLive(now) && selfVadSpeaking) {
+                const vad = normalize(selfVadLinear, floorDb);
+                left = right = { rms: vad, peak: vad };
+            }
+
+            smooth(meter, 0, left.rms, left.peak, now);
+            smooth(meter, 1, right.rms, right.peak, now);
+            noteActive(meter, Math.max(left.rms, right.rms), now);
+            if (meter.ownsInput) checkSelfMismatch(meter, muted === true, tapRaw, now);
+        } else if (meter.nativeAvailable && !meter.nativeGap) {
+            const rmsLeft = normalize(meter.native?.rmsLeft ?? 0, floorDb);
+            const rmsRight = normalize(meter.native?.rmsRight ?? 0, floorDb);
+            smooth(meter, 0, rmsLeft, normalize(meter.native?.peakLeft ?? 0, floorDb), now);
+            smooth(meter, 1, rmsRight, normalize(meter.native?.peakRight ?? 0, floorDb), now);
+            noteActive(meter, Math.max(rmsLeft, rmsRight), now);
+        } else {
+            // Bars follow measured audio only. A flagged speaker with no level reads flat, never a made-up one.
+            const heard = userId === me && selfVadLive(now) ? selfVadSpeaking : isHeard(userId);
+            const value = heard ? normalize(meter.amplitude, floorDb) : 0;
+            // received audio counts as activity even before Discord's speaking flag arrives
+            noteActive(meter, normalize(meter.amplitude, floorDb), now);
+            const [panL, panR] = getPan(userId);
+
+            smooth(meter, 0, value * panL, value * panL, now);
+            smooth(meter, 1, value * panR, value * panR, now);
+        }
+    }
+}
+
+// Samples every level source, advances the envelopes and writes the bars
+function frameTick() {
+    frameId = undefined;
+    if (!meterDoms.size || !meters.size || document.hidden) return;
+
+    let writes = 0;
+    try {
+        advanceEnvelopes(Date.now());
+
+        for (const [userId, doms] of meterDoms) {
+            const meter = meters.get(userId);
+            if (!meter) continue;
+            for (const dom of doms) {
+                writeMeterDom(meter, dom);
+                writes++;
+            }
+        }
+    } catch (e) {
+        logger.error("meter frame failed", e);
+    }
+
+    debugState.frames = (debugState.frames ?? 0) + 1;
+    debugState.writes = (debugState.writes ?? 0) + writes;
+    debugState.doms = meterDoms.size;
+    debugState.meters = meters.size;
+    debugState.frameAt = Date.now();
+
+    if (meterDoms.size && meters.size && !document.hidden) scheduleNextFrame();
+}
+
 // The self tap reads the OS device before Discord processing, so bleed that
 // Discord removes downstream still pins it while outbound stays silent. After
 // a sustained mismatch the tap is dropped (showing outbound instead) with a
 // delayed retry; after two drops the input stays on outbound until the Discord
 // input device changes.
 function checkSelfMismatch(meter: Meter, muted: boolean, raw: number, now: number) {
-    if (!meter.ownsInput || muted || now - lastStatsAt > 1000) {
+    // Not muted means Discord sent within SELF_SEND_HOLD_MS. Pauses between words close
+    // the gate, so only sound on the tap clears the silent hold.
+    if (!meter.ownsInput || raw > 0) meter.silentSince = undefined;
+    else if (!muted && meter.silentSince == null) meter.silentSince = now;
+    else if (!muted && now - meter.silentSince! >= SELF_SILENT_HOLD_MS) {
+        dropSelfTap("self input tap is silent while Discord sends; falling back to outbound levels");
+        return;
+    }
+    if (!meter.ownsInput || muted || now - lastStatsAt > SELF_STATS_MS * 1.5) {
         meter.mismatchSince = undefined;
         return;
     }
     if (raw < SELF_MISMATCH_RAW_FLOOR || selfOutboundLinear > SELF_MISMATCH_OUTBOUND_CEILING) {
         meter.mismatchSince = undefined;
-        inputMismatchDrops = 0;
+        // a silent tap is not a healthy one, so it keeps counting toward suspension
+        if (raw > 0) inputMismatchDrops = 0;
         return;
     }
     if (meter.mismatchSince == null) meter.mismatchSince = now;
     if (now - meter.mismatchSince < SELF_MISMATCH_HOLD_MS) return;
+    dropSelfTap("self input tap disagrees with voice outbound; falling back to outbound levels");
+}
+
+function dropSelfTap(reason: string) {
     const me = UserStore.getCurrentUser()?.id;
-    logger.warn("self input tap disagrees with voice outbound; falling back to outbound levels");
+    logger.warn(reason);
     if (me) dropMeter(me);
     inputMismatchDrops++;
     inputRetryAt = Date.now() + SELF_MISMATCH_RETRY_MS;
@@ -636,14 +993,17 @@ function tick() {
         if (conn !== connection) {
             dropAll();
             connection = conn;
+            debugState.connectedAt = Date.now();
+            delete debugState.firstActiveAt;
             lastScanAt = 0;
             statsFailed = false;
         }
 
+        const web = !!connection && isWebConnection(connection);
+        syncVoiceActivity(!!connection && !web && settings.store.showSelf);
         if (!connection) return;
 
         const now = Date.now();
-        const web = isWebConnection(connection);
 
         if (now - lastScanAt >= SCAN_MS) {
             lastScanAt = now;
@@ -654,63 +1014,65 @@ function tick() {
             }
         }
 
-        if (!web && subscribers.size && !document.hidden && now - lastStatsAt >= STATS_MS) {
+        // stats only feed desktop meters that actually wait on them
+        const statsMs = web ? 0 : statsPollMs();
+        if (statsMs && !document.hidden && now - lastStatsAt >= statsMs) {
             lastStatsAt = now;
             void pollStats();
         }
 
+        // also run here so displays stay honest while the rAF loop is parked
         if (!web) readNativeLevels();
+        advanceEnvelopes(now);
+        updateAudioActive();
 
         for (const userId of [...meters.keys()]) {
             if (userId.startsWith("stream:") && now - (meters.get(userId)?.lastStreamAt ?? 0) > STREAM_RELEASE_MS) dropMeter(userId);
         }
 
-        const { floorDb } = settings.store;
-        for (const [userId, meter] of meters) {
-            if (meter.tap) {
-                const muted = meter.ownsInput && MediaEngineStore.isSelfMute();
-                const left = muted ? { rms: 0, peak: 0 } : readChannel(meter.tap.left, meter.tap.bufLeft, floorDb);
-                const right = muted || meter.mono ? left : readChannel(meter.tap.right, meter.tap.bufRight, floorDb);
-
-                smooth(meter, 0, left, now);
-                smooth(meter, 1, right, now);
-                checkSelfMismatch(meter, muted === true, Math.max(left.rms, right.rms), now);
-            } else if (meter.nativeAvailable) {
-                const value = meter.native;
-                smooth(meter, 0, { rms: normalize(value?.rmsLeft ?? 0, floorDb), peak: normalize(value?.peakLeft ?? 0, floorDb) }, now);
-                smooth(meter, 1, { rms: normalize(value?.rmsRight ?? 0, floorDb), peak: normalize(value?.peakRight ?? 0, floorDb) }, now);
-            } else {
-                const value = isHeard(userId) ? normalize(meter.amplitude, floorDb) : 0;
-                const [panL, panR] = getPan(userId);
-
-                smooth(meter, 0, { rms: value * panL, peak: value * panL }, now);
-                smooth(meter, 1, { rms: value * panR, peak: value * panR }, now);
-            }
-        }
-
-        if (meters.size && now - lastNotifyAt >= NOTIFY_MS) {
+        // only structural changes notify components, levels ride the rAF loop
+        if (meters.size !== lastMeterCount || (meters.size && now - lastNotifyAt >= NOTIFY_MS)) {
+            lastMeterCount = meters.size;
             lastNotifyAt = now;
             notifySubscribers();
         }
+
+        ensureFrameLoop();
     } catch (e) {
         logger.error("meter tick failed", e);
     }
 }
 
-function MeterBar({ width, value, peak, showPeak }: { width: number; value: number; peak: number; showPeak: boolean; }) {
+// The fill translates inside its clipped box. No will-change: a layer per
+// fill made Chromium re-layerize the whole call view every frame.
+const BAR_STYLE: React.CSSProperties = {
+    position: "relative", boxSizing: "border-box", width: "100%", height: "100%",
+    background: "#000", border: "1px solid rgba(144,144,144,0.35)", borderRadius: 2, overflow: "hidden"
+};
+const FILL_STYLE: React.CSSProperties = { position: "absolute", inset: 0, backgroundImage: GRADIENT, transform: "translateY(100%)" };
+const PEAK_STYLE: React.CSSProperties = { position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "#d3d3d3", opacity: 0 };
+
+// One bar: a clipped window with a gradient fill. Live rendering writes
+// transforms through fillRef/peakRef; static callers pass value/peak instead.
+function MeterBar({ width, value, peak, showPeak, fillRef, peakRef }: {
+    width: number;
+    value?: number;
+    peak?: number;
+    showPeak?: boolean;
+    fillRef?: React.Ref<HTMLDivElement>;
+    peakRef?: React.Ref<HTMLDivElement>;
+}) {
+    const fillStyle = value == null ? FILL_STYLE : { ...FILL_STYLE, transform: `translateY(${(1 - value) * 100}%)` };
     return (
-        <div style={{ position: "relative", boxSizing: "border-box", width, height: "100%", background: "#000", border: "1px solid rgba(144,144,144,0.35)", borderRadius: 2, overflow: "hidden" }}>
-            <div
-                style={{
-                    position: "absolute", inset: 0,
-                    backgroundImage: GRADIENT,
-                    clipPath: `inset(${(1 - value) * 100}% 0 0 0)`
-                }}
-            />
-            {showPeak && peak > 0.01 && (
+        <div style={{ ...BAR_STYLE, width }}>
+            <div ref={fillRef} style={fillStyle} />
+            {showPeak && (peak == null || peak > 0.01) && (
                 <div
-                    style={{
-                        position: "absolute", top: `clamp(0px, calc(${(1 - peak) * 100}% - 1px), calc(100% - 2px))`, left: 0, right: 0, height: 2,
+                    ref={peakRef}
+                    style={peak == null ? PEAK_STYLE : {
+                        ...PEAK_STYLE,
+                        top: `clamp(0px, calc(${(1 - peak) * 100}% - 1px), calc(100% - 2px))`,
+                        opacity: 1,
                         background: peak > 0.995 ? "#ef4444" : peak > 0.916 ? "#ffa500" : "#d3d3d3"
                     }}
                 />
@@ -720,15 +1082,15 @@ function MeterBar({ width, value, peak, showPeak }: { width: number; value: numb
 }
 
 const VoiceMeter = ErrorBoundary.wrap(({ userId, height = BAR_HEIGHT, width = BAR_WIDTH, style }: { userId: string; height?: number | string; width?: number; style?: React.CSSProperties; }) => {
+    settings.use(["showPeak"]);
     const [, forceUpdate] = React.useReducer(x => x + 1, 0);
     const lastKey = React.useRef("");
 
     React.useEffect(() => {
+        // levels never re-render, this only catches structural flips
         const check = () => {
             const meter = meters.get(userId);
-            const key = meter
-                ? `${meter.mono}|${settings.store.showPeak}|${meter.display[0].toFixed(3)}|${meter.display[1].toFixed(3)}|${meter.peak[0].toFixed(3)}|${meter.peak[1].toFixed(3)}`
-                : "";
+            const key = meter ? `${meter.mono}|${meter.tap != null}|${meter.nativeAvailable === true}` : "";
 
             if (key !== lastKey.current) {
                 lastKey.current = key;
@@ -741,11 +1103,64 @@ const VoiceMeter = ErrorBoundary.wrap(({ userId, height = BAR_HEIGHT, width = BA
         return () => void subscribers.delete(check);
     }, [userId]);
 
+    const fillRefs = [React.useRef<HTMLDivElement | null>(null), React.useRef<HTMLDivElement | null>(null)];
+    const peakRefs = [React.useRef<HTMLDivElement | null>(null), React.useRef<HTMLDivElement | null>(null)];
+    const domRef = React.useRef<MeterDom | null>(null);
+
+    const attachRoot = React.useCallback((root: HTMLDivElement | null) => {
+        // with several meters per user, ref(null) must only drop this component's own dom
+        const own = domRef.current;
+        if (own) {
+            meterDoms.get(userId)?.delete(own);
+            domResize?.unobserve(own.root);
+            meterDomByRoot.delete(own.root);
+            domRef.current = null;
+        }
+        if (!root) return;
+
+        const dom: MeterDom = {
+            root,
+            fills: [fillRefs[0].current!, fillRefs[1].current!],
+            peaks: [peakRefs[0].current, peakRefs[1].current],
+            colors: ["", ""],
+            lastFill: ["", ""],
+            lastPeak: ["", ""],
+            lastPeakOpacity: ["", ""],
+            height: root.clientHeight || BAR_HEIGHT
+        };
+        let set = meterDoms.get(userId);
+        if (!set) {
+            set = new Set();
+            meterDoms.set(userId, set);
+        }
+        set.add(dom);
+        domRef.current = dom;
+        meterDomByRoot.set(root, dom);
+        domResize ??= new ResizeObserver(records => {
+            for (const record of records) {
+                const tracked = meterDomByRoot.get(record.target as HTMLElement);
+                if (tracked) tracked.height = record.contentRect.height || BAR_HEIGHT;
+            }
+        });
+        domResize.observe(root);
+        ensureFrameLoop();
+    }, [userId]);
+
+    const { showPeak } = settings.store;
+    // The peak lines mount and unmount with the setting, after attachRoot has
+    // already recorded the bar elements, so point the frame loop at the new ones.
+    React.useEffect(() => {
+        const dom = domRef.current;
+        if (!dom) return;
+        dom.peaks = [peakRefs[0].current, peakRefs[1].current];
+        dom.lastPeak = ["", ""];
+        dom.lastPeakOpacity = ["", ""];
+        dom.colors = ["", ""];
+    }, [showPeak]);
+
     const meter = meters.get(userId);
     if (!meter) return null;
 
-    const { display, peak } = meter;
-    const { showPeak } = settings.store;
     const gap = Math.max(2, Math.round(width / 2));
     const measured = (meter.tap != null || meter.nativeAvailable === true) && !meter.mono;
     const title = userId.startsWith("stream:")
@@ -759,35 +1174,39 @@ const VoiceMeter = ErrorBoundary.wrap(({ userId, height = BAR_HEIGHT, width = BA
             : "Left | Right after your local pan. Discord Desktop reports one level per participant, so both bars carry it.";
 
     return (
-        <div style={{ display: "flex", alignItems: "stretch", height, ...style }} data-vu-meter={measured ? "lr" : "level"} title={title}>
-            <MeterBar width={width} value={display[0]} peak={peak[0]} showPeak={showPeak} />
+        <div ref={attachRoot} style={{ display: "flex", alignItems: "stretch", height, ...style }} data-vu-meter={measured ? "lr" : "level"} title={title}>
+            <MeterBar width={width} fillRef={fillRefs[0]} peakRef={peakRefs[0]} showPeak={showPeak} />
             <div style={{ width: gap, display: "flex", alignItems: "stretch", justifyContent: "center" }}>
                 <div style={{ width: 1, background: "rgba(235,235,235,0.6)", borderRadius: 1 }} />
             </div>
-            <MeterBar width={width} value={display[1]} peak={peak[1]} showPeak={showPeak} />
+            <MeterBar width={width} fillRef={fillRefs[1]} peakRef={peakRefs[1]} showPeak={showPeak} />
         </div>
     );
 }, { noop: true });
 
-// A tile renders stream audio only when a content component above it received
-// the stream id (CallTile passes streamId for stream participants and null for
-// camera participants), which holds for watched and preview states alike.
+// Participant types: STREAM 0, HIDDEN_STREAM 1, USER 2, ACTIVITY 3. Current
+// builds don't pass streamId to stream tiles, so the type marks screen shares.
+const STREAM_PARTICIPANT_TYPES = new Set([0, 1]);
+
 interface ReactFiberNode {
-    memoizedProps?: { streamId?: unknown; participant?: { streamId?: unknown; }; };
+    memoizedProps?: { streamId?: unknown; participant?: { type?: unknown; streamId?: unknown; }; };
     return?: ReactFiberNode | null;
 }
 
-function fiberHasStreamId(tile: HTMLElement): boolean {
+function fiberIsStreamTile(tile: HTMLElement): boolean {
     const key = Object.keys(tile).find(k => k.startsWith("__reactFiber$"));
     if (!key) return false;
     let fiber = Reflect.get(tile, key) as ReactFiberNode | undefined;
+    let sawStreamId = false;
     for (let hops = 0; fiber && hops < 40; hops++, fiber = fiber.return ?? undefined) {
         const props = fiber.memoizedProps;
         if (!props || typeof props !== "object") continue;
-        if (props.streamId != null) return true;
-        if (props.participant?.streamId != null) return true;
+        const type = props.participant?.type;
+        if (typeof type === "number") return STREAM_PARTICIPANT_TYPES.has(type);
+        if (props.streamId != null) sawStreamId = true;
     }
-    return false;
+    // Older builds without a participant object: fall back to the stream id
+    return sawStreamId;
 }
 
 function TileMeter({ userId }: { userId?: string; }) {
@@ -804,24 +1223,35 @@ function TileMeter({ userId }: { userId?: string; }) {
         const tile = boxRef.current?.closest<HTMLElement>("div[data-selenium-video-tile]");
         if (!tile) return;
 
-        // Stream PREVIEW slots (the plugin's video wrapper with an idle video
-        // element) hide their meter until the stream is opened: unopened
-        // streams are inaudible, so a meter there lies. Camera tiles and opened
-        // streams have a live video element and keep theirs; avatar tiles carry
-        // no wrapper class at all. Stream tiles are marked by their content
-        // component receiving the stream id: the live indicator class also
-        // shows on avatar-only tiles and disappears on watched streams.
+        // Stream previews carry no audio until opened, so they get no meter.
+        // Tiles are marked by participant type, the live indicator class is unreliable.
         const syncStreamState = () => {
-            const hasStreamWrapper = !!tile.querySelector("[class*='vc-stream-enhancer-wrapper']");
             const video = tile.querySelector("video");
             const playing = video != null && video.srcObject != null && video.videoWidth > 0;
-            setIsStreamTile(fiberHasStreamId(tile));
-            setIsStreamSlot(hasStreamWrapper && !playing);
+            const streamTile = fiberIsStreamTile(tile);
+            setIsStreamTile(streamTile);
+            setIsStreamSlot(streamTile && !playing);
         };
         syncStreamState();
-        const observer = new MutationObserver(syncStreamState);
+        let syncTimer: ReturnType<typeof setTimeout> | undefined;
+        const observer = new MutationObserver(records => {
+            if (syncTimer !== undefined) return;
+            if (records.every(record => boxRef.current?.contains(record.target))) return;
+            syncTimer = setTimeout(() => {
+                syncTimer = undefined;
+                syncStreamState();
+            }, 200);
+        });
         observer.observe(tile, { childList: true, subtree: true, attributes: true });
-        return () => observer.disconnect();
+        // A stream starting or stopping playback changes no DOM: its video only
+        // gains or loses frames. Media events do not bubble, so listen in capture.
+        const mediaEvents = ["loadedmetadata", "playing", "emptied", "ended"];
+        mediaEvents.forEach(name => tile.addEventListener(name, syncStreamState, true));
+        return () => {
+            if (syncTimer !== undefined) { clearTimeout(syncTimer); syncTimer = undefined; }
+            observer.disconnect();
+            mediaEvents.forEach(name => tile.removeEventListener(name, syncStreamState, true));
+        };
     }, []);
 
     React.useLayoutEffect(() => {
@@ -888,6 +1318,7 @@ function TileMeter({ userId }: { userId?: string; }) {
 }
 
 export default definePlugin({
+    id: "VoiceVUMeters",
     name: "VoiceVUMeters",
     description: "Draws left and right voice meters with a divider next to everyone in your voice channel and on call tiles.",
     authors: [TestcordDevs.Kurtzon, TestcordDevs.DavidHiFi],
@@ -907,13 +1338,8 @@ export default definePlugin({
         {
             find: "data-selenium-video-tile",
             replacement: {
-                // 1.0.9261 moved `ref` after participantUserId in the tile
-                // destructuring and now closes the JSX call with `})}}`. USRBG and
-                // the tile-avatar plugins inject Object.assign statements right
-                // after the destructuring when they patch first, so also skip past
-                // any of those before `return` (notes/2026-10-08-voice-tile-avatars.md).
-                match: /(?<=participantUserId:(\i).{0,40}?\}=\i;(?:[^;\n]{0,220}?Object\.assign\([^;\n]+?\);){0,3}return.{0,200}?children:)(\i)(?=\}\)\}\})/,
-                replace: "[$2,$self.renderTileMeter($1)]"
+                match: /"data-selenium-video-tile":(\i),(.{0,30}?children:)(\i)/,
+                replace: "\"data-selenium-video-tile\":$1,$2[$3,$self.renderTileMeter($1)]"
             }
         }
     ],
@@ -931,22 +1357,32 @@ export default definePlugin({
             settings.store.showPeak = true;
             settings.store.peakHoldEnabled = true;
         }
+        document.addEventListener("visibilitychange", onVisibilityChange);
         intervalId = setInterval(tick, POLL_MS);
     },
 
     stop() {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+
         if (intervalId !== undefined) {
             clearInterval(intervalId);
             intervalId = undefined;
         }
 
+        parkFrameLoop();
+        syncVoiceActivity(false);
+        domResize?.disconnect();
+        domResize = undefined;
+        meterDoms.clear();
+
         dropAll();
         connection = null;
+        lastMeterCount = 0;
         statsInFlight = false;
         participantBridge = undefined;
         bridgeChecked = false;
         selfOutboundLinear = 0;
-        inputMismatchDrops = 0;
-        inputSuspendKey = null;
+        selfSentAt = 0;
+        // inputMismatchDrops and inputSuspendKey stay: a tap proven dead on this device is dead in the next call too
     }
 });
