@@ -189,6 +189,7 @@ async function start() {
 const Native = VencordNative.pluginHelpers.XSOverlay as PluginNative<typeof import("./native")>;
 
 export default definePlugin({
+    id: "XSOverlay",
     name: "XSOverlay",
     description: "Forwards discord notifications to XSOverlay, for easy viewing in VR",
     tags: ["Notifications"],

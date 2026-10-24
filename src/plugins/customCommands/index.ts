@@ -88,6 +88,7 @@ export function registerTagCommand(tag: Tag) {
 
 migratePluginSettings("CustomCommands", "MessageTags");
 export default definePlugin({
+    id: "CustomCommands",
     name: "CustomCommands",
     description: "Allows you to create custom slash commands / tags",
     dependencies: ["CommandsAPI"],

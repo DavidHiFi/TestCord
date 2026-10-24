@@ -28,6 +28,7 @@ function makeFreaky(text: string) {
 }
 
 export default definePlugin({
+    id: "Freaky",
     name: "Freaky",
     description: "freaky.",
     authors: [TestcordDevs.x2b],

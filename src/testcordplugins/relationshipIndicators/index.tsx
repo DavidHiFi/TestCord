@@ -63,6 +63,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "RelationshipIndicators",
     name: "RelationshipIndicators",
     authors: [TestcordDevs.x2b],
     settings,

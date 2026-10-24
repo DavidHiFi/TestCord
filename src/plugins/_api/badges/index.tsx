@@ -316,6 +316,7 @@ export function BadgeContextMenu({ badge }: { badge: Omit<ProfileBadge, "id"> & 
 }
 
 export default definePlugin({
+    id: "BadgeAPI",
     name: "BadgeAPI",
     description: "API to add badges to users",
     authors: [Devs.Megu, Devs.Ven, Devs.TheSun],

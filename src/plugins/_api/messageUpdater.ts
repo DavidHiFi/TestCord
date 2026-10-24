@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "MessageUpdaterAPI",
     name: "MessageUpdaterAPI",
     description: "API for updating and re-rendering messages.",
     authors: [Devs.Nuckyz],

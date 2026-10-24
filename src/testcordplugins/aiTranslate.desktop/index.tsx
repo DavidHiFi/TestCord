@@ -108,6 +108,7 @@ const WrappedAITranslateChatButton = ErrorBoundary.wrap(AITranslateChatButtonCom
 const AITranslateChatButton: ChatBarButtonFactory = props => <WrappedAITranslateChatButton {...props} />;
 
 export default definePlugin({
+    id: "AITranslate",
     name: "AITranslate",
     description: "Translate your messages with free OpenCode Zen AI models before Discord sends them.",
     tags: ["Chat", "Utility"],

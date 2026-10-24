@@ -13,6 +13,7 @@ import style from "./style.css?managed";
 const classes = findCssClassesLazy("sidebar", "membersWrap", "members");
 
 export default definePlugin({
+    id: "GlassPanels",
     name: "GlassPanels",
     description: "Frosted-glass blur on the sidebar and member list.",
     authors: [{ name: "Sharp", id: 0n }],

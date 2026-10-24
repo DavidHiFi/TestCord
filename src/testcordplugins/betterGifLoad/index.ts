@@ -50,6 +50,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "BetterGifLoad",
     name: "BetterGifLoad",
     description: "Change the quality of GIFs in the GIF picker. Improves performance and lowers internet usage.",
     tags: ["Media", "Utility"],

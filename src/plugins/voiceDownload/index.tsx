@@ -10,6 +10,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "VoiceDownload",
     name: "VoiceDownload",
     description: "Adds a download to voice messages. (Opens a new browser tab)",
     tags: ["Voice", "Media"],

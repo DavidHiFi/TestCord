@@ -25,6 +25,7 @@ const changeListener = () => {
 };
 
 export default definePlugin({
+    id: "CursorMacOS",
     name: "CursorMacOS",
     enabledByDefault: false,
     description: "Replaces Windows SYSTEM cursors with authentic macOS cursors (.cur/.ani). Restores default cursors when disabled.",

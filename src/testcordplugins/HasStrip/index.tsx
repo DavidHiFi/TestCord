@@ -87,6 +87,7 @@ function scheduleScan() {
 }
 
 export default definePlugin({
+    id: "HasStrip",
     name: "HasStrip",
     description: "Removes :has() stylesheet rules to reduce style recalculation cost, with visual tradeoffs.",
     authors: [TestcordDevs.DavidHiFi],

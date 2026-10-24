@@ -15,6 +15,14 @@
     padding-right: 4px;
 }
 
+/* Remove Discord's default borders on voice buttons so they can be styled cleanly */
+.voice-user-button-container button {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
 div[class*='list'][class*='collapsed'] .voice-user-buttons {
     display: none;
 }

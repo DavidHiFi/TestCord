@@ -23,6 +23,7 @@ import { React } from "@webpack/common";
 let ERROR_CODES: Record<string, string> | undefined;
 
 export default definePlugin({
+    id: "ReactErrorDecoder",
     name: "ReactErrorDecoder",
     description: 'Replaces "Minified React Error" with the actual error.',
     tags: ["Developers"],

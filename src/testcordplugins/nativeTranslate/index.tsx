@@ -53,6 +53,7 @@ const messageCtxPatch: NavContextMenuPatchCallback = (children, { message }: { m
 let tooltipTimeout: any;
 
 export default definePlugin({
+    id: "NativeTranslate",
     name: "NativeTranslate",
     description: "translate plugin for those who wanna seem like real native lang speakers (removes capital letters commas and dots from translated content to seem more natural)",
     tags: ["Chat", "Utility"],

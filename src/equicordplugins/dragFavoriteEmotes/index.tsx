@@ -42,6 +42,7 @@ type EmojiDescriptor = {
 };
 
 export default definePlugin({
+    id: "DragFavoriteEmotes",
     name: "DragFavoriteEmotes",
     authors: [EquicordDevs.PWall],
     description: "Adds the ability to change the order of your favorite emotes",

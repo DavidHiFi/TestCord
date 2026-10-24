@@ -463,6 +463,7 @@ function rewriteUrl(url: URL, address: string) {
 }
 
 export default definePlugin({
+    id: "CustomDNS",
     name: "CustomDNS",
     description: "Resolve Discord hosts through DNS.SB, Quad9, or custom DNS servers.",
     tags: ["Privacy", "Utility"],

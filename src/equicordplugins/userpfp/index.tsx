@@ -63,6 +63,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "UserPFP",
     name: "UserPFP",
     description: "Allows you to set local static or animated avatars for yourself and other users",
     tags: ["Appearance", "Customisation", "Servers"],

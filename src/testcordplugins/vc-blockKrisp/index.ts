@@ -8,6 +8,7 @@ import { Devs,TestcordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "BlockKrisp",
     name: "BlockKrisp",
     description: "Prevent Krisp from loading",
     tags: ["Voice", "Utility"],

@@ -1183,6 +1183,7 @@ function toggleChannel(channelNumber: number) {
 }
 
 export default definePlugin({
+    id: "AutoMessageSender",
     name: "AutoMessageSender",
     description: "Automatically sends a sequence of messages to multiple channels with rotation and verification detection",
     longDescription: "AutoMessageSender allows you to set up automatic message sequences that are sent to up to 10 target Discord channels with automatic rotation. Includes verification message detection with sound alerts, auto-pause/resume on detection, and individual channel enable/disable toggles.",

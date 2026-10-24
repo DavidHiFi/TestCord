@@ -38,6 +38,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "StreamingCodecDisabler",
     name: "StreamingCodecDisabler",
     description: "Disable video codecs of your choice for streaming and cameras.",
     tags: ["Utility", "Voice"],

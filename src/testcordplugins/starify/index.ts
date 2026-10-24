@@ -8,6 +8,7 @@ import { findOption, RequiredMessageOption } from "@api/Commands";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "Starify",
     name: "Starify",
     description: "Adds /starify to wrap your message in sparkles ｡ﾟ☆.",
     authors: [{ name: "Sharp", id: 0n }],

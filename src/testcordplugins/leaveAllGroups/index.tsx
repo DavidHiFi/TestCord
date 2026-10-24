@@ -296,6 +296,7 @@ const UserContextMenuPatch: NavContextMenuPatchCallback = (children, props) => {
 };
 
 export default definePlugin({
+    id: "LeaveAllGroups",
     name: "LeaveAllGroups",
     description: "Allows leaving all Discord groups with one click with configurable rate limiting",
     tags: ["Utility", "Chat"],

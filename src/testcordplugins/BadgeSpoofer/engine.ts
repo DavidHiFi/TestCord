@@ -8,7 +8,7 @@ import * as DataStore from "@api/DataStore";
 import { Logger } from "@utils/Logger";
 import { sleep } from "@utils/misc";
 import { ChannelType } from "@vencord/discord-types/enums";
-import { findStoreLazy } from "@webpack";
+import { findByPropsLazy, findStoreLazy } from "@webpack";
 import {
     AuthenticationStore, ChannelActions, ChannelStore, GuildChannelStore, GuildStore,
     PermissionsBits, PermissionStore, RestAPI, RTCConnectionStore, SelectedChannelStore,
@@ -674,29 +674,58 @@ export class BadgeSpooferEngine {
         return events;
     }
 
+    private getAuthToken(): string | null {
+        const candidates = [
+            () => (AuthenticationStore as any)?.getToken?.(),
+            () => (findStoreLazy("AuthenticationStore") as any)?.getToken?.(),
+            () => (findByPropsLazy("getToken") as any)?.getToken?.()
+        ];
+
+        for (const read of candidates) {
+            try {
+                const token = read();
+                if (typeof token === "string" && token.length > 0) return token;
+            } catch { }
+        }
+
+        return null;
+    }
+
     private async postEvents(events: any[], analyticsToken: string, session: SessionInfo): Promise<number> {
         const payload = {
             token: analyticsToken,
             events
         };
 
-        try {
-            if (typeof VencordNative !== "undefined" && VencordNative.privacy?.postScienceEvents) {
-                const res = await VencordNative.privacy.postScienceEvents(payload, undefined, undefined, session.superProps);
+        const authToken = this.getAuthToken();
+
+        // Discord's /science endpoint returns 401 for unauthenticated requests.
+        // This passthrough used to pass `undefined`, so every run was rejected
+        // as "auth rejected" before the authenticated fallbacks could run.
+        if (authToken && typeof VencordNative !== "undefined" && VencordNative.privacy?.postScienceEvents) {
+            try {
+                const res = await VencordNative.privacy.postScienceEvents(payload, authToken, undefined, session.superProps);
                 if (res && typeof res.status === "number" && res.status > 0) {
                     return res.status;
                 }
+            } catch (err: any) {
+                logger.warn("Native science passthrough failed, falling back:", err);
             }
-        } catch { }
+        }
 
+        // RestAPI applies the client's own auth + super-properties. It resolves
+        // with { ok, status, body } even for HTTP errors, so read the status
+        // rather than assuming a resolved promise means success.
         try {
             const res = await RestAPI.post({
                 url: SCIENCE_URL,
                 body: payload
             });
-            return res?.status || (res?.ok ? 204 : 0);
+            if (res && typeof res.status === "number") return res.status;
+            return res?.ok ? 204 : 0;
         } catch (err: any) {
             if (err?.status) return err.status;
+            logger.warn("RestAPI science fallback failed:", err);
         }
 
         try {

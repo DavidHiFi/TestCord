@@ -140,6 +140,7 @@ function ChatBadges({ author }: { author: User; }) {
 }
 
 export default definePlugin({
+    id: "ShowBadgesInChat",
     name: "ShowBadgesInChat",
     authors: [Devs.Inbestigator, EquicordDevs.KrystalSkull],
     description: "Shows the message author's badges beside their name in chat.",

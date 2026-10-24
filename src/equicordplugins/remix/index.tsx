@@ -68,6 +68,7 @@ export function sendRemix(blob: Blob) {
 }
 
 export default definePlugin({
+    id: "RemixRevived",
     name: "RemixRevived",
     description: "Revives Remix and brings it to Desktop",
     tags: ["Customisation", "Fun"],

@@ -27,6 +27,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MoreJumboEmoji",
     name: "MoreJumboEmoji",
     description: "Unlock the maximum amount of jumbo emoji",
     authors: [TestcordDevs.x2b],

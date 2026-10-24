@@ -123,6 +123,7 @@ async function fetchCategories() {
 
 migratePluginSettings("GifProviderSwitcher", "TenorGifSearch");
 export default definePlugin({
+    id: "GifProviderSwitcher",
     name: "GifProviderSwitcher",
     description: "Allows you to use Tenor or Giphy GIF search instead of Klipy",
     authors: [Devs.Lunascape, Devs.Ven],

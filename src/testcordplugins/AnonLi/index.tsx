@@ -163,6 +163,7 @@ const channelAttachContextMenuPatch: NavContextMenuPatchCallback = children => {
 };
 
 export default definePlugin({
+    id: "AnonLi",
     name: "AnonLi",
     description: "Uploads encrypted files to Anon.li Drop from the upload button context menu.",
     authors: [{ name: "irritably", id: 928787166916640838n }],

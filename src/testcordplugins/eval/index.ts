@@ -28,6 +28,7 @@ async function run(code: string) {
 }
 
 export default definePlugin({
+    id: "Eval",
     name: "Eval",
     description: "Adds a slash command to run JavaScript on your own client",
     tags: ["Developers", "Console"],

@@ -59,6 +59,7 @@ const listener: MessageSendListener = async (channelId, msg) => {
 };
 
 export default definePlugin({
+    id: "LongMsgTxt",
     name: "LongMsgTxt",
     description: "Converts messages over the character limit (2000, or 4000 with Nitro) into a .txt file attachment. doesnt work with splitlargemessages.",
     tags: ["Chat", "Utility"],

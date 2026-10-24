@@ -28,6 +28,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ShyTyping",
     name: "ShyTyping",
     description: "Prevents you from accidentally revealing that you're lurking in a channel",
     tags: ["Chat", "Privacy"],

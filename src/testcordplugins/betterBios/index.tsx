@@ -8,6 +8,7 @@ const MemberSince = findComponentByCodeLazy(".memberSinceWrapper,");
 const classes = findByPropsLazy("interactiveNormal");
 
 export default definePlugin({
+    id: "BetterBios",
     name: "BetterBios",
     authors: [TestcordDevs.x2b],
     description: "Improves Discord's bio redesign",

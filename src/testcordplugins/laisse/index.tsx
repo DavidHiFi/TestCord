@@ -125,6 +125,7 @@ const UserContextMenuPatch: NavContextMenuPatchCallback = (
 };
 
 export default definePlugin({
+    id: "Leash",
     name: "Leash",
     description:
         "Leashes a user to you by automatically moving them to the voice channel you go to",

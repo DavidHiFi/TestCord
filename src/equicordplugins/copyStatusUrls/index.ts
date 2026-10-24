@@ -21,6 +21,7 @@ interface MakeContextMenuProps {
 const getMetadataFromApi: (activity: any, userId: string) => Promise<any> = findByCodeLazy("null/undefined");
 
 export default definePlugin({
+    id: "CopyStatusUrls",
     name: "CopyStatusUrls",
     description: "Copy the users status url when you right-click it",
     tags: ["Activity", "Utility"],

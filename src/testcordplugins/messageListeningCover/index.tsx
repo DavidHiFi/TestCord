@@ -80,6 +80,7 @@ function ListeningCover({ message }: MessageDecorationProps) {
 const Decorated = ErrorBoundary.wrap(ListeningCover, { noop: true });
 
 export default definePlugin({
+    id: "MessageListeningCover",
     name: "MessageListeningCover",
     description: "Shows the album cover of what an author is listening to",
     tags: ["Chat", "Privacy"],

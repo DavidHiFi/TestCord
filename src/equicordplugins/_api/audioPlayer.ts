@@ -9,6 +9,7 @@ import { EquicordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "AudioPlayerAPI",
     name: "AudioPlayerAPI",
     description: "API to play internal Discord audio files or external audio links.",
     authors: [EquicordDevs.Etorix],

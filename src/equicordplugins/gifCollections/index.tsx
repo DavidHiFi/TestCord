@@ -46,6 +46,7 @@ const gifPickerContextMenuPatch: NavContextMenuPatchCallback = (children, props)
 };
 
 export default definePlugin({
+    id: "GifCollections",
     name: "GifCollections",
     description: "Allows you to create collections of gifs.",
     tags: ["Chat", "Emotes"],

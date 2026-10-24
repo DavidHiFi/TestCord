@@ -91,6 +91,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "AlwaysAnimate",
     name: "AlwaysAnimate",
     description: "Animates anything that can be animated",
     tags: ["Appearance", "Fun"],

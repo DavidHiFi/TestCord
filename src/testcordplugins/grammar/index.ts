@@ -5,7 +5,7 @@
  */
 
 import { addMessagePreSendListener, MessageSendListener,removeMessagePreSendListener, } from "@api/MessageEvents";
-import { definePluginSettings, Settings } from "@api/Settings";
+import { definePluginSettings } from "@api/Settings";
 import { TestcordDevs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 
@@ -23,6 +23,7 @@ const settings = definePluginSettings(
     });
 
 export default definePlugin({
+    id: "Grammar",
     name: "Grammar",
     description: "Tweaks your messages to make them look nicer and have better grammar",
     tags: ["Chat", "Utility"],

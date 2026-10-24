@@ -60,6 +60,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "NewUserIndicator",
     name: "NewUserIndicator",
     description: "Adds a indicator if users account is created recently",
     tags: ["Friends", "Utility"],

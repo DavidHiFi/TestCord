@@ -560,6 +560,7 @@ interface Size {
 let area: Size | null = null;
 
 export default definePlugin({
+    id: "BetterImageEditor",
     name: "BetterImageEditor",
     description: "Keeps a shelf of your pictures in the avatar and banner editor, and remembers how you cropped each one.",
     authors: [EquicordDevs.heart_menace],

@@ -128,6 +128,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "SmoothMessages",
     name: "SmoothMessages",
     description: "Makes new messages slide in smoothly from the left instead of appearing sharply.",
     authors: [TestcordDevs.x2b],

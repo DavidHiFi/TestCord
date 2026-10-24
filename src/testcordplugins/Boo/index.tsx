@@ -12,6 +12,7 @@ import Boo from "./components/Boo";
 import { BooProps } from "./types";
 
 export default definePlugin({
+    id: "Boo",
     name: "Boo",
     description: "A cute ghost will appear if you don't answer their DMs",
     tags: ["Fun", "Utility"],

@@ -259,6 +259,7 @@ const messageContextPatch = (children: any, { message }: { message: any; }) => {
 };
 
 export default definePlugin({
+    id: "EncryptedMessage",
     name: "EncryptedMessage",
     description: "Encrypts your messages with 400 unique techniques (0–399). A random technique is chosen each time you send a message. Only those who know the key can decrypt.",
     tags: ["Privacy", "Chat", "Nightcord"],

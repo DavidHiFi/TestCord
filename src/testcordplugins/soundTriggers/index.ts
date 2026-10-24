@@ -43,6 +43,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "SoundTriggers",
     name: "SoundTriggers",
     description: "Chaotic plugin for mapping text/emojis to sound",
     tags: ["Voice", "Utility"],

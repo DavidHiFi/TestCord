@@ -111,6 +111,7 @@ function applyRuntimePatch() {
 }
 
 export default definePlugin({
+    id: "UnlimitedFavoriteGIFs",
     name: "UnlimitedFavoriteGIFs",
     description: "Bypasses the native GIF favorites size limit, allowing you to save unlimited GIFs.",
     tags: ["Media", "Utility"],

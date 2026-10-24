@@ -998,6 +998,7 @@ const handleOpenMessageScrapper = () => {
 };
 
 export default definePlugin({
+    id: "MessagesScrapper",
     name: "MessagesScrapper",
     description: "Delete your own messages in DMs or servers with a beautiful progress interface. Logs each run to JSON.",
     tags: ["Chat", "Utility"],

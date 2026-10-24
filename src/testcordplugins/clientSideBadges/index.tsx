@@ -102,6 +102,7 @@ const settings = definePluginSettings({
 const registered: ProfileBadge[] = [];
 
 export default definePlugin({
+    id: "ClientSideBadges",
     name: "ClientSideBadges",
     description: "Show extra badges on your own profile. Other users never see them.",
     tags: ["Customisation", "Appearance"],

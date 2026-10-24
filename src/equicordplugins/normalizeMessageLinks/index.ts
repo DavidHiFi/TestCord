@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NormalizeMessageLinks",
     name: "NormalizeMessageLinks",
     description: "Strip canary/ptb from message links",
     tags: ["Chat"],

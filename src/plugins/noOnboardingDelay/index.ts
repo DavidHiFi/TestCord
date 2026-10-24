@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NoOnboardingDelay",
     name: "NoOnboardingDelay",
     description: "Skips the slow and annoying onboarding delay",
     tags: ["Utility", "Servers"],

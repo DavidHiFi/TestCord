@@ -8,6 +8,7 @@ import { findOption, RequiredMessageOption } from "@api/Commands";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "ClapText",
     name: "ClapText",
     description: "Adds /clap to 👏 put 👏 claps 👏 between 👏 your 👏 words.",
     authors: [{ name: "Sharp", id: 0n }],

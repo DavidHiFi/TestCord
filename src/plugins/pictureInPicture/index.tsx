@@ -22,6 +22,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "PictureInPicture",
     name: "PictureInPicture",
     description: "Adds picture in picture to videos (next to the Download button)",
     tags: ["Media", "Utility"],

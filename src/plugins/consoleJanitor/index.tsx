@@ -106,6 +106,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ConsoleJanitor",
     name: "ConsoleJanitor",
     description: "Disables annoying console messages/errors",
     authors: [Devs.Nuckyz, Devs.sadan],

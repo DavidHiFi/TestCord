@@ -635,6 +635,7 @@ function handleMemberJoin(guildId: string | undefined, userId: string | undefine
 }
 
 export default definePlugin({
+    id: "StaffScanner",
     name: "StaffScanner",
     description: "Detects staff by mod permissions in voice channels, highlights their names in red and alerts on join/leave. Also scans server members for the Discord Staff badge.",
     authors: [

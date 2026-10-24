@@ -116,6 +116,7 @@ const guildContextPatch: NavContextMenuPatchCallback = (children, props: { guild
 type RouteRenderer = (props: RouteRenderPropsLike) => React.ReactNode;
 
 export default definePlugin({
+    id: "HyprTiles",
     name: "HyprTiles",
     description: "Hyprland-style tiled workspaces for Discord channels, DMs, and threads.",
     authors: [EquicordDevs.benjii],

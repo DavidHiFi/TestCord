@@ -539,6 +539,7 @@ const userContextPatch: NavContextMenuPatchCallback = (children, { user }: any) 
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "FakePerm",
     name: "FakePerm",
     enabledByDefault: false,
     description: "Visually simulates moderation options in the right-click menu. No real action.",

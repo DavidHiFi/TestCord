@@ -1234,6 +1234,7 @@ function TileMeter({ userId }: { userId?: string; }) {
 }
 
 export default definePlugin({
+    id: "VoiceVUMeters",
     name: "VoiceVUMeters",
     description: "Draws left and right voice meters with a divider next to everyone in your voice channel and on call tiles.",
     authors: [TestcordDevs.Kurtzon, TestcordDevs.DavidHiFi],

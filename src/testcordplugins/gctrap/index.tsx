@@ -150,7 +150,8 @@ function GctrapHeaderButton() {
 }
 
 export default definePlugin({
-    name: "gctrap",
+    id: "gctrap",
+    name: "GCTrap",
     description: "Builds group chats in waves and keeps them exactly the way you set them up.",
     authors: [TestcordDevs.x2b],
     tags: ["Friends", "Utility"],

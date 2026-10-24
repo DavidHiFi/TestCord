@@ -66,6 +66,7 @@ function toggleHandler(e: KeyboardEvent) {
 }
 
 export default definePlugin({
+    id: "ProfanityFilter",
     name: "ProfanityFilter",
     description: "Strictly removes user-defined words from outgoing messages (whole-word only). Sends :duck: if filtering empties the message.",
     authors: [

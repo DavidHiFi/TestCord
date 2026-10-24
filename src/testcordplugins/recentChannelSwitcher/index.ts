@@ -579,6 +579,7 @@ function onKeyUp(event: KeyboardEvent) {
 }
 
 export default definePlugin({
+    id: "RecentChannelSwitcher",
     name: "RecentChannelSwitcher",
     description: "Use Ctrl+Tab to preview and switch between recently opened channels and DMs.",
     tags: ["Shortcuts", "Chat", "Utility"],

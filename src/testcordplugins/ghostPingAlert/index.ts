@@ -71,6 +71,7 @@ function onMessageDelete({ id }: any) {
 }
 
 export default definePlugin({
+    id: "GhostPingAlert",
     name: "GhostPingAlert",
     description: "Shows a toast notification when someone deletes a message that pinged you.",
     authors: [{ name: "Sharp", id: 0n }],

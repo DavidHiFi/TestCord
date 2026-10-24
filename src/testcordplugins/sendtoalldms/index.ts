@@ -13,6 +13,7 @@ import { CommandArgument, CommandContext } from "@vencord/discord-types";
 import { ChannelStore, RelationshipStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "SendToAllDMs",
     name: "SendToAllDMs",
     description: "Adds a command to send a message to all friends' DMs with blacklist/whitelist settings. WE CANNOT GUARANTEE THIS PLUGIN WON'T GET YOU BANNED.",
     tags: ["Chat", "Utility"],

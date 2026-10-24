@@ -27,6 +27,7 @@ import { constants as FsConstants, readFileSync } from "fs";
 import { access, readdir, readFile } from "fs/promises";
 import { minify as minifyHtml } from "html-minifier-terser";
 import { dirname, join, relative, resolve } from "path";
+import ts from "typescript";
 import { fileURLToPath } from "url";
 import { promisify } from "util";
 
@@ -129,8 +130,10 @@ export async function buildOrWatchAll(buildConfigs) {
     }
 }
 
-const PluginDefinitionNameMatcher =
-    /definePlugin\(\{\s*(["'])?name\1:\s*(["'`])(.+?)\2/;
+const tsUnwrap = node => {
+    while (node && (ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node))) node = node.expression;
+    return node;
+};
 /**
  * @param {string} base
  * @param {import("fs").Dirent} dirent
@@ -138,23 +141,65 @@ const PluginDefinitionNameMatcher =
 export async function resolvePluginName(base, dirent) {
     try {
         const fullPath = join(base, dirent.name);
-        const content = dirent.isFile()
-            ? await readFile(fullPath, "utf-8")
-            : await (async () => {
-                for (const file of ["index.ts", "index.tsx"]) {
-                    try {
-                        return await readFile(join(fullPath, file), "utf-8");
-                    } catch {
-                        continue;
-                    }
+        let filePath = fullPath;
+        let content = null;
+
+        if (dirent.isFile()) {
+            content = await readFile(fullPath, "utf-8");
+        } else {
+            for (const file of ["index.ts", "index.tsx"]) {
+                try {
+                    filePath = join(fullPath, file);
+                    content = await readFile(filePath, "utf-8");
+                    break;
+                } catch {
+                    continue;
                 }
-                return null;
-            })();
+            }
+        }
 
         if (!content) return null;
 
-        const match = PluginDefinitionNameMatcher.exec(content);
-        return match?.[3] ?? null;
+        // Parse instead of regexing: `name` is not always the first property
+        // (authors/settings/flux can precede it), and nested objects also have
+        // `name` keys that a regex cannot distinguish from the plugin's own.
+        // Use the real file path for the script kind, not the directory: `.tsx`
+        // files parsed as `.ts` lose their AST shape around JSX.
+        const sourceFile = ts.createSourceFile(
+            filePath,
+            content,
+            ts.ScriptTarget.Latest,
+            true,
+            filePath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+        );
+
+        let name = null;
+        const visit = node => {
+            if (name !== null) return;
+            if (
+                ts.isCallExpression(node) &&
+                ts.isIdentifier(node.expression) &&
+                node.expression.text === "definePlugin"
+            ) {
+                const arg = tsUnwrap(node.arguments[0]);
+                if (arg && ts.isObjectLiteralExpression(arg)) {
+                    for (const prop of arg.properties) {
+                        if (!ts.isPropertyAssignment(prop)) continue;
+                        const propName = prop.name;
+                        const isName =
+                            (ts.isIdentifier(propName) && propName.text === "name") ||
+                            (ts.isStringLiteral(propName) && propName.text === "name");
+                        if (!isName) continue;
+                        const init = tsUnwrap(prop.initializer);
+                        if (ts.isStringLiteral(init) || ts.isNoSubstitutionTemplateLiteral(init)) name = init.text;
+                        break;
+                    }
+                }
+            }
+            ts.forEachChild(node, visit);
+        };
+        visit(sourceFile);
+        return name;
     } catch {
         return null;
     }

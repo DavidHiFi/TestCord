@@ -697,6 +697,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "IGP",
     name: "IGP",
     description: "Illegalcord PGP encryption",
     authors: [{ name: "irritably", id: 928787166916640838n }],

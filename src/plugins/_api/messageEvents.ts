@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "MessageEventsAPI",
     name: "MessageEventsAPI",
     description: "Api required by anything using message events.",
     authors: [Devs.Arjix, Devs.hunt, Devs.Ven],

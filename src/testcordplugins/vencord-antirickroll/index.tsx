@@ -154,6 +154,7 @@ function RickrollWarning({ message, isCustom }: { message: Message; isCustom: bo
 }
 
 export default definePlugin({
+    id: "AntiRickroll",
     name: "AntiRickroll",
     description: "Warns you of potential Rickrolls in messages, including masked links (supports custom rules)",
     tags: ["Fun", "Utility"],

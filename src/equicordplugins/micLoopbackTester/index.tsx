@@ -132,6 +132,7 @@ function MicLoopbackButton({ iconForeground, hideTooltips, nameplate }: UserArea
 const MicLoopbackUserAreaButton: UserAreaButtonFactory = props => <MicLoopbackButton {...props} />;
 
 export default definePlugin({
+    id: "MicLoopbackTester",
     name: "MicLoopbackTester",
     description: "Adds mic loopback test icon to the user panel",
     tags: ["Utility", "Voice"],

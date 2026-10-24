@@ -50,6 +50,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "BetterMicrophone",
     name: "BetterMicrophone", hidden: true,
     description: "This plugin allows you to further customize your microphone.",
     tags: ["Voice", "Utility"],

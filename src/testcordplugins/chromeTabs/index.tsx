@@ -253,6 +253,7 @@ const openInNewTab: NavContextMenuPatchCallback = (children, props: { channel: C
 };
 
 export default definePlugin({
+    id: "ChromeTabs",
     name: "ChromeTabs",
     description: "Browser-style channel tabs styled after Google Chrome",
     tags: ["Appearance", "Customisation", "Organisation", "Servers", "Utility"],

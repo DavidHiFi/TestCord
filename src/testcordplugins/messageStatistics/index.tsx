@@ -181,6 +181,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MessageStatistics",
     name: "MessageStatistics",
     description: "Tracks how many messages you send per day, week, month and year, with a daily goal and streaks.",
     authors: [{ name: "Dann", id: 0n }],

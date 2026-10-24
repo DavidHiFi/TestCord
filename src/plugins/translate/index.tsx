@@ -62,6 +62,7 @@ function getMessageContent(message: Message) {
 let tooltipTimeout: any;
 
 export default definePlugin({
+    id: "Translate",
     name: "Translate",
     description: "Translate messages with Google Translate, DeepL or Kagi.",
     dependencies: ["ChatInputButtonAPI", "MessageAccessoriesAPI", "MessagePopoverAPI"],

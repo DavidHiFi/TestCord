@@ -25,6 +25,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "PermissionFreeWill",
     name: "PermissionFreeWill",
     description: "Disables the client-side restrictions for channel permission management.",
     tags: ["Servers", "Roles"],

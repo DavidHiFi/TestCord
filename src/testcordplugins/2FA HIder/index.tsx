@@ -7,6 +7,7 @@
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "1FA",
     name: "1FA",
     description: "hide that annoying 2fa moderation warning",
     tags: ["Privacy", "Utility"],

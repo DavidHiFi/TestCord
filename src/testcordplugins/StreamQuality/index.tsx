@@ -109,6 +109,7 @@ function refresh(): void {
 }
 
 export default definePlugin({
+    id: "CustomStreamQuality",
     name: "CustomStreamQuality",
     description: "Set your stream's resolution, frame rate, bitrate and codec, and choose what the stream badge shows viewers.",
     tags: ["Voice", "Utility"],

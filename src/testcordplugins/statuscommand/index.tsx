@@ -62,6 +62,7 @@ async function deleteRevertData() {
 }
 
 export default definePlugin({
+    id: "StatusCommand",
     name: "StatusCommand",
     description: "Set a temporary status that reverts after a set duration (e.g. /status dnd 1h)",
     tags: ["Activity", "Commands"],

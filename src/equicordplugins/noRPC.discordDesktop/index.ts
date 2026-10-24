@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NoRPC",
     name: "NoRPC",
     description: "Disables Discord's RPC server.",
     tags: ["Privacy", "Servers"],

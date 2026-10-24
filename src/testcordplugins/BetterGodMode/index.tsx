@@ -62,6 +62,7 @@ const ContextMenuPatch: NavContextMenuPatchCallback = (children, { guild }: { gu
 };
 
 export default definePlugin({
+    id: "BetterGodMode [Risky]",
     name: "BetterGodMode [Risky]",
     description: "Get all permissions on any guild (client-side)",
     authors: [EquicordDevs.TheArmagan, TestcordDevs.sirphantom89],

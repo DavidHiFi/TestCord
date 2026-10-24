@@ -321,6 +321,7 @@ function showCycleToast() {
 }
 
 export default definePlugin({
+    id: "RecentDMSwitcher",
     name: "RecentDMSwitcher",
     description: "Ctrl+Tab between most recently used DMs (Ctrl+Shift+Tab reverse)",
     tags: ["Chat", "Utility"],

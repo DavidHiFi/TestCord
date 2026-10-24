@@ -9,6 +9,7 @@ import definePlugin from "@utils/types";
 import { setColorPicker, setCreateScroller, setNewCustomizationSection, setRoleMemberPopout } from "@webpack/common";
 
 export default definePlugin({
+    id: "ConcatenatedComponentExtractor",
     name: "ConcatenatedComponentExtractor",
     description: "Extract components that have been concatenated by the bundler",
     authors: [Devs.sadan],

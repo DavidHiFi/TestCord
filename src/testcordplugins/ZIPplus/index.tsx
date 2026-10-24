@@ -537,6 +537,7 @@ function ZipAttachmentPreview(props: { attachment: ZipAttachmentLike; }) {
 }
 
 export default definePlugin({
+    id: "ZIP+",
     name: "ZIP+",
     description: "Preview and navigate inside zip files, plus auto-zip uploads.",
     tags: ["Utility", "Chat"],

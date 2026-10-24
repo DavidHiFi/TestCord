@@ -243,6 +243,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "EquiTweaks",
     name: "EquiTweaks",
     description: "A collection of small tweaks and fixes for Discord.",
     tags: ["Appearance", "Commands", "Utility"],

@@ -88,6 +88,7 @@ const userContextPatch: NavContextMenuPatchCallback = (children, { user }: { use
 };
 
 export default definePlugin({
+    id: "ProfileMedia",
     name: "ProfileMedia",
     description: "View and download user avatars and banners in full resolution from the right-click menu.",
     authors: [TestcordDevs.sirphantom89],

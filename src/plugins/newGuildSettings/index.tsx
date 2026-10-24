@@ -174,6 +174,7 @@ function applyDefaultSettings(guildId: string | null) {
 }
 
 export default definePlugin({
+    id: "NewGuildSettings",
     name: "NewGuildSettings",
     description: "Automatically mute new servers and change various other settings upon joining",
     tags: ["Servers", "Customisation"],

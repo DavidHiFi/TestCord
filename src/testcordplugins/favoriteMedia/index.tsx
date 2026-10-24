@@ -11,6 +11,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "FavoriteMedia",
     name: "FavoriteMedia",
     description: "Favorite any type of media",
     tags: ["Media", "Utility"],

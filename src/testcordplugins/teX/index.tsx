@@ -14,6 +14,7 @@ import { React, Tooltip, useMemo } from "@webpack/common";
 import { useKatex } from "./katexLoader";
 
 export default definePlugin({
+    id: "TeX",
     name: "TeX",
     description: "Typesets math in messages, written as `$x$` or `$$x$$`.",
     tags: ["Chat", "Utility"],

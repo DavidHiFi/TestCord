@@ -23,6 +23,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "NoServerEmojis",
     name: "NoServerEmojis",
     authors: [Devs.UlyssesZhan],
     description: "Do not show server emojis in the autocomplete menu.",

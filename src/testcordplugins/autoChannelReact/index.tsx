@@ -223,6 +223,7 @@ function ChannelContextMenuPatch(): NavContextMenuPatchCallback {
 }
 
 export default definePlugin({
+    id: "AutoChannelReact",
     name: "AutoChannelReact",
     description: "Autoreact to every new message in specific channels with chosen emojis via rclick context menu",
     tags: ["Reactions", "Utility"],

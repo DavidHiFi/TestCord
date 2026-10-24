@@ -388,6 +388,7 @@ export const translations: TranslationMap = {
 };
 
 const AutoTranslateNightcord = definePlugin({
+    id: "AutoTranslateTC",
     name: "AutoTranslateTC",
     description: "Automatic translation for Testcord.",
     authors: [{ name: "Trigger", id: 0n }],

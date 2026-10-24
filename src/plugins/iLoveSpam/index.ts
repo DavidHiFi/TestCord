@@ -22,6 +22,7 @@ import definePlugin from "@utils/types";
 
 migratePluginSettings("IloveSpam", "iLoveSpam");
 export default definePlugin({
+    id: "ILoveSpam",
     name: "ILoveSpam",
     description: "Do not hide messages from 'likely spammers'",
     tags: ["Utility", "Chat"],

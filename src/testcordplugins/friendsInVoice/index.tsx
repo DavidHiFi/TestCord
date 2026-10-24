@@ -310,6 +310,7 @@ const userContextPatch = (children: any[], props: any) => {
 const WrappedButton = ErrorBoundary.wrap(FriendsInVoiceButton, { noop: true });
 
 export default definePlugin({
+    id: "FriendsInVoice",
     name: "FriendsInVoice",
     description: "Adds a top bar button listing which voice channel your friends are in, with one click to join them. Right-click anyone to watch them, so they are tracked even in servers you have not opened. Works while they appear offline, because voice state is not tied to status.",
     authors: [TestcordDevs.LOSTSTR],

@@ -240,6 +240,7 @@ function ShowOffModal({ rootProps }: { rootProps: RenderModalProps; }) {
 }
 
 export default definePlugin({
+    id: "ShowOff",
     name: "ShowOff",
     description: "Turn your Discord avatar, name, and styling into an aesthetic showcase card you can copy, save, or post in chat.",
     authors: [TestcordDevs.sirphantom89],

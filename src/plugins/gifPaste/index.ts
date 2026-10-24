@@ -22,6 +22,7 @@ import definePlugin from "@utils/types";
 import { ExpressionPickerStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "GifPaste",
     name: "GifPaste",
     description: "Makes picking a gif in the gif picker insert a link into the chatbox instead of instantly sending it",
     tags: ["Media", "Chat"],

@@ -374,6 +374,7 @@ const StopRepeaterIcon: React.FC<{ className?: string; }> = ({ className }) => (
 );
 
 export default definePlugin({
+    id: "AutoMessageRepeater",
     name: "AutoMessageRepeater",
     description: "Automatically repeat messages/commands with customizable delays and anti-detection features",
     tags: ["Chat", "Utility"],

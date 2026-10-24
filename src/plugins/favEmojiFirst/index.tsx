@@ -1073,6 +1073,7 @@ const messageSendListener = (_channelId: string, messageObj: { content: string; 
 };
 
 export default definePlugin({
+    id: "FavoriteEmojiFirst",
     name: "FavoriteEmojiFirst",
     authors: [Devs.Aria, Devs.Ven, EquicordDevs.justjxke],
     tags: ["Emotes", "Customisation"],

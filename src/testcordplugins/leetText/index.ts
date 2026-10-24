@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 const swaps: Record<string, string> = { a: "4", e: "3", i: "1", o: "0", s: "5", t: "7", b: "8", g: "9", l: "1" };
 
 export default definePlugin({
+    id: "LeetText",
     name: "LeetText",
     description: "/leet rewrites your message in 1337 5p34k.",
     authors: [{ name: "Sharp", id: 0n }],

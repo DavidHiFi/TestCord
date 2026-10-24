@@ -42,6 +42,7 @@ function collect(guildId: string, type: string): IconItem[] {
 }
 
 export default definePlugin({
+    id: "IconExport",
     name: "IconExport",
     description: "Adds /icons to copy every emoji and sticker of the current server as a Markdown table, JSON or a plain URL list.",
     authors: [TestcordDevs.sirphantom89],

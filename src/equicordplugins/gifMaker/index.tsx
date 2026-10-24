@@ -494,6 +494,7 @@ function openGifMakerFromItem(item) {
 
 migratePluginSettings("GifMaker", "gifMaker");
 export default definePlugin({
+    id: "GifMaker",
     name: "GifMaker",
     description: "Create and caption GIFs from any media in chat or the GIF picker.",
     authors: [EquicordDevs.Leon135, EquicordDevs.benjii],

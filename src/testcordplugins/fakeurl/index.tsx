@@ -161,6 +161,7 @@ const FakeUrlButton: ChatBarButtonFactory = ({ isAnyChat }) => {
 };
 
 export default definePlugin({
+    id: "FakeUrl",
     name: "FakeUrl",
     description: "Sends fake links that links to a different website than shown.",
     authors: [TestcordDevs.x2b, TestcordDevs.SirPhantom89],

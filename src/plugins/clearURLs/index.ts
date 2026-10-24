@@ -51,6 +51,7 @@ const HAS_URL_RE = /https?:\/\//;
 const URL_MATCH_RE = /(https?:\/\/[^\s<]+[^<.,:;"'>)|\]\s])/g;
 
 export default definePlugin({
+    id: "ClearURLs",
     name: "ClearURLs",
     description: "Automatically removes tracking elements from URLs you send",
     dependencies: ["MessageEventsAPI"],

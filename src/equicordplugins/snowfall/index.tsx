@@ -449,6 +449,7 @@ let snowRoot: Root | null = null;
 let container: HTMLDivElement | null = null;
 
 export default definePlugin({
+    id: "Snowfall",
     name: "Snowfall",
     description: "Let it snow on Discord",
     tags: ["Appearance"],

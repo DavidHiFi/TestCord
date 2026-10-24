@@ -334,6 +334,7 @@ function ToolBarClaimIcon() {
 let clientOldChannelId: string | undefined;
 
 export default definePlugin({
+    id: "AutoClaim",
     name: "AutoClaim",
     description: "Automatically claims a vc after the owner of it leaves or when joining unowned VCs (custom VCs only)",
     tags: ["Utility", "Servers"],

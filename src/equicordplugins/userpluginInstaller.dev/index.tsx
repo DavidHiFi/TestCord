@@ -53,6 +53,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "UserpluginInstaller",
     name: "UserpluginInstaller",
     description: "Install userplugins with a simple button click",
     tags: ["Developers"],

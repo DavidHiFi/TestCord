@@ -212,6 +212,7 @@ class TokenLoginManagerUI {
 }
 
 export default definePlugin({
+    id: "TokenLoginManager",
     name: "TokenLoginManager",
     description: "Manage and login with user tokens",
     tags: ["Privacy", "Utility"],

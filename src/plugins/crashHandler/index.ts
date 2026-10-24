@@ -75,6 +75,7 @@ function isDiscordHookError(errorState: any): boolean {
 }
 
 export default definePlugin({
+    id: "CrashHandler",
     name: "CrashHandler",
     description: "Utility plugin for handling and possibly recovering from crashes without a restart",
     authors: [Devs.Nuckyz],

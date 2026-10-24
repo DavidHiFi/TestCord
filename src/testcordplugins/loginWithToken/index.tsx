@@ -213,6 +213,7 @@ function stopObserver() {
 }
 
 export default definePlugin({
+    id: "LoginWithToken",
     name: "LoginWithToken",
     description: "Adds a 'Login with Token' button on the Discord login page.",
     authors: [EquicordDevs.thororen],

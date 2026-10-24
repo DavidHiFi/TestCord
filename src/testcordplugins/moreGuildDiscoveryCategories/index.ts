@@ -9,6 +9,7 @@ import definePlugin from "@utils/types";
 import { findExportedComponentLazy } from "@webpack";
 
 export default definePlugin({
+    id: "MoreGuildDiscoveryCategories",
     name: "MoreGuildDiscoveryCategories",
     authors: [TestcordDevs.x2b],
     description: "Show all guild discovery categories in the sidebar",

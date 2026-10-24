@@ -9,7 +9,6 @@ import {
 } from "@api/MessageEvents";
 import {
     definePluginSettings,
-    Settings,
 } from "@api/Settings";
 import { Devs, EquicordDevs } from "@utils/constants";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
@@ -62,6 +61,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "PolishWording",
     name: "PolishWording",
     description: "Tweaks your messages to make them look nicer and have better grammar. See settings",
     dependencies: ["MessageEventsAPI"],

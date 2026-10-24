@@ -306,6 +306,7 @@ function stopContextMenuHardening() {
 }
 
 export default definePlugin({
+    id: "OrchestratorAPI",
     name: "OrchestratorAPI",
     description: "Transparent performance orchestrator. Coalesces duplicate Flux subscriptions and hardens context menu patches so the client stays smooth under heavy plugin load. Opt-in via TestcordHelper.",
     authors: [TestcordDevs.x2b],

@@ -12,6 +12,7 @@ import { TestcordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "SortReactions",
     name: "SortReactions",
     description: "Sorts reactions by count in chat.",
     tags: ["Reactions", "Utility"],

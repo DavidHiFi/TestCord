@@ -134,6 +134,7 @@ const StreakBadge = ({ userId }: { userId: string; }) => {
 };
 
 export default definePlugin({
+    id: "Streaks",
     name: "Streaks",
     description: "Shows a streak next to a user when you exchange DMs with them on consecutive days.",
     authors: [EquicordDevs.Moowi, Devs.thororen],

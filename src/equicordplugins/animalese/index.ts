@@ -191,6 +191,7 @@ async function playSound(buffer: AudioBuffer, volume: number) {
 }
 
 export default definePlugin({
+    id: "Animalese",
     name: "Animalese",
     description: "Plays animal crossing animalese for every message sent (they yap a lot)",
     tags: ["Customisation", "Fun"],

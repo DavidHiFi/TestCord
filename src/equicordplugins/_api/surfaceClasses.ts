@@ -8,6 +8,7 @@ import { EquicordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "SurfaceClassesAPI",
     name: "SurfaceClassesAPI",
     description: "API to add plugin-owned semantic data attributes and limited props to stable Discord layout surfaces.",
     authors: [EquicordDevs.benjii],

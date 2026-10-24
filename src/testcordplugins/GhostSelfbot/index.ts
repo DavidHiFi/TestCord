@@ -173,6 +173,7 @@ async function launchGhostSource(): Promise<void> {
 }
 
 export default definePlugin({
+    id: "GhostSelfbot",
     name: "GhostSelfbot",
     description: "Launch Ghost Selfbot (exe or source code) with optional auto-token fill from your current Discord session",
     authors: [{ name: "irritably", id: 928787166916640838n }],

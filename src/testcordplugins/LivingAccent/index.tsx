@@ -164,6 +164,7 @@ async function update() {
 }
 
 export default definePlugin({
+    id: "LivingAccent",
     name: "LivingAccent",
     description: "Testcord's accent colour follows the album art of whatever you are playing on Spotify.",
     authors: [TestcordDevs.sirphantom89],

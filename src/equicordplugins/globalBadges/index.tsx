@@ -20,6 +20,7 @@ import { cl, GlobalBadges, INVITE_LINK, loadBadges } from "./utils";
 let intervalId: any;
 
 export default definePlugin({
+    id: "GlobalBadges",
     name: "GlobalBadges",
     description: "Adds global badges from other client mods",
     tags: ["Appearance"],

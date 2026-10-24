@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "BetterGifAltText",
     name: "BetterGifAltText",
     authors: [Devs.Ven],
     description: "Change GIF alt text from simply being 'GIF' to containing the gif tags / filename",

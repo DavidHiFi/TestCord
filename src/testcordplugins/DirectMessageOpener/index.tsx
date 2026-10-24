@@ -154,6 +154,7 @@ function ToolBarHeader() {
 }
 
 export default definePlugin({
+    id: "DirectMessageOpener",
     name: "DirectMessageOpener",
     description: "Open a DM with any user by entering their User ID via a toolbar button",
     tags: ["Chat", "Utility"],

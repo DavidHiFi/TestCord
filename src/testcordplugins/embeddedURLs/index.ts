@@ -15,6 +15,7 @@ const urlMap = new Map<string, string>([
 ]);
 
 export default definePlugin({
+    id: "EmbeddedURLs",
     name: "EmbeddedURLs",
     description: `Turns plain social links into embeddable URLs so posts
     and videos are fully viewable in Discord instead of forcing users to open the external site.`,

@@ -613,6 +613,7 @@ const UserContextMenuPatch: NavContextMenuPatchCallback = (
 };
 
 export default definePlugin({
+    id: "Hook",
     name: "Hook",
     description:
         "Hooks a user to prevent them from changing voice channels or anchors to a user to automatically return to their channel",

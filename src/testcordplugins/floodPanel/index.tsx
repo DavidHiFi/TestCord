@@ -49,6 +49,7 @@ const settings = definePluginSettings({
 export { settings };
 
 export default definePlugin({
+    id: "FloodPanel",
     name: "FloodPanel",
     description: "Send a flood of messages rapidly in any channel. Load a custom .txt file or use the built-in phrases. Accessible from the chat bar.",
     authors: [EquicordDevs.nobody],

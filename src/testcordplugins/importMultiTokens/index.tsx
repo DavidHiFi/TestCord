@@ -150,6 +150,7 @@ const ImportMultiTokensComponent = () => {
 };
 
 export default definePlugin({
+    id: "ImportMultiTokens",
     name: "ImportMultiTokens",
     description: "Import multiple user tokens into Token Login Manager",
     authors: [TestcordDevs.x2b],

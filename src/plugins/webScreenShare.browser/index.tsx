@@ -265,6 +265,7 @@ const settings = definePluginSettings({
 const disableStreamPreviews = getUserSettingLazy<boolean>("voiceAndVideo", "disableStreamPreviews")!;
 
 export default definePlugin({
+    id: "WebScreenShare",
     name: "WebScreenShare",
     authors: [Devs.ThaUnknown],
     description: "Adds a screenshare options menu. Allows for changing resolution, framerate, encoding hints, and system audio settings.",

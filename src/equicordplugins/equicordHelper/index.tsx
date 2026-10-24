@@ -16,6 +16,7 @@ import { PluginCards } from "./pluginCards";
 let clicked = false;
 
 export default definePlugin({
+    id: "EquicordHelper",
     name: "EquicordHelper",
     description: "Used to provide support and fix discord caused crashes.",
     tags: ["Utility"],

@@ -106,6 +106,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "BetterBanReasons",
     name: "BetterBanReasons",
     description: "Create custom reasons to use in the Discord ban modal, and/or show a text input by default instead of the options.",
     tags: ["Appearance", "Customisation", "Utility"],

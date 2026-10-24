@@ -307,6 +307,7 @@ const channelAttachMenuPatch: NavContextMenuPatchCallback = children => {
 };
 
 export default definePlugin({
+    id: "FloeP2PService",
     name: "FloeP2PService",
     description: "Shares files and folders through Floe P2P CLI sessions.",
     tags: ["Chat", "Utility", "Privacy", "Commands"],

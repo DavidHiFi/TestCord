@@ -276,6 +276,7 @@ async function processMessageFetch(response: FetchMessagesResponse) {
 }
 
 export default definePlugin({
+    id: "MessageLoggerEnhanced",
     name: "MessageLoggerEnhanced",
     authors: [Devs.Aria, EquicordDevs.keircn, TestcordDevs.SirPhantom89],
     description: "Improves Message Logger with edited message history, ghost ping detection and more",

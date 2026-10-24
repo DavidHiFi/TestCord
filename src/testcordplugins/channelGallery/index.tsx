@@ -143,6 +143,7 @@ function GalleryToolbarButton() {
 }
 
 export default definePlugin({
+    id: "ChannelGallery",
     name: "ChannelGallery",
     description: "Adds a Gallery view for images in the current channel and DMs",
     tags: ["Media", "Utility"],

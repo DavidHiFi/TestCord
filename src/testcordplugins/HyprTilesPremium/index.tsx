@@ -8,6 +8,7 @@ import { EquicordDevs, TestcordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "HyprTilesPremium",
     name: "HyprTilesPremium",
     description: "Legacy settings migration shim for HyprTiles.",
     authors: [EquicordDevs.Ven, TestcordDevs.x2b],

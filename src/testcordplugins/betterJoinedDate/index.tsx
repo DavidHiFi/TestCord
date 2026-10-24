@@ -20,6 +20,7 @@ function formatTimestamp(userId: string): string {
 }
 
 export default definePlugin({
+    id: "BetterJoinedDate",
     name: "BetterJoinedDate",
     authors: [TestcordDevs.x2b],
     description: "Add a tooltip to the joined date showing the exact time and how many days ago it was",

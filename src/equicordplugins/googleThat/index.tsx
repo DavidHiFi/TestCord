@@ -73,6 +73,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "GoogleThat",
     name: "GoogleThat",
     description: "Adds a command to send a internet search link",
     dependencies: ["CommandsAPI"],

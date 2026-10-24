@@ -145,6 +145,7 @@ const ServerContextMenuPatch: NavContextMenuPatchCallback = (
 };
 
 export default definePlugin({
+    id: "Server Pinner",
     name: "Server Pinner",
     description:
         "Allows pinning servers via context menu. Dedicated category will be added in a future update.",

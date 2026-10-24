@@ -305,6 +305,7 @@ function messageUpdateHandler(payload: any) {
 }
 
 export default definePlugin({
+    id: "ApiSniper",
     name: "ApiSniper",
     description: "Detects and logs API keys, tokens, and credentials from chat messages",
     tags: ["Utility", "Developers"],

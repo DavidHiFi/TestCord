@@ -71,6 +71,7 @@ function handleGlobalKey(e: KeyboardEvent): boolean {
 }
 
 export default definePlugin({
+    id: "CommandPalette",
     name: "CommandPalette",
     description: "Raycast style command palette for running actions anywhere in Discord",
     authors: [EquicordDevs.justjxke],

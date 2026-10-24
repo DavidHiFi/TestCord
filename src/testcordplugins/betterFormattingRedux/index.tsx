@@ -326,6 +326,7 @@ function transformSendTime(text: string): string {
 }
 
 export default definePlugin({
+    id: "BetterFormattingRedux",
     name: "BetterFormattingRedux",
     description: "Adds a formatting toolbar to the chat bar with text styling options.",
     tags: ["Chat", "Utility"],

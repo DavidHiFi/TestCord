@@ -445,6 +445,7 @@ function onToggle(e: KeyboardEvent) {
 }
 
 export default definePlugin({
+    id: "ElementHighlighter",
     name: "ElementHighlighter",
     description: "Highlight and inspect elements easily.",
     tags: ["Developers"],

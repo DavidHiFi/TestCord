@@ -28,7 +28,8 @@ let customStatusHook: (() => any) | null = null;
 const FAKE_STATUS_KEYS = ["fakeStatusEnabled", "fakeStatusText", "fakeStatusEmojiName", "fakeStatusEmojiId", "fakeStatusEmojiAnimated"] as const;
 
 export default definePlugin({
-    name: "fakeProfile",
+    id: "fakeProfile",
+    name: "FakeProfile",
     description: "Unlock Discord profile effects, themes, avatar decorations, and custom badges without the need for Nitro.",
     tags: ["Privacy", "Customisation", "legacy"],
     legacy: true,

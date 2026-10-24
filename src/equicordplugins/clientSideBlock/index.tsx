@@ -165,6 +165,7 @@ function activeNowView(cards) {
 }
 
 export default definePlugin({
+    id: "ClientSideBlock",
     name: "ClientSideBlock",
     description: "Allows you to locally hide almost all content from any user",
     tags: ["Utility", "Appearance", "Privacy"],

@@ -689,6 +689,7 @@ function stopObserver(): void {
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "GifTransfer",
     name: "GifTransfer",
     description: "Export and import all your favorite GIFs between accounts. Bypasses Discord's limit via patches.",
     tags: ["Media", "Utility"],

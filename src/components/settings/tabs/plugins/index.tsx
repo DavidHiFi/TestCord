@@ -21,7 +21,8 @@ import "./styles.css";
 import * as DataStore from "@api/DataStore";
 import { PluginHealth } from "@api/PluginHealth";
 import { isPluginEnabled, stopPlugin } from "@api/PluginManager";
-import { useSettings } from "@api/Settings";
+import { Settings, useSettings } from "@api/Settings";
+import { BaseText } from "@components/BaseText";
 import { Button } from "@components/Button";
 import { Card } from "@components/Card";
 import { Divider } from "@components/Divider";
@@ -42,7 +43,7 @@ import { promptToRestart } from "@utils/promptToRestart";
 import { useAwaiter, useCleanupEffect, useIntersection } from "@utils/react";
 import { isTestcordModified } from "@utils/testcordIcons";
 import { Plugin, PluginTag, PluginTags } from "@utils/types";
-import { Alerts, Parser, React, SearchableSelect, Select, showToast, TextInput, Tooltip, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
+import { Alerts, Parser, React, SearchableSelect, Select, showToast, TextInput, Toasts, Tooltip, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
 import Plugins, { ExcludedPlugins, PluginMeta } from "~plugins";
 
@@ -76,6 +77,44 @@ function showErrorToast(message: string) {
         variant: "critical",
         position: "bottom"
     });
+}
+
+/**
+ * Writes the enabled flag for a plugin (and its legacy key, if the canonical id differs)
+ * and records the change for the health tracker, mirroring what PluginCard does per plugin.
+ */
+function setPluginEnabledFlag(plugin: Plugin, enabled: boolean) {
+    const canonicalId = (plugin as any).id ?? plugin.name;
+    const pluginSettings = Settings.plugins as any;
+
+    pluginSettings[canonicalId] ??= {};
+    pluginSettings[canonicalId].enabled = enabled;
+
+    if (canonicalId !== plugin.name) {
+        pluginSettings[plugin.name] ??= {};
+        pluginSettings[plugin.name].enabled = enabled;
+    }
+
+    void PluginHealth.recordPluginChange(canonicalId, enabled);
+}
+
+/**
+ * Bulk toggles a set of plugins. Unlike PluginCard, this never starts or stops plugins live:
+ * flipping hundreds of plugins at runtime is a great way to end up with a half-broken client,
+ * so every changed plugin is marked as needing a restart instead.
+ */
+function applyPluginBulk(plugins: Plugin[], enabled: boolean, markRestartNeeded: (name: string, key: string) => void) {
+    const changed: string[] = [];
+
+    for (const plugin of plugins) {
+        if (isPluginEnabled(plugin.name) === enabled) continue;
+
+        setPluginEnabledFlag(plugin, enabled);
+        markRestartNeeded(plugin.name, "enabled");
+        changed.push(plugin.name);
+    }
+
+    return changed;
 }
 
 function ReloadRequiredCard({ required, enabledPlugins, openWarningModal, resetCheckAndDo }) {
@@ -229,6 +268,8 @@ function PluginSettings() {
     const hasUserPlugins = useMemo(() => !IS_STANDALONE && Object.values(PluginMeta).some(m => m.userPlugin), []);
 
     const [searchValue, setSearchValue] = useState<{ value: string; tags: PluginTag[]; status: number; author: string; }>({ value: "", tags: [] as PluginTag[], status: SearchStatus.ALL, author: "" });
+    const [tagsOpen, setTagsOpen] = useState(false);
+    const [, forceBulkUpdate] = React.useReducer(x => x + 1, 0);
 
     useEffect(() => {
         return registerJumpListener(pluginName => {
@@ -497,17 +538,30 @@ function PluginSettings() {
     }
 
     // Code directly taken from supportHelper.tsx
-    const { totalStockPlugins, totalUserPlugins, enabledStockPlugins, enabledUserPlugins, enabledPlugins } = useMemo(() => {
+    const { totalStockPlugins, totalUserPlugins, enabledStockPlugins, enabledUserPlugins, enabledPlugins, legacyPluginCount, experimentalPluginCount } = useMemo(() => {
         const isApiPlugin = (plugin: string) => plugin.endsWith("API") || Plugins[plugin].required;
 
         const totalPlugins = Object.keys(Plugins).filter(p => !isApiPlugin(p));
         const enabledPlugins = Object.keys(Plugins).filter(p => isPluginEnabled(p) && !isApiPlugin(p));
 
-        const totalStockPlugins = totalPlugins.filter(p => !PluginMeta[p].userPlugin && !Plugins[p].hidden).length;
+        const stockPluginNames = totalPlugins.filter(p => !PluginMeta[p].userPlugin && !Plugins[p].hidden);
+        const totalStockPlugins = stockPluginNames.length;
         const totalUserPlugins = totalPlugins.filter(p => PluginMeta[p].userPlugin).length;
         const enabledStockPlugins = enabledPlugins.filter(p => !PluginMeta[p].userPlugin).length;
         const enabledUserPlugins = enabledPlugins.filter(p => PluginMeta[p].userPlugin).length;
-        return { totalStockPlugins, totalUserPlugins, enabledStockPlugins, enabledUserPlugins, enabledPlugins };
+
+        const isLegacy = (name: string) => isLegacyPlugin(name) || Plugins[name].legacy || Plugins[name].tags?.includes("legacy");
+        const isExperimental = (name: string) => isExperimentalPlugin(name) || Plugins[name].experimental || Plugins[name].tags?.includes("experimental");
+
+        return {
+            totalStockPlugins,
+            totalUserPlugins,
+            enabledStockPlugins,
+            enabledUserPlugins,
+            enabledPlugins,
+            legacyPluginCount: stockPluginNames.filter(isLegacy).length,
+            experimentalPluginCount: stockPluginNames.filter(isExperimental).length
+        };
     }, [settings.plugins]);
     const pluginsToLoad = Math.min(PluginLoadBatchSize, filteredPlugins.length);
     const [visibleCount, setVisibleCount] = React.useState(pluginsToLoad);
@@ -534,6 +588,31 @@ function PluginSettings() {
     const rawAuthorGithub = searchValue.author ? (authorOptions.find(a => a.value === searchValue.author)?.github || searchValue.author) : "";
     const authorGithub = rawAuthorGithub ? (rawAuthorGithub.startsWith("http") ? rawAuthorGithub : "https://github.com/" + rawAuthorGithub) : "";
 
+    const bulkSetEnabled = (enabled: boolean) => {
+        const targets = filteredPlugins.filter(p => isPluginEnabled(p.name) !== enabled);
+        if (!targets.length) {
+            showErrorToast(`Every plugin matching the current filters is already ${enabled ? "enabled" : "disabled"}.`);
+            return;
+        }
+
+        Alerts.show({
+            title: enabled ? "Enable matching plugins?" : "Disable matching plugins?",
+            body: (
+                <Paragraph>
+                    This {enabled ? "enables" : "disables"} <b>{targets.length}</b> plugin{targets.length === 1 ? "" : "s"} matching the
+                    current search, status and tag filters. Changes only take effect after a restart.
+                </Paragraph>
+            ),
+            confirmText: enabled ? "Enable All" : "Disable All",
+            cancelText: "Cancel",
+            onConfirm: () => {
+                const changed = applyPluginBulk(targets, enabled, handleRestartNeeded);
+                forceBulkUpdate();
+                showToast(`${changed.length} plugin${changed.length === 1 ? "" : "s"} ${enabled ? "enabled" : "disabled"}, restart to apply`, Toasts.Type.SUCCESS);
+            }
+        });
+    };
+
     return (
         <SettingsTab>
             <ReloadRequiredCard required={changes.hasChanges} enabledPlugins={enabledPlugins} openWarningModal={openWarningModal} resetCheckAndDo={resetCheckAndDo} />
@@ -542,6 +621,8 @@ function PluginSettings() {
                 <StockPluginsCard
                     totalStockPlugins={totalStockPlugins}
                     enabledStockPlugins={enabledStockPlugins}
+                    legacyCount={legacyPluginCount}
+                    experimentalCount={experimentalPluginCount}
                 />
                 <UserPluginsCard
                     totalUserPlugins={totalUserPlugins}
@@ -592,14 +673,15 @@ function PluginSettings() {
                         closeOnSelect={true}
                         placeholder="Filter by Type"
                     />
-                    <SearchableSelect
-                        options={PluginTags.map(tag => ({ label: tag, value: tag }))}
-                        value={searchValue.tags}
-                        onChange={tags => setSearchValue(prev => ({ ...prev, tags }))}
-                        closeOnSelect={false}
-                        placeholder="Filter by Tags"
-                        multi
-                    />
+                    <button
+                        type="button"
+                        className={classes(cl("tag-filter-toggle"), searchValue.tags.length > 0 && cl("tag-filter-toggle-active"))}
+                        onClick={() => setTagsOpen(open => !open)}
+                        aria-expanded={tagsOpen}
+                    >
+                        <span className={cl("tag-filter-caret")}>{tagsOpen ? "▾" : "▸"}</span>
+                        Tags{searchValue.tags.length > 0 ? ` (${searchValue.tags.length})` : ""}
+                    </button>
                     <SearchableSelect
                         options={[{ label: "All Authors", value: "" }, ...authorOptions]}
                         value={searchValue.author}
@@ -621,7 +703,57 @@ function PluginSettings() {
                 </div>
             </ErrorBoundary>
 
-            <HeadingTertiary className={classes(Margins.top20, Margins.bottom8, cl("section-heading"))}>Plugins</HeadingTertiary>
+            {tagsOpen && (
+                <div className={cl("tag-filter-panel")}>
+                    {PluginTags.map(tag => {
+                        const checked = searchValue.tags.includes(tag);
+                        return (
+                            <label key={tag} className={classes(cl("tag-filter-item"), checked && cl("tag-filter-item-checked"))}>
+                                <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => setSearchValue(prev => ({
+                                        ...prev,
+                                        tags: checked ? prev.tags.filter(t => t !== tag) : [...prev.tags, tag]
+                                    }))}
+                                />
+                                <span>{tag}</span>
+                            </label>
+                        );
+                    })}
+                    {searchValue.tags.length > 0 && (
+                        <Button
+                            variant="secondary"
+                            size="small"
+                            className={cl("tag-filter-clear")}
+                            onClick={() => setSearchValue(prev => ({ ...prev, tags: [] }))}
+                        >
+                            Clear tags
+                        </Button>
+                    )}
+                </div>
+            )}
+
+            <div className={cl("bulk-actions")}>
+                <div>
+                    <BaseText size="sm" weight="semibold">Bulk actions</BaseText>
+                    <Paragraph size="xs" className={cl("bulk-actions-hint")}>
+                        Applies to the {filteredPlugins.length} plugin{filteredPlugins.length === 1 ? "" : "s"} matching the filters above. Pick tags to narrow it down.
+                    </Paragraph>
+                </div>
+                <div className={cl("bulk-actions-buttons")}>
+                    <Button variant="secondary" size="small" onClick={() => bulkSetEnabled(true)}>
+                        Enable matching
+                    </Button>
+                    <Button variant="dangerSecondary" size="small" onClick={() => bulkSetEnabled(false)}>
+                        Disable matching
+                    </Button>
+                </div>
+            </div>
+
+            <HeadingTertiary className={classes(Margins.top20, Margins.bottom8, cl("section-heading"))}>
+                Plugins <span className={cl("match-count")}>({filteredPlugins.length} matching)</span>
+            </HeadingTertiary>
 
             {filteredPlugins.length || requiredPlugins.length
                 ? (

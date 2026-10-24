@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "DisableCameras",
     name: "DisableCameras",
     description: "Disables cameras in a call by default",
     tags: ["Appearance", "Media", "Privacy"],

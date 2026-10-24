@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "GridFloor",
     name: "GridFloor",
     description: "Scrolling retro grid floor along the bottom of the window.",
     authors: [{ name: "Sharp", id: 0n }],

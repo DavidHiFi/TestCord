@@ -541,6 +541,7 @@ function resolveId(arg: string): string {
 }
 
 export default definePlugin({
+    id: "SharePerms",
     name: "SharePerms",
     description: "Multi-user permission sharing with interactive UI.",
     tags: ["Roles", "Utility", "Nightcord"],

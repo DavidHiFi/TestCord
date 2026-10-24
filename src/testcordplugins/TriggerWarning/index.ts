@@ -28,6 +28,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "TriggerWarning",
     name: "TriggerWarning",
     authors: [TestcordDevs.x2b],
     description: "Spoiler attachments based on filenames and links.",

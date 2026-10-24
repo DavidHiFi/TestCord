@@ -11,6 +11,7 @@ import definePlugin from "@utils/types";
 import { UserStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "ProfileCommand",
     name: "ProfileCommand",
     description: "Adds a /profile command to open someone's profile",
     tags: ["Commands", "Utility"],

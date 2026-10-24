@@ -36,6 +36,7 @@ const nameMap = {
 };
 
 export default definePlugin({
+    id: "ContextMenuAPI",
     name: "ContextMenuAPI",
     description: "API for adding/removing items to/from context menus.",
     authors: [Devs.Nuckyz, Devs.Ven, Devs.Kyuuhachi],

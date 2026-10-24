@@ -18,6 +18,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "AutoJumpToMessage",
     name: "AutoJumpToMessage",
     description: "Automatically opens the channel from new messages.",
     tags: ["Chat", "Utility"],

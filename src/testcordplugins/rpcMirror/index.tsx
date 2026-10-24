@@ -301,6 +301,7 @@ async function tick() {
 }
 
 export default definePlugin({
+    id: "RpcMirror",
     name: "RpcMirror",
     description: "Share your Rich Presence with your other Testcord windows, so alts show the same music and game status as your main.",
     authors: [TestcordDevs.x2b],

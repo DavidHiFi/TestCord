@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "BypassPinPrompt",
     name: "BypassPinPrompt",
     description: "Bypass the pin prompt when using the pin functions",
     tags: ["Shortcuts", "Utility", "Chat"],

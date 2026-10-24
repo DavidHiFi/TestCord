@@ -451,7 +451,9 @@ const guildContextPatch: NavContextMenuPatchCallback = (children, { guild }: { g
 };
 
 export default definePlugin({
-    name: "vAnalyzer",
+    id: "vAnalyzer",
+    aliases: ["vAnalyzer-main"],
+    name: "VAnalyzer",
     description: "Analyze message attachments, trace URLs, check certificates, avoid scams and more.",
     authors: [{ name: "nay-cat", id: 1159977353661919363n }],
     tags: ["Privacy", "Utility"],

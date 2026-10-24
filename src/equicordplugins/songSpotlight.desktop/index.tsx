@@ -17,6 +17,7 @@ import ProfileSongs from "./ui/songs/ProfileSongs";
 import WidgetSongs from "./ui/songs/WidgetSongs";
 
 export default definePlugin({
+    id: "SongSpotlight",
     name: "SongSpotlight",
     description: "Show off songs on your profile",
     dependencies: ["ProfileCollectionsAPI"],

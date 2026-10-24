@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NoUnblockToJump",
     name: "NoUnblockToJump",
     description: "Allows you to jump to messages of blocked or ignored users and likely spammers without unblocking them",
     tags: ["Utility"],

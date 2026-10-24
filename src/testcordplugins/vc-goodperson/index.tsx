@@ -166,6 +166,7 @@ export function clean(content: string) {
 }
 
 export default definePlugin({
+    id: "GoodPerson",
     name: "GoodPerson",
     description: "Makes you (or others) a good person",
     tags: ["Utility", "Fun"],

@@ -191,6 +191,7 @@ function showFailureToast(message: string) {
 }
 
 export default definePlugin({
+    id: "ShowMessageEmbeds",
     name: "ShowMessageEmbeds",
     description: "Adds a context menu option to show embeds for links that don't have one",
     tags: ["Chat", "Utility"],

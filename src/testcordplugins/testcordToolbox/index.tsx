@@ -78,6 +78,7 @@ function VencordPopoutButton() {
 
 migratePluginSettings("TestcordToolbox", "EquicordToolbox");
 export default definePlugin({
+    id: "TestcordToolbox",
     name: "TestcordToolbox",
     description: "Adds a button next to the inbox button in the channel header that houses Testcord quick actions",
     tags: ["Voice", "Accessibility"],

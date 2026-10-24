@@ -14,6 +14,7 @@ function toFullwidth(text: string) {
 }
 
 export default definePlugin({
+    id: "AutoVaporwave",
     name: "AutoVaporwave",
     description: "Turn every message you send into ｆｕｌｌｗｉｄｔｈ text automatically.",
     authors: [{ name: "Sharp", id: 0n }],

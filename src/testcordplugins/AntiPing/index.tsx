@@ -147,6 +147,7 @@ const UserContext: NavContextMenuPatchCallback = (children, { user }: { user?: U
 };
 
 export default definePlugin({
+    id: "AntiPing",
     name: "AntiPing",
     description: "Hides ping badges, sounds and popups on servers instead of muting them. Whitelist servers or people, let friends through, or snooze everything for a while.",
     authors: [TestcordDevs.sirphantom89],

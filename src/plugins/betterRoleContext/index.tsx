@@ -232,6 +232,7 @@ export function openRoleContextMenu(event: React.MouseEvent<HTMLElement>, { guil
 }
 
 export default definePlugin({
+    id: "BetterRoleContext",
     name: "BetterRoleContext",
     description: "Adds options to copy role color / edit role / view role icon when right clicking roles in the user profile or in the member list",
     tags: ["Roles", "Appearance"],

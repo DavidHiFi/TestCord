@@ -43,6 +43,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "InviteDefaults",
     name: "InviteDefaults",
     description: "Allows you to edit the default values when creating server invites.",
     tags: ["Utility", "Servers"],

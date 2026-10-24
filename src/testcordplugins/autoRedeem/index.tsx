@@ -1215,6 +1215,7 @@ onExternalClaimRelease(() => {
 });
 
 export default definePlugin({
+    id: "AutoRedeem",
     name: "AutoRedeem",
     description: "Automatically redeems any Discord gift link (Nitro, decorations, etc.) sent in any channel.",
     authors: [

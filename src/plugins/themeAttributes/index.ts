@@ -11,6 +11,7 @@ import { Message } from "@vencord/discord-types";
 import { UserStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "ThemeAttributes",
     name: "ThemeAttributes",
     description: "Adds data attributes to various elements for theming purposes",
     tags: ["Appearance", "Customisation"],

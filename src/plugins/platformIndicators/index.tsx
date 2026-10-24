@@ -226,6 +226,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "PlatformIndicators",
     name: "PlatformIndicators",
     description: "Adds platform indicators (Desktop, Mobile, Web...) to users",
     dependencies: ["MemberListDecoratorsAPI", "MessageDecorationsAPI", "NicknameIconsAPI"],

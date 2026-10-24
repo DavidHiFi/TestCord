@@ -19,6 +19,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "TimelessClips",
     name: "TimelessClips",
     authors: [TestcordDevs.x2b],
     description: "Add a your own clip length",

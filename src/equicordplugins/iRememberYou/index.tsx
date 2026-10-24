@@ -17,6 +17,7 @@ import { Data } from "./components/data";
 import DataUI from "./components/ui";
 
 export default definePlugin({
+    id: "IRememberYou",
     name: "IRememberYou",
     description: "Locally saves everyone you've been communicating with (including servers), in case of lose",
     tags: ["Chat", "Servers"],

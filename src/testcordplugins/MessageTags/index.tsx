@@ -145,6 +145,7 @@ function TagChipsInner({ message }: { message: Message; }) {
 const TagChips = ErrorBoundary.wrap(TagChipsInner, { noop: true });
 
 export default definePlugin({
+    id: "MessageTags",
     name: "MessageTags",
     description: "Tag messages with private local labels (TODO, Important, ...), see them as chips, and browse/jump to them from the Testcord menu in the header.",
     authors: [TestcordDevs.sirphantom89],

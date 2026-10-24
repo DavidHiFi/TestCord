@@ -866,6 +866,7 @@ function onFluxMessageDeleteBulk(payload: MessageDeleteBulkPayload) {
 }
 
 export default definePlugin({
+    id: "MessageLoggerTestcord",
     name: "MessageLoggerTestcord",
     description: "The best of all loggers in one plugin. Logs deleted/edited messages with inline chat display, ghost ping detection, disk-saved attachments, silent delete, anti-antilog protection, search, protected logs and automatic maintenance.",
     authors: [TestcordDevs.x2b],

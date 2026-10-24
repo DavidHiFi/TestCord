@@ -189,6 +189,7 @@ const settings = definePluginSettings({
 }>();
 
 export default definePlugin({
+    id: "CustomTimestamps",
     name: "CustomTimestamps",
     description: "Custom timestamps on messages and tooltips",
     tags: ["Appearance", "Customisation"],

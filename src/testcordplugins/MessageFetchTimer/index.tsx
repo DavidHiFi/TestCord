@@ -209,6 +209,7 @@ function handleMessageLoad(data: any) {
 }
 
 export default definePlugin({
+    id: "MessageFetchTimer",
     name: "MessageFetchTimer",
     description: "Shows how long it took to fetch messages for the current channel",
     tags: ["Chat", "Utility"],

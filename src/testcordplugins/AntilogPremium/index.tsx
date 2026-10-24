@@ -170,6 +170,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (children, { messag
 };
 
 export default definePlugin({
+    id: "AntilogPremium",
     name: "AntilogPremium",
     description: "Delete messages while hiding them from message loggers. Combines best anti-logging methods. (its made to replace AntiLog, SilentDelete, and MLE's silent delete at once)",
     tags: ["Privacy", "Utility"],

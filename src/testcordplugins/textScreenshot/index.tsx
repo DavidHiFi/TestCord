@@ -13,6 +13,7 @@ import { DraftType, UploadHandler, UserStore } from "@webpack/common";
 import { createTextScreenshot } from "./utils";
 
 export default definePlugin({
+    id: "TextScreenshot",
     name: "TextScreenshot",
     description: "Send text as a screenshot of a Discord message with your profile",
     tags: ["Commands", "Fun"],

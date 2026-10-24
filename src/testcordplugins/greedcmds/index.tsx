@@ -525,6 +525,7 @@ function handleMessage(message: any) {
 }
 
 export default definePlugin({
+    id: "GreedCmds",
     name: "GreedCmds",
     description: "Greed bot auto defense. Re-adds uwulock protect, removes uwulock, counters kick/ban/mute/to attacks, keeps /autouwulock users locked, spreads the lock to admins who unlock them, strips protect when Greed refuses a lock, and re-locks watched users whose messages stop being deleted. Supports protected users and allowed servers filtering.",
     authors: [TestcordDevs.x2b],

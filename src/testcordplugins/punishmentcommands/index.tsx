@@ -45,6 +45,7 @@ function listed(value: string) {
 }
 
 export default definePlugin({
+    id: "PunishmentCommands",
     name: "PunishmentCommands",
     description: "Run punishment bot commands from the user context menu",
     tags: ["Servers", "Commands"],

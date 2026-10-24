@@ -20,6 +20,7 @@ const settings = definePluginSettings({
 
 // The entire code of this plugin can be found in ipcPlugins
 export default definePlugin({
+    id: "FixSpotifyEmbeds",
     name: "FixSpotifyEmbeds",
     description: "Fixes spotify embeds being incredibly loud by letting you customise the volume",
     authors: [Devs.Ven],

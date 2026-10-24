@@ -196,6 +196,7 @@ function trustEveryone() {
 }
 
 export default definePlugin({
+    id: "AutoMute",
     name: "AutoMute",
     description: "Automatically mute yourself in voice channels if you're not speaking for too long, or if someone who isn't a friend joins.",
     tags: ["Voice", "Utility"],

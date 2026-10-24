@@ -85,6 +85,7 @@ async function undeafenUserViaAPI(
 }
 
 export default definePlugin({
+    id: "AutoUnmute",
     name: "AutoUnmute",
     description:
         "Automatically unmutes and undeafens when server mute/deafen occurs if you have permissions (no notifications)",

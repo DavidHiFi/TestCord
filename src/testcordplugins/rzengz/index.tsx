@@ -9,6 +9,7 @@ import definePlugin from "@utils/types";
 import { ChannelRouter, UserStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "AutoJumpToMention",
     name: "AutoJumpToMention",
     description: "Automatically takes you to the message when someone mentions you",
     tags: ["Utility"],

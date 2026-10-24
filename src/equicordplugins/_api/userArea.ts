@@ -13,6 +13,7 @@ import { findCssClassesLazy } from "@webpack";
 const accountClasses = findCssClassesLazy("iconForeground", "accountPopoutButtonWrapper");
 
 export default definePlugin({
+    id: "UserAreaAPI",
     name: "UserAreaAPI",
     description: "API to add buttons to the user area panel.",
     authors: [Devs.prism],

@@ -8,6 +8,7 @@ import { TestcordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "EmojiOnMouseUp",
     name: "EmojiOnMouseUp",
     description: "Sends the emoji you are hovering when you take your mouse button up.",
     tags: ["Emotes", "Utility"],

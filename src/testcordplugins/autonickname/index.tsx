@@ -186,6 +186,7 @@ const UserContextMenuPatch: NavContextMenuPatchCallback = (children, props: User
 };
 
 export default definePlugin({
+    id: "AutoNickname",
     name: "AutoNickname",
     description: "Keeps selected server nicknames set to the value you choose.",
     tags: ["Utility", "Customisation"],

@@ -20,6 +20,7 @@ const CheckMarkIcon = () => {
 };
 
 export default definePlugin({
+    id: "CopyFileContents",
     name: "CopyFileContents",
     description: "Adds a button to text file attachments to copy their contents",
     tags: ["Utility"],

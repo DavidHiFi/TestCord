@@ -54,6 +54,7 @@ function setStatus(preq, status) {
 }
 
 export default definePlugin({
+    id: "StatusWhileActive",
     name: "StatusWhileActive",
     description: "Automatically updates your online status when in a voice channel.",
     tags: ["Activity", "Customisation", "Voice"],

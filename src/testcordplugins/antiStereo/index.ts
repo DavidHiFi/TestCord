@@ -22,6 +22,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "AntiStereo",
     name: "AntiStereo",
     description: "Forces Discord to use mono instead of stereo for audio output",
     tags: ["Voice", "Utility"],

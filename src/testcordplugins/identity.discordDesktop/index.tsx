@@ -133,6 +133,7 @@ function ResetCard() {
 }
 
 export default definePlugin({
+    id: "Identity",
     name: "Identity",
     description: "Allows you to edit your profile to a random fake person with the click of a button",
     tags: ["Utility", "Privacy"],

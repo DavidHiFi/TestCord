@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import FriendCodesPanel from "./FriendCodesPanel";
 
 export default definePlugin({
+    id: "FriendCodes",
     name: "FriendCodes",
     description: "Generate FriendCodes to easily add friends",
     tags: ["Friends", "Utility"],

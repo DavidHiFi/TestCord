@@ -30,6 +30,7 @@ function renderBadge(id: number, title: string) {
 }
 
 export default definePlugin({
+    id: "ChannelBadges",
     name: "ChannelBadges",
     description: "Adds badges to channels based on their type",
     tags: ["Appearance", "Customisation", "Servers"],

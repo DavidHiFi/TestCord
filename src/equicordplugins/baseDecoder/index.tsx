@@ -96,6 +96,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "DecodeBase64",
     name: "DecodeBase64",
     description: "Decode base64 content of any message and copy the decoded content.",
     dependencies: ["MessagePopoverAPI"],

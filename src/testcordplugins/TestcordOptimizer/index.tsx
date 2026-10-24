@@ -1066,6 +1066,7 @@ function stopCacheCleaner() {
 if (migrateOptimizerSettings(SettingsStore.plain.plugins)) SettingsStore.markAsChanged();
 
 export default definePlugin({
+    id: "TestcordOptimizer",
     name: "TestcordOptimizer",
     description: "All-in-one performance suite: webpack patches (tooltip, emoji, spinner, confetti, analytics, reactions, Sentry, member list throttle, audio reset reload prevention), bounded image cache, react-spring skip, offscreen media pause, MutationObserver DOM throttle, CSS containment (messages, members, DMs, embeds, servers, channels, forum, guild list, search), backdrop-blur/sticker/effect/upsell/spoiler/box-shadow/text-shadow/filter/backdrop suppression, lazy images/iframes, rAF reduction, passive listeners, console suppression (log/debug/info/warn/group/count/assert/dir/timers), ResizeObserver throttle, memory manager, GIF freeze (canvas/css), concurrency limit, message cache trimmer, animated avatar freeze, avatar quality reducer, cache limits, idle callback optimizer, drag-and-drop suppression, spellcheck opt-out, overscroll contain, link preview suppress, canvas effects hide, chat input containment (typing lag), large text attachment containment, attachment image grid containment.",
     tags: ["Utility", "Developers", "Performance"],

@@ -375,6 +375,7 @@ function DevBuildConfirmModal(props: RenderModalProps) {
 }
 
 export default definePlugin({
+    id: "SupportHelper",
     name: "SupportHelper",
     required: true,
     description: "Helps us provide support to you",

@@ -37,6 +37,7 @@ function settingsComponent() {
 }
 
 export default definePlugin({
+    id: "SearchFix",
     name: "SearchFix",
     description: 'Fixes the annoying "We dropped the magnifying glass!" error.',
     tags: ["Utility"],

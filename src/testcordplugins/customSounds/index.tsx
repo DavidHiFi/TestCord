@@ -226,6 +226,7 @@ function SettingsUI() {
 }
 
 export default definePlugin({
+    id: "CustomSounds",
     name: "CustomSounds",
     description: "Customize Discord's sounds.",
     authors: [TestcordDevs.x2b, Devs.ScattrdBlade, Devs.TheKodeToad],

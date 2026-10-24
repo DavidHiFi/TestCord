@@ -153,6 +153,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ReactionTracker",
     name: "ReactionTracker",
     description: "Count who reacts to your messages with a given emoji",
     tags: ["Reactions", "Utility"],

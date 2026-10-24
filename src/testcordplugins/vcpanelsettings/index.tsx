@@ -211,6 +211,7 @@ function Controls() {
 }
 
 export default definePlugin({
+    id: "VCPanelSettings",
     name: "VCPanelSettings",
     description: "Control your microphone, speakers and camera from the voice panel",
     tags: ["Voice", "Customisation"],

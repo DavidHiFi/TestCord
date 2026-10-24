@@ -449,6 +449,7 @@ const AutoResponderButton = () => {
 };
 
 export default definePlugin({
+    id: "AutoResponder",
     name: "AutoResponder",
     description: "Automatically reply to DMs using AI to match your writing style.",
     tags: ["Chat", "Nightcord"],

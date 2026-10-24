@@ -505,6 +505,7 @@ const contextMenus = {
 };
 
 export default definePlugin({
+    id: "MimicTroll",
     name: "MimicTroll",
     description: "Right-click users and toggle 'Mimic' to copy their messages with content filtering for safety",
     tags: ["Chat", "Fun"],

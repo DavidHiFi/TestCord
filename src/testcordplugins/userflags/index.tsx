@@ -98,6 +98,7 @@ function FlagBadge({ userId }: { userId: string }) {
 }
 
 export default definePlugin({
+    id: "UserFlags",
     name: "UserFlags",
     description: "Attach a label under a user's messages",
     tags: ["Utility", "Appearance"],

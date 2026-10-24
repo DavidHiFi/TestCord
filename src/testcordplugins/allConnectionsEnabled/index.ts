@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import { Connection } from "./connection-types";
 
 export default definePlugin({
+    id: "AllConnectionsEnabled",
     name: "AllConnectionsEnabled",
     description: "Enables all connections",
     tags: ["Utility", "Customisation"],

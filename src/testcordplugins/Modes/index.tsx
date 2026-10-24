@@ -365,6 +365,7 @@ function ModesModal({ rootProps }: { rootProps: RenderModalProps; }) {
 }
 
 export default definePlugin({
+    id: "Modes",
     name: "Modes",
     description: "Switch your whole Discord with one tap: status, custom status, themes and which plugins are on — bundled into named modes like Work, Gaming or Focus.",
     authors: [TestcordDevs.sirphantom89],

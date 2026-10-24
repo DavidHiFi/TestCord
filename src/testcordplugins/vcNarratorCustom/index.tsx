@@ -1044,6 +1044,7 @@ const UserContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: U
 };
 
 export default definePlugin({
+    id: "VcNarratorCustom",
     name: "VcNarratorCustom",
     description: "Announces when users join, leave, or move voice channels via narrator using TikTok TTS. Revamped and back from the dead.",
     tags: ["Accessibility", "Voice"],

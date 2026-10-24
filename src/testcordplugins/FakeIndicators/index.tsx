@@ -7,6 +7,7 @@
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "FakeIndicators",
     name: "FakeIndicators",
     description: "Placeholder plugin scaffold for fake indicators.",
     authors: [],

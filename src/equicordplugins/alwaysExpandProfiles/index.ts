@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "AlwaysExpandProfiles",
     name: "AlwaysExpandProfiles",
     description: "Always expands profile popouts to the full modal",
     tags: ["Appearance", "Utility"],

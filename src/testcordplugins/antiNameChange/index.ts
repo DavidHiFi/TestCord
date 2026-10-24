@@ -38,6 +38,7 @@ function substituteAlias(content: string) {
 }
 
 export default definePlugin({
+    id: "AntiNameChange",
     name: "AntiNameChange",
     description: "Keeps a real mention for someone who keeps cycling accounts",
     tags: ["Privacy", "Utility"],

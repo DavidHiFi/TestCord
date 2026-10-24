@@ -41,6 +41,7 @@ function queueScan() {
 }
 
 export default definePlugin({
+    id: "HideSuggestedChannels",
     name: "HideSuggestedChannels",
     description: "Automatically dismisses the \"Suggested\" channels section",
     authors: [TestcordDevs.Aviv],

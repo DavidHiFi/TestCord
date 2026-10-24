@@ -236,6 +236,7 @@ function modifyIncomingMessage(message: Message): string {
 }
 
 export default definePlugin({
+  id: "ID Translater",
   name: "ID Translater",
   description:
     "Automatically translates Discord IDs to clickable @ mentions or # references",

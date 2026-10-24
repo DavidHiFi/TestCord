@@ -211,7 +211,7 @@ export function LyricsAttributionFooter({
             )}
             {(hasProvider || credited) && (
                 <div className={cl("attribution-meta")}>
-                    {hasProvider && <span className={cl("attribution-dim")}>{sourceLabel(attr.provider)}</span>}
+                    {hasProvider && <span className={cl("attribution-dim")}>Provided by {sourceLabel(attr.provider)}</span>}
                     {hasProvider && credited && <span className={cl("attribution-dim")}>·</span>}
                     {credited && (
                         <>

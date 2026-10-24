@@ -231,6 +231,7 @@ async function executeBumpCommand(channelId: string) {
 }
 
 export default definePlugin({
+    id: "AutoBump",
     name: "AutoBump",
     description: "Automatically sends DISBOARD /bump on a timer. This is considered selfbot behavior and can get you banned.",
     tags: ["Servers", "Utility"],

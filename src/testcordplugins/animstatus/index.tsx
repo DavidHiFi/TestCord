@@ -170,6 +170,7 @@ function AnimatedStatusButton() {
 }
 
 export default definePlugin({
+    id: "AnimatedStatus",
     name: "AnimatedStatus", description: "Cycle through status messages automatically",
     tags: ["Activity", "Customisation"], authors: [{ id: 705545572299571220n, name: "shxdes69" }], settings,
     dependencies: ["HeaderBarAPI", "UserSettingsAPI"],

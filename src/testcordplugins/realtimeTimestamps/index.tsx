@@ -158,6 +158,7 @@ function renderTimestamp(input: unknown, type: "cozy" | "compact" | "tooltip"): 
 // ─── Plugin ──────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "RealtimeTimestamps",
     name: "RealtimeTimestamps",
     description: "Replaces Discord timestamps (e.g. 15:31) with live seconds (e.g. 15:34:21), updated every second.",
     tags: ["Appearance", "Chat", "Utility", "Nightcord"],

@@ -79,6 +79,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export default definePlugin({
+    id: "Vimium",
     name: "Vimium",
     description: "Vimium-like keyboard navigation: press f to overlay letter hints on every clickable element, j/k to scroll, h/l to move between channels.",
     tags: ["Utility", "Shortcuts", "Accessibility"],

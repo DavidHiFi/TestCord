@@ -207,6 +207,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 export default definePlugin({
+    id: "AutoZipper",
     name: "AutoZipper",
     description: "Automatically zips specified file types and folders before uploading to Discord",
     tags: ["Organisation", "Utility"],

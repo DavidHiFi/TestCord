@@ -92,6 +92,7 @@ async function fetchYuri(): Promise<{ url: string; source: string; } | null> {
 }
 
 export default definePlugin({
+    id: "Yuri",
     name: "Yuri",
     description: "Sends a random yuri picture via /yuri. Uses 5 APIs with random order and automatic fallback. (NSFW)",
     authors: [TestcordDevs.x2b],

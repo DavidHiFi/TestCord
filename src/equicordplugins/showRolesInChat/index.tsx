@@ -151,6 +151,7 @@ const HighestRoleIndicator = ErrorBoundary.wrap(({ user, channelId, isCompact }:
 }, { noop: true });
 
 export default definePlugin({
+    id: "ShowRolesInChat",
     name: "ShowRolesInChat",
     description: "Shows a user's highest role next to their name in chat messages. Hide/show specific roles in their context menu (right-click).",
     tags: ["Appearance", "Chat", "Roles", "Servers"],

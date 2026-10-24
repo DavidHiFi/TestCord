@@ -21,6 +21,7 @@ interface VoiceState {
 }
 
 export default definePlugin({
+    id: "AskMeToMute",
     name: "AskMeToMute",
     description: "Mute yourself when moderators server mute you, and automatically remove your server mute if you have permission.",
     tags: ["Voice", "Utility"],

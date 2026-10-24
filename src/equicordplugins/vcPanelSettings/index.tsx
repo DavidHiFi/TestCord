@@ -240,6 +240,7 @@ function VoiceSettings() {
 }
 
 export default definePlugin({
+    id: "VCPanelSettings",
     name: "VCPanelSettings",
     description: "Control voice settings right from the voice panel",
     tags: ["Utility", "Voice"],

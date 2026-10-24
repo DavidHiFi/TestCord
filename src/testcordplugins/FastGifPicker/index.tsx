@@ -218,6 +218,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "FastGifPicker",
     name: "FastGifPicker",
     description: "Makes the GIF picker load lighter previews, retry failures, and avoid starting too many GIFs at once.",
     tags: ["Media", "Utility"],

@@ -293,6 +293,7 @@ function scheduleKick(callback: () => void, ms: number) {
 }
 
 export default definePlugin({
+    id: "LockGroup",
     name: "LockGroup",
     description:
         "Allows locking/unlocking groups via context menu (prevents adding members)",

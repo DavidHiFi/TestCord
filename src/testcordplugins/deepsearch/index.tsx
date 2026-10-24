@@ -67,6 +67,7 @@ const settings = definePluginSettings({
 export { settings };
 
 export default definePlugin({
+    id: "DeepSearch",
     name: "DeepSearch",
     description: "Advanced message search with filters for links, authors, channels, dates, and more",
     authors: [TestcordDevs.x2b],

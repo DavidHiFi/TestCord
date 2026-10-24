@@ -49,6 +49,7 @@ import {
 migratePluginSettings("MoreCommands", "FriendCloud", "GifRoulette", "ImgToGif", "MoreKaomoji");
 
 export default definePlugin({
+    id: "MoreCommands",
     name: "MoreCommands",
     description: "Adds various fun and useful commands",
     dependencies: ["CommandsAPI"],

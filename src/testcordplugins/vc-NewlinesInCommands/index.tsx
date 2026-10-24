@@ -8,6 +8,7 @@ import { TestcordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NewlinesInCommands",
     name: "NewlinesInCommands",
     description: "Allows shift+enter to create new lines in command inputs.",
     tags: ["Chat", "Commands"],

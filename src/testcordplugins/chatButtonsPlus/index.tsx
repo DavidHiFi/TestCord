@@ -327,6 +327,7 @@ const settings = definePluginSettings({
 
 migratePluginSettings("ChatButtonsPlus", "Meow", "Woof");
 export default definePlugin({
+    id: "ChatButtonsPlus",
     name: "ChatButtonsPlus",
     description: "Add custom chat buttons with personalized + messages and SVG icons",
     tags: ["Chat", "Customisation", "Utility"],

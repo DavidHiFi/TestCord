@@ -60,6 +60,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "NoReplyMention",
     name: "NoReplyMention",
     description: "Disables reply pings by default",
     tags: ["Chat", "Notifications"],

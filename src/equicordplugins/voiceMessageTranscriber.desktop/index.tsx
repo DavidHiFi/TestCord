@@ -19,6 +19,7 @@ import { terminateWorker } from "./utils/worker";
 const VoiceMessageButtonWrapped = ErrorBoundary.wrap(VoiceMessageButton, { noop: true });
 
 export default definePlugin({
+    id: "VoiceMessageTranscriber",
     name: "VoiceMessageTranscriber",
     authors: [Devs.TheSun, EquicordDevs.tt],
     description: "On-device transcriptions for voice messages powered by Whisper",

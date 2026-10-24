@@ -1599,6 +1599,7 @@ const ExporterChatBarButton: ChatBarButtonFactory = ({ isMainChat }) => {
 };
 
 export default definePlugin({
+    id: "Exporter",
     name: "Exporter",
     description: "Exports DMs, channels, and server member lists with profile icons, banners, badges, bios, and 9 file formats.",
     tags: ["Media", "Utility"],

@@ -854,6 +854,7 @@ function CopySection() {
 }
 
 export default definePlugin({
+    id: "ProfileCopyButton",
     name: "ProfileCopyButton",
     description: "Adds a button to the profile editor and a right-click menu option to copy another user's profile (avatar, banner, bio, theme colors, name styles, profile effect, status, optional game widgets). Missing emojis in bios can be uploaded to a server of your choice.",
     tags: ["Utility", "Customisation"],

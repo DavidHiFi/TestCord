@@ -11,6 +11,7 @@ import definePlugin from "@utils/types";
 export let iconsModule: IconsDef;
 
 export default definePlugin({
+    id: "ConcatenatedModules",
     name: "ConcatenatedModules",
     description: "Extract modules that have been concatenated by the bundler",
     authors: [Devs.thororen],

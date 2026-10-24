@@ -36,6 +36,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "AntiSnitch",
     name: "AntiSnitch",
     description: "Alerts you with a sound and toast whenever selected users start typing in your current channel.",
     tags: ["Privacy", "Utility"],

@@ -23,6 +23,7 @@ const opt = (name: string) => ({
 });
 
 export default definePlugin({
+    id: "ShipCalc",
     name: "ShipCalc",
     description: "/ship rates the love between two people.",
     authors: [{ name: "Sharp", id: 0n }],

@@ -68,6 +68,7 @@ function isStreaming(): boolean {
 }
 
 export default definePlugin({
+    id: "NoDMWhileStreaming",
     name: "NoDMWhileStreaming",
     description: "Hides DM and Group DM notifications and sidebar items while you are streaming",
     authors: [{ name: "Unknown", id: 0n }],

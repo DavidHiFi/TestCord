@@ -954,6 +954,7 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 export default definePlugin({
+    id: "MultiServerAutoban",
     name: "MultiServerAutoban",
     description: "dot's Multi-server automatic ban system. Press Alt+B to open settings.",
     tags: ["Servers", "Utility"],

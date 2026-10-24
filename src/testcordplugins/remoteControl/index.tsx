@@ -77,7 +77,8 @@ async function handleMessage({ optimistic, channelId, message }: MessageCreatePa
 }
 
 export default definePlugin({
-    name: "remoteControl",
+    id: "remoteControl",
+    name: "RemoteControl",
     description: "Control your Discord client by messaging yourself commands. Other users can be granted access in settings.",
     authors: [TestcordDevs.x2b],
     tags: ["Commands", "Utility"],

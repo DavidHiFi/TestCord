@@ -54,6 +54,7 @@ function VoiceCount({ channel }: { channel: Channel; }) {
 const VoiceCountBoundary = ErrorBoundary.wrap(VoiceCount, { noop: true });
 
 export default definePlugin({
+    id: "VoiceCount",
     name: "VoiceCount",
     description: "Shows how many people are sitting in each voice channel, right next to it in the channel list.",
     authors: [TestcordDevs.sirphantom89],

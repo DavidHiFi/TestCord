@@ -7,6 +7,7 @@
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "SelfForward",
     name: "SelfForward",
     description: "Adds the current channel to the forward list popup",
     tags: ["Utility"],

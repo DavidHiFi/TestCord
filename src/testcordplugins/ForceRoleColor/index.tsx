@@ -81,6 +81,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ForceRoleColor",
     name: "ForceRoleColor",
     description: "Forces a specific role color on yourself globally",
     tags: ["Customisation", "Roles"],

@@ -16,7 +16,7 @@ import { Switch } from "@components/Switch";
 import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
 import { saveFile } from "@utils/web";
-import { Alerts, React, showToast, Toasts, useDrag, useDrop } from "@webpack/common";
+import { Alerts, React, showToast, Toasts } from "@webpack/common";
 
 import { openImportModal } from "./ImportModal";
 import { openInfoModal } from "./InfoModal";
@@ -30,12 +30,8 @@ import {
 import { openSaveModal } from "./SaveModal";
 
 type DropIntent = "before" | "merge" | "after";
-const PRESET_DND_TYPE = "VC_PRESET";
+const PRESET_DND_TYPE = "text/x-testcord-preset";
 const logger = new Logger("Presets");
-
-interface PresetDragItem {
-    name: string;
-}
 
 interface DragPreviewPoint {
     x: number;
@@ -108,7 +104,6 @@ function PresetDragPreview({ preset, point, offset }: { preset: Preset | undefin
 }
 
 function PresetRow({ preset, globalDefault, forceDefault, hideDuplicate, draggingName, dragOverName, dropIntent, setDraggingName, setDragOverName, setDropIntent, setDragPreviewPoint, setDragPreviewOffset, onChange }: { preset: Preset; globalDefault: boolean; forceDefault: boolean; hideDuplicate: boolean; draggingName: string | null; dragOverName: string | null; dropIntent: DropIntent | null; setDraggingName: (name: string | null) => void; setDragOverName: (name: string | null) => void; setDropIntent: (intent: DropIntent | null) => void; setDragPreviewPoint: (point: DragPreviewPoint | null) => void; setDragPreviewOffset: (offset: DragPreviewOffset) => void; onChange: () => void; }) {
-    const rowRef = React.useRef<HTMLDivElement>(null);
     const effectiveRestore = preset.restoreSettings ?? globalDefault;
     const effectiveForce = preset.forceApply ?? forceDefault;
 
@@ -160,87 +155,88 @@ function PresetRow({ preset, globalDefault, forceDefault, hideDuplicate, draggin
         setDragOverName(null);
         setDropIntent(null);
     };
-    const getDropIntent = (clientY: number): DropIntent | null => {
-        if (!rowRef.current) return null;
-        const rect = rowRef.current.getBoundingClientRect();
+    const getDropIntent = (rect: DOMRect, clientY: number): DropIntent | null => {
         const y = clientY - rect.top;
         if (y < rect.height * 0.28) return "before";
         if (y > rect.height * 0.72) return "after";
         return "merge";
     };
 
-    const [{ isDragging }, drag] = useDrag({
-        type: PRESET_DND_TYPE,
-        item: () => {
-            const rect = rowRef.current?.getBoundingClientRect();
-            const event = window.event instanceof DragEvent ? window.event : null;
-            if (rect && event) {
-                setDragPreviewOffset({ x: event.clientX - rect.left, y: event.clientY - rect.top });
-            } else {
-                setDragPreviewOffset({ x: 16, y: 16 });
-            }
+    const onDragStart = (event: React.DragEvent<HTMLDivElement>) => {
+        // Don't hijack drags that start on the row's own controls.
+        if ((event.target as HTMLElement).closest("button, input, select, textarea, a")) {
+            event.preventDefault();
+            return;
+        }
 
-            setDraggingName(preset.name);
-            setDragPreviewPoint(null);
-            return { name: preset.name };
-        },
-        end: () => {
-            setDraggingName(null);
-            setDragPreviewPoint(null);
-            clearDragTarget();
-        },
-        collect: monitor => ({ isDragging: monitor.isDragging() }),
-    });
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(PRESET_DND_TYPE, preset.name);
 
-    const [{ isOver }, drop] = useDrop({
-        accept: PRESET_DND_TYPE,
-        collect: monitor => ({ isOver: monitor.isOver({ shallow: true }) }),
-        hover: (item: PresetDragItem, monitor) => {
-            if (!rowRef.current || item.name === preset.name) return;
-            const clientOffset = monitor.getClientOffset();
-            if (!clientOffset) return;
-            setDragPreviewPoint(clientOffset);
+        // The custom PresetDragPreview follows the cursor; suppress the default ghost.
+        // An unloaded image renders as nothing in Chromium-based browsers.
+        event.dataTransfer.setDragImage(new Image(), 0, 0);
 
-            const intent = getDropIntent(clientOffset.y);
-            if (!intent) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        setDragPreviewOffset({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+        setDraggingName(preset.name);
+        setDragPreviewPoint({ x: event.clientX, y: event.clientY });
+    };
 
-            if (intent !== "merge" && reorderPresets(item.name, preset.name, intent)) {
-                clearDragTarget();
-                onChange();
-                return;
-            }
+    const onDragEnd = () => {
+        setDraggingName(null);
+        setDragPreviewPoint(null);
+        clearDragTarget();
+    };
 
-            if (intent !== "merge") {
-                clearDragTarget();
-                return;
-            }
+    const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+        if (!event.dataTransfer.types.includes(PRESET_DND_TYPE)) return;
+        if (draggingName === preset.name) return;
 
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+
+        setDragPreviewPoint({ x: event.clientX, y: event.clientY });
+
+        const intent = getDropIntent(event.currentTarget.getBoundingClientRect(), event.clientY);
+        if (dragOverName !== preset.name || dropIntent !== intent) {
             setDragOverName(preset.name);
             setDropIntent(intent);
-        },
-        drop: (item: PresetDragItem, monitor) => {
-            if (monitor.didDrop() || item.name === preset.name) return;
-            const clientOffset = monitor.getClientOffset();
-            if (clientOffset) setDragPreviewPoint(clientOffset);
-            const intent = clientOffset ? getDropIntent(clientOffset.y) : dropIntent;
-            clearDragTarget();
+        }
+    };
 
-            if (intent === "merge") openMergeModal(item.name, preset.name, onChange);
-        },
-    });
+    const onDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+        // Leave events also fire when crossing into a child, ignore those.
+        if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+        if (dragOverName === preset.name) clearDragTarget();
+    };
 
-    React.useEffect(() => {
-        if (!isOver && dragOverName === preset.name) clearDragTarget();
-    }, [isOver, dragOverName, preset.name]);
+    const onDrop = (event: React.DragEvent<HTMLDivElement>) => {
+        const sourceName = event.dataTransfer.getData(PRESET_DND_TYPE) || draggingName;
+        if (!sourceName || sourceName === preset.name) return;
 
-    drag(drop(rowRef));
+        event.preventDefault();
+        setDragPreviewPoint({ x: event.clientX, y: event.clientY });
+        const intent = getDropIntent(event.currentTarget.getBoundingClientRect(), event.clientY);
+        clearDragTarget();
+
+        if (intent === "merge") {
+            openMergeModal(sourceName, preset.name, onChange);
+        } else if (intent && reorderPresets(sourceName, preset.name, intent)) {
+            onChange();
+        }
+    };
 
     const count = Object.values(preset.plugins).filter(p => p.enabled).length;
 
     return (
         <Card
-            ref={rowRef}
-            className={`vc-presets-row${(draggingName === preset.name || isDragging) ? " vc-presets-row-dragging" : ""}${dragOverName === preset.name ? ` vc-presets-row-drop-target vc-presets-row-drop-${dropIntent}` : ""}`}
+            draggable
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            className={`vc-presets-row${draggingName === preset.name ? " vc-presets-row-dragging" : ""}${dragOverName === preset.name ? ` vc-presets-row-drop-target vc-presets-row-drop-${dropIntent}` : ""}`}
         >
             <button className="vc-presets-row-gear" onClick={onInfo} aria-label="Preset settings">
                 <MainSettingsIcon />

@@ -53,6 +53,7 @@ const settings = definePluginSettings({
 
 migratePluginSettings("SortFriends", "SortFriendRequests");
 export default definePlugin({
+    id: "SortFriends",
     name: "SortFriends",
     authors: [Devs.Megu, EquicordDevs.CallMeGii],
     description: "Sorts friend requests by date of receipt",

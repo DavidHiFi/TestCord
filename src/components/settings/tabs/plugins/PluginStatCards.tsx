@@ -9,7 +9,24 @@ import "./styles.css";
 import { BaseText } from "@components/BaseText";
 import { Tooltip } from "@webpack/common";
 
-export function StockPluginsCard({ totalStockPlugins, enabledStockPlugins }) {
+export function StockPluginsCard({ totalStockPlugins, enabledStockPlugins, legacyCount, experimentalCount }) {
+    const hasBreakdown = typeof legacyCount === "number" && typeof experimentalCount === "number";
+    const total = (
+        <Tooltip
+            text={
+                hasBreakdown
+                    ? `${legacyCount} legacy · ${experimentalCount} experimental`
+                    : ""
+            }
+        >
+            {tooltipProps => (
+                <span style={{ display: "inline", position: "relative" }}>
+                    <BaseText size="xl" weight="bold" {...tooltipProps}><span data-tc-total-plugins>{totalStockPlugins}</span></BaseText>
+                </span>
+            )}
+        </Tooltip>
+    );
+
     return (
         <div className="vc-plugin-stats vc-stockplugins-stats-card">
             <div className="vc-plugin-stats-card-container">
@@ -20,7 +37,7 @@ export function StockPluginsCard({ totalStockPlugins, enabledStockPlugins }) {
                 <div className="vc-plugin-stats-card-divider"></div>
                 <div className="vc-plugin-stats-card-section">
                     <BaseText size="md" weight="semibold">Total Plugins</BaseText>
-                    <BaseText size="xl" weight="bold">{totalStockPlugins}</BaseText>
+                    {total}
                 </div>
             </div>
         </div>

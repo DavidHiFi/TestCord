@@ -346,6 +346,7 @@ function installTableRuleForParser(parser: { defaultRules?: MarkdownRules; }) {
 }
 
 export default definePlugin({
+    id: "MarkdownTables",
     name: "MarkdownTables",
     description: "Render GitHub-style markdown tables in Discord messages.",
     tags: ["Chat", "Appearance"],

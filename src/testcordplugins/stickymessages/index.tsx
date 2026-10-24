@@ -248,6 +248,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "StickyMessages",
     name: "StickyMessages",
     description: "js like sticky messages bot works by keepin da msg at the bottom.",
     tags: ["Chat", "Utility"],

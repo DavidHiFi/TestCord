@@ -1741,6 +1741,7 @@ const imageContextMenuPatch: NavContextMenuPatchCallback = (children, { src }: I
 };
 
 export default definePlugin({
+    id: "TestcordOSINTToolkit",
     name: "TestcordOSINTToolkit",
     description: "OSINT scanner for Discord users. Analyzes messages, attachments, network lookups, breach records, CordCat intelligence, and image geolocation.",
     tags: ["Utility", "Privacy"],

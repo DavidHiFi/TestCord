@@ -14,6 +14,7 @@ const caps: Record<string, string> = {
 };
 
 export default definePlugin({
+    id: "SmallCaps",
     name: "SmallCaps",
     description: "/smallcaps writes your message in ꜱᴍᴀʟʟ ᴄᴀᴘꜱ.",
     authors: [{ name: "Sharp", id: 0n }],

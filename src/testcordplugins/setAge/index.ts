@@ -65,6 +65,7 @@ function apply() {
 }
 
 export default definePlugin({
+    id: "SetAge",
     name: "SetAge",
     description: "Gives accounts with no age group one, so Discord stops asking you to verify your age. Stays on this client only.",
     tags: ["Utility"],

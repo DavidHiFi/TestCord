@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "CreateTheme",
     name: "CreateTheme",
     description: "Create Theme UI — registered via settings.tsx",
     authors: [Devs.Ven],

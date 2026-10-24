@@ -29,6 +29,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MoreReact",
     name: "MoreReact",
     description: "This plugin allows you to modify the max number of reactions for the frencency reaction experiment",
     tags: ["Reactions", "Utility"],

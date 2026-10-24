@@ -69,6 +69,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "IrcColors",
     name: "IrcColors",
     description: "Makes username colors in chat unique, like in IRC clients",
     tags: ["Appearance", "Customisation"],

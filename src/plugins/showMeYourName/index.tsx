@@ -1618,6 +1618,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ShowMeYourName",
     name: "ShowMeYourName",
     description: "Display any permutation of custom nicknames, friend nicknames, server nicknames, display names, and usernames in chat.",
     authors: [EquicordDevs.Etorix, Devs.Rini, Devs.TheKodeToad, Devs.sadan, Devs.prism, EquicordDevs.penguinwokrs],

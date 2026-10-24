@@ -31,6 +31,7 @@ import { DeviconSetting } from "./types";
 import { clearStyles } from "./utils/createStyle";
 
 export default definePlugin({
+    id: "ShikiCodeblocks",
     name: "ShikiCodeblocks",
     description: "Brings vscode-style codeblocks into Discord, powered by Shiki",
     tags: ["Appearance", "Chat", "Customisation"],

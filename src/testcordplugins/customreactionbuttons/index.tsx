@@ -168,6 +168,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "CustomReactionButtons",
     name: "CustomReactionButtons",
     description: "Add custom reaction buttons to the message popover, either use the windows emoji picker or you have to copy the custom server emojis markdown.",
     tags: ["Chat", "Utility", "Reactions"],

@@ -25,6 +25,7 @@ const settings = definePluginSettings({
 migratePluginSettings("FixYoutubeEmbeds", "YoutubeDescription");
 
 export default definePlugin({
+    id: "FixYoutubeEmbeds",
     name: "FixYoutubeEmbeds",
     description: "Bypasses youtube videos being blocked from display on Discord (for example by UMG)",
     tags: ["Media", "Utility"],

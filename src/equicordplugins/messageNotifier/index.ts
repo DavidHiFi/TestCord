@@ -36,6 +36,7 @@ const settings = definePluginSettings({
 
 export default definePlugin({
     authors: [EquicordDevs.cassie, EquicordDevs.mochienya],
+    id: "MessageNotifier",
     name: "MessageNotifier",
     description: "Get toasts for when chosen users send a message",
     tags: ["Chat", "Notifications"],

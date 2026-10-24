@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "BetterGifPicker",
     name: "BetterGifPicker",
     description: "Makes the gif picker open the favorite category by default",
     tags: ["Emotes", "Customisation"],

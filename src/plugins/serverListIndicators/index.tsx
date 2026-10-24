@@ -136,6 +136,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ServerListIndicators",
     name: "ServerListIndicators",
     description: "Add online friend count or server count in the server list",
     tags: ["Servers", "Appearance"],

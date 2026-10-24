@@ -8,6 +8,7 @@ import { findOption, RequiredMessageOption } from "@api/Commands";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "SpaceOut",
     name: "SpaceOut",
     description: "/spaceout p u t s   s p a c e s   between every letter.",
     authors: [{ name: "Sharp", id: 0n }],

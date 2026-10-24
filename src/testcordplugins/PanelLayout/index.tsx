@@ -161,6 +161,7 @@ export const settings = definePluginSettings({
     hideLine: { type: OptionType.BOOLEAN, default: true, description: "Hide the line between user and buttons", onChange: () => apply() },
     fixProfileNameplate: { type: OptionType.BOOLEAN, default: false, description: "Fixes the rounding of the profile nameplate", onChange: () => apply() },
     showUserAndStatus: { type: OptionType.BOOLEAN, default: false, description: "Show the user and the status at the same time", onChange: () => apply() },
+    showDrawerLabel: { type: OptionType.BOOLEAN, default: false, description: "Show a 'P' label next to the plugin drawer toggle so it's clear what the arrow opens", onChange: () => apply() },
 });
 
 // ─── Selectors & Constants ────────────────────────────────────────────────────
@@ -1057,6 +1058,7 @@ function buildCustomCSS(): string {
                     background-color: ${finalColor} !important;
                     color: white !important;
                     border-radius: ${finalRadius} !important;
+                    border: none !important;
                 }
 
                 ${S.previewButtonOn}[data-deracul-label="${label}"] svg {
@@ -1089,6 +1091,7 @@ function buildCustomCSS(): string {
                     --custom-nameplate-neutral: ${finalColor} !important;
                     background-color: ${finalColor} !important;
                     border-radius: ${finalRadius} !important;
+                    border: none !important;
                 }
 
                 ${S.previewButtonOff}[data-deracul-label="${label}"]:hover {
@@ -1096,6 +1099,7 @@ function buildCustomCSS(): string {
                     --custom-nameplate-neutral: ${finalColor} !important;
                     background-color: ${finalColorHovered} !important;
                     border-radius: ${finalRadius} !important;
+                    border: none !important;
                 }
             `);
         }
@@ -1123,6 +1127,10 @@ function buildCustomCSS(): string {
             border-bottom: 2px solid var(--brand-experiment, var(--background-brand)) !important;
             background-color: transparent !important;
         }
+
+        settings.store.showDrawerLabel
+            ? "\n        .vc-panel-collapse-button {\n            display: flex !important;\n            align-items: center !important;\n            gap: 6px !important;\n        }\n        .vc-drawer-label {\n            font-weight: 700 !important;\n            font-size: 10px !important;\n            color: var(--text-muted, #8e9397) !important;\n            text-transform: uppercase !important;\n            letter-spacing: 0.4px !important;\n            white-space: nowrap !important;\n        }"
+            : ""
     `);
 
     return lines.join("\n");
@@ -3540,10 +3548,17 @@ function PanelLayoutButton({ iconForeground, hideTooltips, nameplate }: UserArea
 }
 
 function CollapseToggleButton({ iconForeground, hideTooltips, nameplate }: UserAreaRenderProps) {
-    const { userPanelLayout, pluginsCollapsed } = settings.use(["userPanelLayout", "pluginsCollapsed"]);
+    const { userPanelLayout, pluginsCollapsed, showDrawerLabel } = settings.use(["userPanelLayout", "pluginsCollapsed", "showDrawerLabel"]);
     if (!userPanelLayout.startsWith("split_")) return null;
 
     const label = pluginsCollapsed ? "Show Plugin Panel" : "Hide Plugin Panel";
+
+    const drawerIcon = (
+        <>
+            {pluginsCollapsed ? <CollapseIcon style={{ color: iconForeground }} /> : <CollapseOffIcon style={{ color: iconForeground }}/>}
+            {showDrawerLabel && <span className="vc-drawer-label">P</span>}
+        </>
+    );
 
     return (
         <UserAreaButton
@@ -3552,7 +3567,7 @@ function CollapseToggleButton({ iconForeground, hideTooltips, nameplate }: UserA
             aria-checked={pluginsCollapsed}
             role="switch"
             className="vc-panel-collapse-button icon-color-fix"
-            icon={pluginsCollapsed ? <CollapseIcon style={{ color: iconForeground }} /> : <CollapseOffIcon style={{ color: iconForeground }}/>}
+            icon={drawerIcon}
             plated={nameplate != null}
             onClick={() => {
                 settings.store.pluginsCollapsed = !pluginsCollapsed;
@@ -3564,6 +3579,7 @@ function CollapseToggleButton({ iconForeground, hideTooltips, nameplate }: UserA
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "PanelLayout",
     name: "PanelLayout",
     description: "Customize the layout, style, and visibility of panel and call buttons, and manage user area modules.",
     authors: [TestcordDevs.deracul, TestcordDevs.Aviv, TestcordDevs.x2b, TestcordDevs.sirphantom89],

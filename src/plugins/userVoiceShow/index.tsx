@@ -46,6 +46,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "UserVoiceShow",
     name: "UserVoiceShow",
     description: "Shows an indicator when a user is in a Voice Channel",
     tags: ["Voice", "Appearance", "Friends"],

@@ -214,6 +214,7 @@ function CacheResetButton() {
 }
 
 export default definePlugin({
+    id: "CacheResetButton",
     name: "CacheResetButton",
     description: "Performance boost button: clears caches and applies runtime optimizations (CSS containment, passive listeners, spring skip, lazy images, backdrop blur removal, animation kill).",
     tags: ["Utility", "Performance"],

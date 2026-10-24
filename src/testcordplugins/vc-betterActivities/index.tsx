@@ -234,6 +234,7 @@ function getApplicationIcons(activities: Activity[], preferSmall = false) {
 migratePluginSettings("BetterActivities", "MemberListActivities");
 
 export default definePlugin({
+    id: "BetterActivities",
     name: "BetterActivities",
     description: "Shows activity icons in the member list and allows showing all activities",
     authors: [

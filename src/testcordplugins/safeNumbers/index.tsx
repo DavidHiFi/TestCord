@@ -93,6 +93,7 @@ function SafeNumbersButton() {
 }
 
 export default definePlugin({
+    id: "SafeNumbers",
     name: "SafeNumbers",
     description: "replace numbers in ur messages with a similiar math char shi so discord cant touch yo ass and ban for under. hope yall enjoy",
     tags: ["Privacy", "Chat"],

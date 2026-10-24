@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "VaporScrollbar",
     name: "VaporScrollbar",
     description: "Replaces scrollbars with a neon pink-to-cyan vaporwave gradient.",
     authors: [{ name: "Sharp", id: 0n }],

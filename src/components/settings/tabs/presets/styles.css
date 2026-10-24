@@ -162,7 +162,12 @@
         var(--background-base-lower-alt);
     box-shadow: 0 1px 0 rgb(255 255 255 / 4%) inset, 0 8px 24px rgb(0 0 0 / 10%);
     overflow: hidden;
+    cursor: grab;
     transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.vc-presets-row:active {
+    cursor: grabbing;
 }
 
 .vc-presets-row::before {

@@ -759,6 +759,7 @@ function TestcordAINavButton({ selected }: { selected?: boolean; }) {
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "TestcordAI",
     name: "TestcordAI",
     description: "AI Chat integrated in Discord with Reidverse AI or Groq. Replaces 'Shop' in the DM panel.",
     tags: ["Chat", "Commands", "Nightcord"],

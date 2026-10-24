@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "ProfileCollectionsAPI",
     name: "ProfileCollectionsAPI",
     description: "API to add collections to the user profile panel like discords game collection.",
     authors: [Devs.thororen],

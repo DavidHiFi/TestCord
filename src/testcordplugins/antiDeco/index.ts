@@ -71,6 +71,7 @@ function markChannelSwitch() {
 }
 
 export default definePlugin({
+    id: "AntiDisconnect",
     name: "AntiDisconnect",
     description:
         "Automatically reconnects to voice channel in case of forced disconnection",

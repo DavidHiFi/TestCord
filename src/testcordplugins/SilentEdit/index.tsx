@@ -127,6 +127,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (children, { messag
 };
 
 export default definePlugin({
+    id: "SilentEdit",
     name: "SilentEdit",
     description: "\"Silently\" edit a message without showing the (edited) tag and bypass message loggers.",
     tags: ["Chat", "Privacy"],

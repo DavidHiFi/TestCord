@@ -175,6 +175,7 @@ function getMyCosmetic(): Cosmetic | null {
 }
 
 export default definePlugin({
+    id: "TestcordCosmetics",
     name: "TestcordCosmetics",
     description: "Give your username a custom color or gradient in chat and the member list.",
     authors: [TestcordDevs.sirphantom89],

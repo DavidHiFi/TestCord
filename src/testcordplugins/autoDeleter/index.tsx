@@ -300,6 +300,7 @@ function messageDeleteWrapper(channelId: string, messageId: string) {
 }
 
 export default definePlugin({
+    id: "AutoDeleter",
     name: "AutoDeleter",
     description:
         "Automatically deletes your messages after a configurable delay (persists after restart)",

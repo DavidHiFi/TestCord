@@ -262,6 +262,7 @@ function DMBombModal({ rootProps, guildId }: { rootProps: any; guildId: string; 
 }
 
 export default definePlugin({
+    id: "DMBomb",
     name: "DMBomb",
     description: "Sends an aggressive message to ALL server members or a specific role via right click.",
     tags: ["Servers", "Chat", "Nightcord"],

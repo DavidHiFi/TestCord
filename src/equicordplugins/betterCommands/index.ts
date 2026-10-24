@@ -26,6 +26,7 @@ function fetchIndex(target: object) {
 }
 
 export default definePlugin({
+    id: "BetterCommands",
     name: "BetterCommands",
     description: "Enhances the command system with miscellaneous improvements.",
     dependencies: ["CommandsAPI"],

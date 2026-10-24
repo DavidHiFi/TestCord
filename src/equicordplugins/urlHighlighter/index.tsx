@@ -119,6 +119,7 @@ function getMatchingPattern(url: string): PatternEntry | null {
 }
 
 export default definePlugin({
+    id: "UrlHighlighter",
     name: "UrlHighlighter",
     description: "Highlights URLs in messages that match your patterns.",
     tags: ["Appearance", "Customisation"],

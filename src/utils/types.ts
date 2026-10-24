@@ -144,10 +144,14 @@ export type IconComponent = (props: IconProps & Record<string, any>) => ReactNod
 export type IconProps = { height?: number | string; width?: number | string; className?: string; };
 export interface PluginDef {
     /**
-     * Stable unique identifier for this plugin. Changing `name` will no longer
-     * disable the plugin as long as `id` stays the same. If omitted, `name`
-     * is used as the id for backwards compatibility.
-     * Must be lower-cased, `kebab` or `camel`, and never change after first release.
+     * Stable, immutable key for this plugin's settings (`Settings.plugins[id]`).
+     * Renaming `name` (or moving the folder) never resets the enabled flag or
+     * per-plugin settings as long as this stays the same. Every in-repo plugin
+     * declares one; it is seeded with the plugin's original name so existing
+     * configs keep resolving. Prefer a lower-cased `kebab` or `camel` value for
+     * new plugins, and never change it after first release.
+     *
+     * If omitted, `name` is used as the id (legacy/user plugins only).
      */
     id?: string;
     name: string;

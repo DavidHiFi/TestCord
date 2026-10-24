@@ -9,6 +9,7 @@ import { filters,find } from "@webpack";
 import { FluxDispatcher } from "@webpack/common";
 
 export default definePlugin({
+    id: "NSFWGateBypass",
     name: "NSFWGateBypass",
     description: "Forces 'Verified Adult' status, unlocks Stages, and clears all invite blocks.",
     tags: ["Privacy", "Utility"],

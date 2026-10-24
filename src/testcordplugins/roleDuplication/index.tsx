@@ -42,6 +42,7 @@ function MakeContextCallback(type: "settings" | "other"): NavContextMenuPatchCal
 }
 
 export default definePlugin({
+    id: "RoleDuplication",
     name: "RoleDuplication",
     description: "Be able to duplicate/clone roles",
     tags: ["Servers", "Roles"],

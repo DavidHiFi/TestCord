@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "ProfileSectionsAPI",
     name: "ProfileSectionsAPI",
     description: "API to add sections near the 'Member Since' area of user profile panels.",
     authors: [Devs.thororen],

@@ -27,6 +27,7 @@ function burst(e: MouseEvent) {
 }
 
 export default definePlugin({
+    id: "ClickSparkles",
     name: "ClickSparkles",
     description: "Sprinkles little neon sparkles wherever you click.",
     authors: [{ name: "Sharp", id: 0n }],

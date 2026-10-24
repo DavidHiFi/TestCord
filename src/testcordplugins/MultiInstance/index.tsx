@@ -910,6 +910,7 @@ function MultiInstanceButton() {
 const MultiInstanceButtonWithBoundary = ErrorBoundary.wrap(MultiInstanceButton, { noop: true });
 
 export default definePlugin({
+    id: "MultiInstance",
     name: "MultiInstance",
     description: "Opens extra Testcord windows with separate Discord sessions.",
     authors: [{ name: "irritably", id: 928787166916640838n }],

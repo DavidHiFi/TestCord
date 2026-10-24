@@ -612,6 +612,7 @@ function LyricsStatusToggleButton({ iconForeground, hideTooltips, nameplate }: U
 }
 
 export default definePlugin({
+    id: "LyricsStatus",
     name: "LyricsStatus",
     description: "Shows Dopamine, TIDAL, or Spotify lyrics in your Discord custom status. Lyrics fetched from LrcLib.",
     tags: ["Activity", "Utility"],

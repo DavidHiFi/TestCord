@@ -14,6 +14,7 @@ import { settings } from "./settings";
 import { UserChatButton, UserDeafenButton, UserMuteButton } from "./utils";
 
 export default definePlugin({
+    id: "VoiceButtons",
     name: "VoiceButtons",
     description: "Quickly DM, mute, or deafen any user right from the voice-call panel.",
     tags: ["Servers", "Utility", "Voice"],

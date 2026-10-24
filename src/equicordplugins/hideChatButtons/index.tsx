@@ -83,6 +83,7 @@ function ButtonsInnerComponent({ buttons }: { buttons: ReactNode; }) {
 migratePluginSetting("HideChatButtons", "open", "Open");
 migratePluginSetting("HideChatButtons", "color", "Color");
 export default definePlugin({
+    id: "HideChatButtons",
     name: "HideChatButtons",
     description: "Able to hide the chat buttons",
     tags: ["Chat", "Utility"],

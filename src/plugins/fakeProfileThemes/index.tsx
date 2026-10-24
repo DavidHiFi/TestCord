@@ -215,6 +215,7 @@ function SettingsAboutComponent() {
 }
 
 export default definePlugin({
+    id: "FakeProfileThemes",
     name: "FakeProfileThemes",
     description: "Allows profile theming by hiding the colors in your bio thanks to invisible 3y3 encoding",
     tags: ["Appearance", "Customisation"],

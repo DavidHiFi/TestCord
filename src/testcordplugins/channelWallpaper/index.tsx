@@ -438,6 +438,7 @@ const channelContextMenuPatch: NavContextMenuPatchCallback = (children, { channe
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "ChannelWallpaper",
     name: "ChannelWallpaper",
     authors: [Devs.rushii, Devs.Nickyux],
     tags: ["Appearance", "Utility"],

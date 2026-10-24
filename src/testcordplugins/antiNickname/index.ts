@@ -63,6 +63,7 @@ async function resetNick(guildId: string, forcedNick: string, currentUserId: str
 }
 
 export default definePlugin({
+    id: "AntiNickname",
     name: "AntiNickname",
     description: "Automatically resets any nickname forcefully assigned to you in a server. Works even without admin permissions.",
     tags: ["Appearance", "Privacy", "Nightcord"],

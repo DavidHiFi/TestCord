@@ -20,6 +20,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ImageFilename",
     name: "ImageFilename",
     authors: [Devs.Ven],
     description: "Display the file name of images & GIFs as a tooltip when hovering over them",

@@ -9,6 +9,7 @@ import definePlugin from "@utils/types";
 const deferredPattern = /\b(activity|subText|botText|clanTag)\b/;
 
 export default definePlugin({
+	id: "OpenOptimizer",
 	name: "OpenOptimizer",
 	description: "Ports OpenAsar's optimizer code.",
     tags: ["Developers", "Utility"],

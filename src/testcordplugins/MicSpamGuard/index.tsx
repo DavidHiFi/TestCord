@@ -838,6 +838,7 @@ function MicSpamGuardButton({ iconForeground, hideTooltips, nameplate }: UserAre
 }
 
 export default definePlugin({
+    id: "MicSpamGuard",
     name: "MicSpamGuard",
     description: "Smoothly balances voice volumes and protects the call from sustained extreme loudness.",
     authors: [TestcordDevs.Kurtzon, TestcordDevs.DavidHiFi],

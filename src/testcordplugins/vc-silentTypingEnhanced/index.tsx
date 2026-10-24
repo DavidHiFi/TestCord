@@ -152,6 +152,7 @@ function isEnabled(channelId: string) {
 }
 
 export default definePlugin({
+    id: "SilentTyping",
     name: "SilentTyping",
     authors: [TestcordDevs.x2b],
     description: "Hide that you are typing",

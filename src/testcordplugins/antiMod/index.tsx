@@ -16,6 +16,7 @@ const alarm = "https://www.myinstants.com/media/sounds/tmp_7901-951678082.mp3";
 let audioElement: HTMLAudioElement | null = null;
 
 export default definePlugin({
+    id: "AntiMod",
     name: "AntiMod",
     description: "Alerts you with a sound and toast whenever someone with staff or mod permissions joins your voice channel.",
     tags: ["Privacy", "Utility"],

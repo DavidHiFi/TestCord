@@ -423,6 +423,7 @@ const TEXT_REPLACE_RULES_EXEMPT_CHANNEL_IDS = [
 ];
 
 export default definePlugin({
+    id: "TextReplace",
     name: "TextReplace",
     description: "Replace text in your messages. You can find pre-made rules in the #textreplace-rules channel in Vencord's Server",
     dependencies: ["MessagePopoverAPI"],

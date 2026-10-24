@@ -5,7 +5,9 @@
  */
 
 import { definePluginSettings, useSettings } from "@api/Settings";
+import { Heading } from "@components/Heading";
 import { BackupRestoreIcon, BookmarkIcon, CloudIcon, InfoIcon, LogIcon, PaintbrushIcon, PatchHelperIcon, PluginsIcon, SafetyIcon, TestCordIcon, UpdaterIcon } from "@components/Icons";
+import { Paragraph } from "@components/Paragraph";
 import {
     BackupAndRestoreTab,
     ChangelogTab,
@@ -23,6 +25,7 @@ import {
 import { gitHashShort } from "@shared/vencordUserAgent";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
+import { Margins } from "@utils/margins";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
 import { waitFor } from "@webpack";
 import { React, Toasts, useState } from "@webpack/common";
@@ -560,6 +563,36 @@ function TestcordTabsEditor({ tabs }: { tabs: TestcordTabDescriptor[]; }) {
     );
 }
 
+function InlineSettingsCategory({ title, Icon, Component }: {
+    title: string;
+    Icon?: ComponentType<IconProps>;
+    Component: ComponentType<{}>;
+}) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <div className={`vc-testcord-inline-category ${open ? "vc-testcord-inline-category-open" : ""}`}>
+            <button
+                type="button"
+                className="vc-testcord-inline-category-header"
+                onClick={() => setOpen(!open)}
+                aria-expanded={open}
+            >
+                <span className="vc-testcord-inline-category-chevron" aria-hidden>
+                    {open ? "▾" : "▸"}
+                </span>
+                {Icon && <Icon width={18} height={18} />}
+                <span className="vc-testcord-inline-category-title">{title}</span>
+            </button>
+            {open && (
+                <div className="vc-testcord-inline-category-body">
+                    <Component />
+                </div>
+            )}
+        </div>
+    );
+}
+
 const settings = definePluginSettings({
     settingsLocation: {
         type: OptionType.SELECT,
@@ -602,6 +635,11 @@ const settings = definePluginSettings({
         hidden: true,
         default: [] as string[]
     },
+    inlineCategories: {
+        type: OptionType.BOOLEAN,
+        description: "Show Testcord settings categories inline on the main Testcord page instead of as separate sidebar tabs",
+        default: false
+    },
     experimentalDataStoreExport: {
         type: OptionType.BOOLEAN,
         description: "Force export and import of DataStore even when it's too large. Uses chunked processing to avoid memory issues.",
@@ -615,6 +653,7 @@ function TestCordDiscordIcon({ original }: { original: any; }) {
 }
 
 export default definePlugin({
+    id: "Settings",
     name: "Settings",
     description: "Adds Settings UI and debug info",
     authors: [Devs.Ven, Devs.Megu],
@@ -695,92 +734,129 @@ export default definePlugin({
 
         const { buildEntry } = this;
 
-        const testcordEntries: SettingsLayoutNode[] = [
-            buildEntry({
-                key: TESTCORD_MAIN_ENTRY_KEY,
-                title: "Testcord",
-                panelTitle: "Testcord Settings",
-                Component: () => <>
-                    <TestcordTabsEditor
-                        tabs={getTestcordTabDescriptors(testcordEntries)}
-                    />
-                    <VencordTab />
-                </>,
-                Icon: TestCordIcon as any
-            }),
-            buildEntry({
+        // Single source of truth for the Testcord settings categories. These are
+        // rendered either as separate sidebar tabs (default) or inlined as
+        // collapsible sections on the main Testcord page (inlineCategories).
+        const categoryDefs = [
+            {
                 key: "testcord_privacy_security",
                 title: "Privacy & Security",
                 panelTitle: "Privacy & Security",
                 Component: PrivacySecurityPanel,
                 Icon: SafetyIcon
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_plugins",
                 title: "Plugins",
                 Component: PluginsTab,
                 Icon: PluginsIcon
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_themes",
                 title: "Themes",
                 Component: ThemesTab,
                 Icon: PaintbrushIcon
-            }),
-            !IS_UPDATER_DISABLED && UpdaterTab && buildEntry({
+            },
+            !IS_UPDATER_DISABLED && UpdaterTab && {
                 key: "testcord_updater",
                 title: "Updater",
                 panelTitle: "TestCord Updater",
                 Component: UpdaterTab,
                 Icon: UpdaterIcon
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_changelog",
                 title: "Changelog",
                 panelTitle: "TestCord Changelog",
                 Component: ChangelogTab,
                 Icon: LogIcon,
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_stats",
                 title: "Stats",
                 panelTitle: "TestCord Stats",
                 Component: StatsTab,
                 Icon: InfoIcon,
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_health",
                 title: "Plugin Health",
                 panelTitle: "Plugin Health",
                 Component: HealthTab,
                 Icon: SafetyIcon,
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_presets",
                 title: "Presets",
                 panelTitle: "TestCord Presets",
                 Component: PresetsTab,
                 Icon: BookmarkIcon,
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_cloud",
                 title: "Cloud",
                 panelTitle: "testcord Cloud",
                 Component: CloudTab,
                 Icon: CloudIcon
-            }),
-            buildEntry({
+            },
+            {
                 key: "testcord_backup_restore",
                 title: "Backup & Restore",
                 Component: BackupAndRestoreTab,
                 Icon: BackupRestoreIcon
-            }),
-            !IS_STANDALONE && PatchHelperTab && buildEntry({
+            },
+            !IS_STANDALONE && PatchHelperTab && {
                 key: "testcord_patch_helper",
                 title: "Patch Helper",
                 Component: PatchHelperTab,
                 Icon: PatchHelperIcon
+            }
+        ].filter(isTruthy);
+
+        const orderedCategories = orderTestcordTabs(
+            categoryDefs,
+            readTestcordTabOrder(categoryDefs.map(def => def.key)),
+            readPinnedTestcordTabs(categoryDefs.map(def => def.key))
+        );
+
+        const testcordEntries: SettingsLayoutNode[] = [
+            buildEntry({
+                key: TESTCORD_MAIN_ENTRY_KEY,
+                title: "Testcord",
+                panelTitle: "Testcord Settings",
+                Component: () => {
+                    const { inlineCategories } = settings.use(["inlineCategories"]);
+
+                    if (!inlineCategories) {
+                        return <>
+                            <TestcordTabsEditor
+                                tabs={getTestcordTabDescriptors(testcordEntries)}
+                            />
+                            <VencordTab />
+                        </>;
+                    }
+
+                    return <>
+                        <VencordTab />
+                        <Heading className={Margins.top20}>Settings Categories</Heading>
+                        <Paragraph className={Margins.bottom16}>
+                            These categories are shown inline. Use the arrows to expand a section,
+                            or turn off "Inline categories" in the Settings plugin to show them as
+                            separate sidebar tabs instead.
+                        </Paragraph>
+                        {orderedCategories.map(({ key, title, Icon, Component }) => (
+                            <InlineSettingsCategory
+                                key={key}
+                                title={title}
+                                Icon={Icon}
+                                Component={Component}
+                            />
+                        ))}
+                    </>;
+                },
+                Icon: TestCordIcon as any
             }),
+            ...categoryDefs.map(buildEntry),
             ...this.customEntries.map(buildEntry)
         ].filter(isTruthy);
 

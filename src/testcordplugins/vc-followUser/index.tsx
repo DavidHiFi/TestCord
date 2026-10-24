@@ -390,6 +390,7 @@ export function useFollowId() {
 }
 
 export default definePlugin({
+    id: "FollowUser",
     name: "FollowUser",
     description: "Adds a follow option in the user context menu to always be in the same VC as them",
     tags: ["Voice", "Utility"],

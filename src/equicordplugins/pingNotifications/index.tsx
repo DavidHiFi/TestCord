@@ -83,6 +83,7 @@ function isUserBlocked(userId) {
 }
 
 export default definePlugin({
+    id: "PingNotifications",
     name: "PingNotifications",
     description: "Customizable notifications with improved mention formatting",
     tags: ["Chat", "Friends", "Notifications", "Servers"],

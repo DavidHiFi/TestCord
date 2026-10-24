@@ -168,6 +168,7 @@ const FriendDecoration = ErrorBoundary.wrap(({ userId }: { userId: string; }) =>
 }, { noop: true });
 
 export default definePlugin({
+    id: "FriendshipRanks",
     name: "FriendshipRanks",
     description: "Adds badges showcasing how long you have been friends with a user for",
     tags: ["Friends"],

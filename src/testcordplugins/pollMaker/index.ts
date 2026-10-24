@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 const NUMBERS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
 
 export default definePlugin({
+    id: "PollMaker",
     name: "PollMaker",
     description: "/poll formats a quick poll. Use: question | option | option ...",
     authors: [{ name: "Dann", id: 0n }],

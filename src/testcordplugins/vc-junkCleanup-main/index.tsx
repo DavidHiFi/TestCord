@@ -39,6 +39,7 @@ const settings = definePluginSettings(Object.fromEntries([
 ]));
 
 export default definePlugin({
+    id: "JunkCleanup",
     name: "JunkCleanup",
     description: "Another plugin that cleans up common annoyances in Discord",
     authors: [Devs.Sqaaakoi],

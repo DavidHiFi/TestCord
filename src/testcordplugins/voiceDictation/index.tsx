@@ -366,6 +366,7 @@ const VoiceDictationButton: ChatBarButtonFactory = ({ isMainChat }) => {
 // ── Plugin ────────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "VoiceDictation",
     name: "VoiceDictation",
     description: "Real-time voice dictation via Groq Whisper (free). API key shared with TestcordAI.",
     authors: [{ name: "User", id: 0n }],

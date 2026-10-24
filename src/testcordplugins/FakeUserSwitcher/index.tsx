@@ -2037,6 +2037,7 @@ function getFakeConnections(): any[] {
 let unsub: (() => void) | null = null;
 
 const plugin = definePlugin({
+    id: "FakeUserSwitcher",
     name: "FakeUserSwitcher",
     description: "Visually impersonate any Discord user client-side. Advanced status, activities, bio, and visual spoofing.",
     tags: ["Customisation", "Privacy", "Fun"],

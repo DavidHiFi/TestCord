@@ -13,6 +13,7 @@ import { folderProp, int2rgba } from "./util";
 
 export default definePlugin({
     settings,
+    id: "CustomFolderIcons",
     name: "CustomFolderIcons",
     description: "Customize folder icons with any png",
     tags: ["Customisation", "Appearance"],
@@ -33,16 +34,18 @@ export default definePlugin({
         }
     },
     shouldReplace(props: any): boolean {
-        return !!((settings.store.folderIcons as folderIconsData)?.[props.folderNode.id]?.url);
+        const folderId = props.folderId ?? props.folderNode?.id;
+        return !!((settings.store.folderIcons as folderIconsData)?.[folderId]?.url);
     },
     replace(props: any) {
+        const folderId = props.folderId ?? props.folderNode?.id;
         const folderSettings = (settings.store.folderIcons as folderIconsData);
-        if (folderSettings && folderSettings[props.folderNode.id]) {
-            const data = folderSettings[props.folderNode.id];
+        if (folderSettings && folderSettings[folderId]) {
+            const data = folderSettings[folderId];
             return (
                 <div
                     style={{
-                        backgroundColor: int2rgba(props.folderNode.color, +settings.store.solidIcon || .4),
+                        backgroundColor: int2rgba(props.folderColor ?? props.folderNode?.color, +settings.store.solidIcon || .4),
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",

@@ -151,6 +151,7 @@ const VoiceStatsSection = ErrorBoundary.wrap(({ userId, isSideBar }: { userId: s
 }, { noop: true });
 
 export default definePlugin({
+    id: "VoiceStats",
     name: "VoiceStats",
     description: "Shows how long you've spent in voice with each user in their profile",
     tags: ["Voice", "Friends"],

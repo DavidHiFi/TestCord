@@ -483,6 +483,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MessageLogger",
     name: "MessageLogger",
     description: "Temporarily logs deleted and edited messages.",
     tags: ["Chat", "Utility"],

@@ -14,6 +14,7 @@ const getDesktopSources = findByCodeLazy("desktop sources");
 const startStream = findByCodeLazy('dispatch({type:"STREAM_START"');
 
 export default definePlugin({
+    id: "ScreenshareKeybind",
     name: "ScreenshareKeybind",
     description: "Adds a keybind to instantly screenshare",
     tags: ["Voice", "Shortcuts"],

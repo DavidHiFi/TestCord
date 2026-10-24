@@ -31,6 +31,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "Equissant",
     name: "Equissant",
     description: "Crossant every specified amount of clicks :trolley:",
     tags: ["Fun"],

@@ -178,6 +178,7 @@ const presendObject : MessageSendListener = async (channelId, msg) =>
 };
 
 export default definePlugin({
+    id: "ChineseWhispers",
     name: "ChineseWhispers",
     description: "Translate plugin but 20x more funny",
     tags: ["Chat", "Fun"],

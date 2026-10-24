@@ -241,6 +241,7 @@ function loadAndCacheShortcut(key: string, val: any, forceLoad: boolean) {
 const webpackModulesProbablyLoaded = Webpack.onceReady.then(() => sleep(1000));
 
 export default definePlugin({
+    id: "ConsoleShortcuts",
     name: "ConsoleShortcuts",
     description: "Adds shorter Aliases for many things on the window. Run `shortcutList` for a list.",
     authors: [Devs.Ven],

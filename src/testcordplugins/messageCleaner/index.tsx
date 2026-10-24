@@ -820,6 +820,7 @@ const ChannelContextMenuPatch: NavContextMenuPatchCallback = (
 };
 
 export default definePlugin({
+    id: "MessageCleaner",
     name: "MessageCleaner",
     description:
         "Cleans all messages in a channel with intelligent rate limiting management, real-time statistics and secure confirmation",

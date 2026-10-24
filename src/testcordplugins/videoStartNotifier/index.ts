@@ -32,6 +32,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "VideoStartNotifier",
     name: "VideoStartNotifier",
     description: "Plays a sound when someone starts/stops their webcam in a voice channel",
     tags: ["Voice", "Notifications"],

@@ -519,6 +519,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "StereoInstaller",
     name: "StereoInstaller",
     description: "Installs and reverts the Discord stereo voice module from selected method sources.",
     tags: ["Utility"],

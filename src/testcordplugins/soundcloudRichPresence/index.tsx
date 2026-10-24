@@ -184,6 +184,7 @@ async function updatePresence(updateGeneration = generation) {
 }
 
 export default definePlugin({
+    id: "SoundCloudRichPresence",
     name: "SoundCloudRichPresence",
     description: "Show your currently playing SoundCloud track as Discord rich presence.",
     tags: ["Activity", "Media"],

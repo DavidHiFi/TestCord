@@ -332,6 +332,7 @@ const settings = definePluginSettings({
 settingsRef = settings;
 
 export default definePlugin({
+    id: "StereoLoader",
     name: "StereoLoader",
     description: "Stereo mic input without repatching after every Discord update.",
     tags: ["Utility", "Voice"],

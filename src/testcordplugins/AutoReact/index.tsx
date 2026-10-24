@@ -845,6 +845,7 @@ function SettingsPanel() {
 }
 
 export default definePlugin({
+    id: "AutoReact",
     name: "AutoReact",
     description: "Automatically react to messages from specific users, every message in chosen channels, or messages containing trigger words. Also supports self-react and a /selfreact command.",
     tags: ["Reactions", "Utility"],

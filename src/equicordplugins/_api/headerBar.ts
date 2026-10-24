@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "HeaderBarAPI",
     name: "HeaderBarAPI",
     description: "API to add buttons to the header bar and channel toolbar.",
     authors: [Devs.prism],

@@ -64,6 +64,7 @@ const UserContextMenuPatch: NavContextMenuPatchCallback = (
 };
 
 export default definePlugin({
+    id: "AutoDisconnect",
     name: "AutoDisconnect",
     description:
         "Automatically disconnects from voice channel when a specific user joins",

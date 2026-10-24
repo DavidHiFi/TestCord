@@ -30,6 +30,7 @@ const messageListItemClasses = findCssClassesLazy("messageListItem");
 const messageClasses = findCssClassesLazy("message");
 
 export default definePlugin({
+    id: "MessagePopoverAPI",
     name: "MessagePopoverAPI",
     description: "API to add buttons to message popovers.",
     authors: [Devs.KingFish, Devs.Ven, Devs.Nuckyz],

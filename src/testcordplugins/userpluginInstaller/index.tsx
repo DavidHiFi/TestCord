@@ -203,6 +203,7 @@ function InstalledPlugins() {
 }
 
 export default definePlugin({
+    id: "UserpluginInstaller",
     name: "UserpluginInstaller",
     description: "Install and update userplugins without leaving Discord",
     tags: ["Utility", "Developers"],

@@ -97,6 +97,7 @@ const IdentityActions = {
 };
 
 export default definePlugin({
+    id: "ServerProfilesToolbox",
     name: "ServerProfilesToolbox",
     authors: [TestcordDevs.x2b, TestcordDevs.nnenaza],
     description: "Adds a copy/paste/reset button to the server profiles editor",

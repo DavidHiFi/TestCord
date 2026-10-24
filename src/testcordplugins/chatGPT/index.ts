@@ -161,6 +161,7 @@ async function callChatGPT(prompt: string): Promise<string> {
 }
 
 export default definePlugin({
+    id: "ChatGPT",
     name: "ChatGPT",
     description:
         "Allows using ChatGPT directly in Discord with configurable settings",

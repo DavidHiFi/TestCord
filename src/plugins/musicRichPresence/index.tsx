@@ -283,6 +283,7 @@ function CustomInstanceAboutComponent() {
 migratePluginSettings("MusicRichPresence", "LastFMRichPresence");
 migratePluginSetting("MusicRichPresence", "showLastFmLogo", "showLogo");
 export default definePlugin({
+    id: "MusicRichPresence",
     name: "MusicRichPresence",
     description: "Rich Presence for Last.FM/Listenbrainz",
     tags: ["Activity", "Media"],

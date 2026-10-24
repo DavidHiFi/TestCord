@@ -279,6 +279,7 @@ const messagePreSendListener: MessageSendListener = (
 };
 
 export default definePlugin({
+    id: "Abbreviation",
     name: "Abbreviation",
     description:
         "Automatically transforms abbreviations into full text when sending messages",

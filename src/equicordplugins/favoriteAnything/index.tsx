@@ -33,6 +33,7 @@ function hasFavourites() {
 
 migratePluginSettings("FavoriteAnything", "FavouriteAnything");
 export default definePlugin({
+    id: "FavoriteAnything",
     name: "FavoriteAnything",
     description: "Favorite any image, video, or file attachment",
     tags: ["Chat", "Media", "Utility"],

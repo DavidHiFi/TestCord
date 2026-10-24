@@ -103,6 +103,7 @@ function isFriendAllowlisted(friendId: string) {
 let clientOldChannelId: string | undefined;
 
 export default definePlugin({
+    id: "VoiceJoinMessages",
     name: "VoiceJoinMessages",
     description: "Receive client-side ephemeral messages when your friends join voice channels",
     tags: ["Voice", "Notifications"],

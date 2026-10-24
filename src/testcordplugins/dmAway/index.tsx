@@ -109,6 +109,7 @@ function AfkButton() {
 }
 
 export default definePlugin({
+    id: "DMAway",
     name: "DMAway",
     description: "Auto-replies to DMs when idle or manually toggled. Click the moon icon in the header to toggle.",
     authors: [{ name: "Sharp", id: 0n }],

@@ -229,6 +229,7 @@ function CompactConnectionComponent({ connection, theme }: { connection: Connect
 }
 
 export default definePlugin({
+    id: "ShowConnections",
     name: "ShowConnections",
     description: "Show connected accounts in user popouts",
     tags: ["Friends", "Appearance"],

@@ -35,6 +35,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "SuperReactionTweaks",
     name: "SuperReactionTweaks",
     description: "Customize the limit of Super Reactions playing at once, and super react by default",
     tags: ["Reactions", "Emotes"],

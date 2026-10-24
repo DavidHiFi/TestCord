@@ -688,6 +688,7 @@ const VideoDeviceContext: NavContextMenuPatchCallback = children => {
 };
 
 export default definePlugin({
+    id: "FakeVoicePremium",
     name: "FakeVoicePremium",
     description: "Fake deafen, mute, stream, game, and camera in one plugin. Toggle via the user-area button (right-click for options), audio/video device menus, keybinds, or slash commands. Save presets to get your own button per setup.",
     authors: [EquicordDevs.omaw, TestcordDevs.x2b, TestcordDevs.dot, TestcordDevs.sirphantom89, TestcordDevs.hyyven],

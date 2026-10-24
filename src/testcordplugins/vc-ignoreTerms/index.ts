@@ -8,6 +8,7 @@ import { TestcordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "IgnoreTerms",
     name: "IgnoreTerms",
     description: "Ignore Discord's new terms of service",
     tags: ["Utility", "Privacy"],

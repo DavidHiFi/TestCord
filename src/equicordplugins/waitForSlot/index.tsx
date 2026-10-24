@@ -62,6 +62,7 @@ function promptVoiceChannel(channel: Channel | null | undefined): boolean {
 }
 
 export default definePlugin({
+    id: "WaitForSlot",
     name: "WaitForSlot",
     description: "Automatically join a full voice channel when a slot opens.",
     tags: ["Servers", "Utility", "Voice"],

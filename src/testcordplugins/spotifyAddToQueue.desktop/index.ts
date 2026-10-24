@@ -72,6 +72,7 @@ function onMessage(event: MessageEvent) {
 }
 
 export default definePlugin({
+    id: "SpotifyAddToQueue",
     name: "SpotifyAddToQueue",
     description: "Adds a button to Spotify embeds that queues the track",
     tags: ["Media", "Utility"],

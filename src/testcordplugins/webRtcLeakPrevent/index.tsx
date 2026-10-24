@@ -92,6 +92,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "WebRTCLeakPrevent",
     name: "WebRTCLeakPrevent",
     description: "Prevents WebRTC IP leaks by forcing ICE policy to relay-only mode. Blocks Discord from exposing your real IP address during voice calls.",
     tags: ["Privacy", "Voice"],

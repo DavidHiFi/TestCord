@@ -290,6 +290,7 @@ function WhitelistModal({ modalProps }: { modalProps: ModalProps; }) {
 }
 
 export default definePlugin({
+    id: "FriendsRemover",
     name: "FriendsRemover",
     description: "Adds a Scrap button to Friends > All to unfriend everyone except whitelisted.",
     tags: ["Friends", "Utility"],

@@ -97,6 +97,7 @@ function reactionPath(emoji: string) {
 }
 
 export default definePlugin({
+    id: "Huskbot",
     name: "Huskbot",
     description: "Reacts to low effort messages. This selfbot trick can get you banned.",
     tags: ["Utility", "Fun"],

@@ -93,6 +93,7 @@ async function fetchYaoi(): Promise<{ url: string; source: string; } | null> {
 }
 
 export default definePlugin({
+    id: "Yaoi",
     name: "Yaoi",
     description: "Sends a random yaoi picture via /yaoi. Uses 5 APIs with random order and automatic fallback. (NSFW)",
     authors: [TestcordDevs.x2b],

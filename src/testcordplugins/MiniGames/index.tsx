@@ -179,6 +179,7 @@ function GameAccessoryInner({ message }: { message: Message; }) {
 const GameAccessory = ErrorBoundary.wrap(GameAccessoryInner, { noop: true });
 
 export default definePlugin({
+    id: "MiniGames",
     name: "MiniGames",
     description: "Play tic-tac-toe and rock-paper-scissors right inside your DMs with other Testcord users.",
     authors: [TestcordDevs.sirphantom89],

@@ -15,6 +15,7 @@ import { getUserOverride, hasFlag, OverrideFlags, settings } from "./data";
 import { openUserEditModal } from "./modal";
 
 export default definePlugin({
+    id: "EditUsers",
     name: "EditUsers",
     description: "Edit any user's name, avatar, and banner ",
     tags: ["Utility", "Customisation"],

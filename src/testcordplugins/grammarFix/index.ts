@@ -79,6 +79,7 @@ const getPresend = dictionary => {
 };
 
 export default definePlugin({
+    id: "GrammarFix",
     name: "GrammarFix",
     description: "Automatic punctuation, capitalization and word replacement",
     tags: ["Chat", "Utility"],

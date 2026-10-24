@@ -154,6 +154,7 @@ async function playSound(buffer: AudioBuffer, volume: number) {
 }
 
 export default definePlugin({
+    id: "Animalese",
     name: "Animalese",
     description: "Plays animalese (they yap a lot) on message sent",
     tags: ["Fun"],

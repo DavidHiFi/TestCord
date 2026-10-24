@@ -23,6 +23,7 @@ const WrappedVoiceMessagesInBackgroundPlayer = ErrorBoundary.wrap(VoiceMessagesI
 
 migratePluginSettings("VoiceMessagesInBackground", "Voice Messages In-Background");
 export default definePlugin({
+    id: "VoiceMessagesInBackground",
     name: "VoiceMessagesInBackground",
     description: "Keeps voice messages playing across chats with a synchronized mini player.",
     authors: [EquicordDevs.ELJoOker],
@@ -30,10 +31,13 @@ export default definePlugin({
     dependencies: ["AudioPlayerAPI", "HeaderBarAPI"],
 
     patches: [{
-        find: "#{intl::PAUSE_VOICE_MESSAGE_A11Y_LABEL}",
+        // playbackCacheKey: is unique to the voice message player module,
+        // so this patch only targets it (avoids noEffect on unrelated modules
+        // that merely share the intl string).
+        find: "playbackCacheKey:",
         replacement: {
-            match: /(?<=\i>0\),\[(\i),(\i)\].{0,50}useState\(!1\).{0,10})(\[\i,\i\]=)(\i\.useState\(!1\))(?=.{0,100}\("none"\))/,
-            replace: "$3$self.useBackgroundPlayback($4,$1,arguments[0]?.src,arguments[0]?.playbackCacheKey,$2)"
+            match: /(playbackCacheKey:\i}[\s\S]{0,400}?)(\[(\i),(\i)\]=(\i)\.useState\(([\s\S]{0,40}?>0)\))([\s\S]{0,200}?)(\[(\i),(\i)\]=(\i)\.useState\((\i)\))/,
+            replace: "$1$2;$self.useBackgroundPlayback([$3,$4],$9,arguments[0]?.src,arguments[0]?.playbackCacheKey,$10)$7$8"
         }
     }],
 

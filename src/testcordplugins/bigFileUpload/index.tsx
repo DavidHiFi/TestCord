@@ -1541,6 +1541,7 @@ setUploadFunction(handleSmallFileUpload);
 setNitroLimitChecker(shouldUseNativeUpload);
 
 export default definePlugin({
+    id: "BigFileUpload",
     name: "BigFileUpload",
     description: "Bypass Discord's upload limit by uploading to external file uploaders via drag-drop, paste, or the Upload button.",
     tags: ["Utility", "Chat"],

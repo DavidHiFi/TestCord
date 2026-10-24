@@ -147,6 +147,7 @@ export function restart() {
 }
 
 export default definePlugin({
+    id: "NavidromeRPC",
     name: "NavidromeRPC",
     description: "Show what your Navidrome server is playing in your rich presence",
     tags: ["Activity", "Media"],

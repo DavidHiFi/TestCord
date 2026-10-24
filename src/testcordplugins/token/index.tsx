@@ -35,6 +35,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "Token Display",
     name: "Token Display",
     description: "shows ur token with the command: /mytoken",
     tags: ["Privacy", "Developers"],

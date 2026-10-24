@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 const logger = new Logger("GatewayLogger");
 
 export default definePlugin({
+    id: "GatewayLogger",
     name: "GatewayLogger",
     description: "logs gateway events to the console",
     tags: ["Developers", "Utility"],

@@ -177,6 +177,7 @@ function formatTime(time: number) {
 }
 
 export default definePlugin({
+    id: "LastOnline",
     name: "LastOnline",
     description: "Adds a last online indicator under usernames in your DM list",
     tags: ["Friends", "Utility"],

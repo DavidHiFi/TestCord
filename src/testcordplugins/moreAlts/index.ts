@@ -16,6 +16,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MoreAlts",
     name: "MoreAlts",
     description: "Allows you to have more alts in the account switcher",
     tags: ["Utility", "Privacy"],

@@ -50,6 +50,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ServerInfo",
     name: "ServerInfo",
     description: "Allows you to view info about a server",
     tags: ["Servers", "Utility"],

@@ -693,6 +693,7 @@ export function DynamicIslandPortal() {
 export const SafeDynamicIsland = ErrorBoundary.wrap(DynamicIslandPortal, { noop: true });
 
 export default definePlugin({
+    id: "DynamicIslande",
     name: "DynamicIslande",
     description: "Adds a Dynamic Island for Spotify, calls, screen sharing, and notifications.",
     authors: [{ name: "irritably", id: 928787166916640838n }],

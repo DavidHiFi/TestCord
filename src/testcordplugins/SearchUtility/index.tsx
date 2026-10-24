@@ -1415,6 +1415,7 @@ function SearchServerButton() {
 }
 
 export default definePlugin({
+    id: "SearchUtility",
     name: "SearchUtility",
     description: "Combines the web, message, media, quick switcher, and advanced search plugins into one utility.",
     tags: ["Utility", "Servers"],

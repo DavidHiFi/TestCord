@@ -440,6 +440,7 @@ function ImageContextMenu(children: Array<React.ReactElement | null>, props: Met
 }
 
 export default definePlugin({
+    id: "MetadataScanner",
     name: "MetadataScanner",
     description: "Scan attachments and images for EXIF, PNG chunks, and location metadata.",
     tags: ["Utility", "Media"],

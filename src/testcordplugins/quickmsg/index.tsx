@@ -90,6 +90,7 @@ const QuickMsgButton: ChatBarButtonFactory = ({ isAnyChat, channel }) => {
 };
 
 export default definePlugin({
+    id: "QuickMsg",
     name: "QuickMsg",
     description: "Adds a chatbar button that sends the typed message and instantly deletes it",
     tags: ["Chat", "Privacy"],

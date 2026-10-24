@@ -21,6 +21,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "Unindent",
     name: "Unindent",
     description: "Trims leading indentation from codeblocks",
     dependencies: ["MessageEventsAPI"],

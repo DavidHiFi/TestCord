@@ -70,6 +70,7 @@ async function deleteMessages(amount: number, channel: Channel, delay: number = 
 }
 
 export default definePlugin({
+    id: "PurgeMessages",
     name: "PurgeMessages",
     description: "Purges messages from a channel",
     tags: ["Chat", "Utility"],

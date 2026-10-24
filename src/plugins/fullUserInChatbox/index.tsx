@@ -21,6 +21,7 @@ interface UserMentionComponentProps {
 }
 
 export default definePlugin({
+    id: "FullUserInChatbox",
     name: "FullUserInChatbox",
     description: "Makes the user mention in the chatbox have more functionalities, like left/right clicking",
     tags: ["Shortcuts", "Utility"],

@@ -42,6 +42,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "PartyMode",
     name: "PartyMode",
     description: "Allows you to use party mode cause the party never ends ✨",
     tags: ["Fun"],

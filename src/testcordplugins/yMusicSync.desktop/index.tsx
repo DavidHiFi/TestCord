@@ -18,6 +18,7 @@ import style from "./styles.css?managed";
 const SliderClasses = findCssClassesLazy("slider", "bar", "barFill", "grabber");
 
 export default definePlugin({
+    id: "YMusicSync",
     name: "YMusicSync",
     description: "Control Yandex Music through Ynison and Discord RPC",
     authors: [{ name: "diram1x", id: 710580442180485120n }],

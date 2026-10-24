@@ -49,6 +49,7 @@ function onSocketMessage(event: Event) {
 }
 
 export default definePlugin({
+    id: "Socket",
     name: "Socket",
     description: "Send messages to the current channel over a TCP socket",
     tags: ["Utility", "Developers"],

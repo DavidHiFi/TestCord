@@ -63,6 +63,7 @@ function ReverseMessageIcon() {
 }
 
 export default definePlugin({
+    id: "TalkInReverse",
     name: "TalkInReverse",
     authors: [EquicordDevs.Tolgchu],
     description: "Reverses the message content before sending it.",

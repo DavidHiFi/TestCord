@@ -363,6 +363,7 @@ function shouldHideMembersListTypingIndicators(): boolean {
 }
 
 export default definePlugin({
+    id: "SilentTyping",
     name: "SilentTyping",
     authors: [Devs.Ven, Devs.Rini, Devs.ImBanana, EquicordDevs.Etorix],
     description: "Hide that you are typing",

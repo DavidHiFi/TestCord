@@ -124,6 +124,7 @@ function OwoAbout() {
 }
 
 export default definePlugin({
+    id: "OwoSelf",
     name: "OwoSelf",
     description: "owo selfbot inspired by neuraself, due to limitations on the dc client its better to use NeuraSelf but this one is just as good if u only needa auto hunt and battle while doing sum other shi",
     authors: [TestcordDevs.x2b],

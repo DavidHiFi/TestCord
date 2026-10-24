@@ -314,6 +314,7 @@ async function maybeWarnForGroupChannel(channelId: string) {
 let originalSelectVoiceChannel: typeof VoiceChannelActions.selectVoiceChannel | null = null;
 
 export default definePlugin({
+    id: "DetectBlock",
     name: "DetectBlock",
     description: "Detects users who have blocked you and warns when they appear in voice channels or group DMs.",
     authors: [

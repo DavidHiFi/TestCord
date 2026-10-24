@@ -577,6 +577,7 @@ async function executeAction(
 }
 
 export default definePlugin({
+    id: "MessageClickActions",
     name: "MessageClickActions",
     description: "Customize click actions on messages.",
     tags: ["Chat", "Shortcuts"],

@@ -25,6 +25,7 @@ import definePlugin from "@utils/types";
 import StartupTimingPage from "./StartupTimingPage";
 
 export default definePlugin({
+    id: "StartupTimings",
     name: "StartupTimings",
     description: "Adds Startup Timings to the Settings menu",
     tags: ["Developers"],

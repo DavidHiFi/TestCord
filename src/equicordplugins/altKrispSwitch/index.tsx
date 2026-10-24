@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "AltKrispSwitch",
     name: "AltKrispSwitch",
     description: "Makes the Noise Suppression Popout switch between None and Krisp instead of Krisp and Standard",
     tags: ["Customisation", "Voice", "Utility"],

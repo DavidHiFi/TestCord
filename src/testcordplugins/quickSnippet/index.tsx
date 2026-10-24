@@ -77,6 +77,7 @@ const AppendButton = ErrorBoundary.wrap(function AppendButton(props: { code: Cod
 }, { noop: true });
 
 export default definePlugin({
+    id: "QuickSnippet",
     name: "QuickSnippet",
     description: "append css snippets quickly to quickCss with one click!",
     tags: ["Chat", "Shortcuts"],

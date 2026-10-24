@@ -396,6 +396,7 @@ function showCaptioner(media: CaptionMedia, onConfirm: (transform: GifTransform)
 }
 
 export default definePlugin({
+    id: "GifCaptioner",
     name: "GifCaptioner",
     description: "Add captions to GIFs in the GIF picker.",
     tags: ["Media", "Utility"],

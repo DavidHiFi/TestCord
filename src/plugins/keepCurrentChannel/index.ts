@@ -41,6 +41,7 @@ let isSwitchingAccount = false;
 let previousCache: PreviousChannel | undefined;
 
 export default definePlugin({
+    id: "KeepCurrentChannel",
     name: "KeepCurrentChannel",
     description: "Attempt to navigate to the channel you were in before switching accounts or loading Discord.",
     tags: ["Utility", "Organisation"],

@@ -100,6 +100,7 @@ const SoundButtonContext: NavContextMenuPatchCallback = (children, { sound }: { 
 };
 
 export default definePlugin({
+    id: "ExitSounds",
     name: "ExitSounds",
     description: "Play soundboard sounds when you disconnect from voice.",
     tags: ["Fun", "Voice"],

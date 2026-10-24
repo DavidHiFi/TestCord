@@ -15,6 +15,7 @@ import { UserSettingsProtoStore } from "@webpack/common";
 const logger = new Logger("GifSpammer");
 
 export default definePlugin({
+    id: "GifSpammer",
     name: "GifSpammer",
     description: "Send all your favorite GIFs to the current channel with a 2 second delay between each.",
     tags: ["Media", "Fun"],

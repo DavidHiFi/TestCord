@@ -279,6 +279,7 @@ function onMessageCreate(event: { message: any; }) {
 // ────────────────────────────────────────────────────────────────── plugin
 
 export default definePlugin({
+    id: "GoofcordSecurity",
     name: "GoofcordSecurity",
     description:
         "Ports GoofCord's privacy & security features: telemetry firewall, CSP unstricter, Chrome UA spoofer, Invidious embeds, anti-tracking headers, WebRTC leak prevention, and StegCloak message encryption.",

@@ -278,8 +278,8 @@ const Patches: Record<string, ConfigurablePatchDefinition> = {
         patches: {
             find: "Not rendered due to asset error",
             replacement: {
-                match: /let \i=\d+\+\d+\*!!\i;return\(0,\i\.jsx\)\(\i\.\i,\{questOrQuests:/,
-                replace: "return null;$&"
+                match: /return!\i&&\(.{0,100}?"Not rendered due to asset error".{0,100}?\),/,
+                replace: "return null;"
             }
         }
     },

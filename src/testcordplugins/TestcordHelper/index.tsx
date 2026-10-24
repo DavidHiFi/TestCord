@@ -1933,6 +1933,7 @@ async function stopLiveFixServer() {
 let hotkeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
 export default definePlugin({
+    id: "TestcordHelper",
     name: "TestcordHelper",
     description: "Helper plugin for Testcord features, including custom badge management, debug reporting, and plugin info cards.",
     tags: ["Utility", "Developers"],

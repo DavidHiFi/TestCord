@@ -94,6 +94,7 @@ const guildContextPatch = (children: any, { guild }: { guild?: any }) => {
 };
 
 export default definePlugin({
+    id: "MuteUnmuteServers",
     name: "MuteUnmuteServers",
     description: "Mute or unmute all your servers at once via right-click context menu.",
     tags: ["Servers", "Utility"],

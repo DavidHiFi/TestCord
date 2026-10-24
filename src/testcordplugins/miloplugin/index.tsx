@@ -207,6 +207,7 @@ const SillyKittenButton: ChatBarButtonFactory = ({ isMainChat }) => {
 
 // Export plugin
 export default definePlugin({
+    id: "Silly Kitten",
     name: "Silly Kitten",
     description: "Transform your messages into cute silly kitten text! >w<",
     tags: ["Utility", "Fun"],

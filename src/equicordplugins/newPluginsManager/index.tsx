@@ -12,6 +12,7 @@ import { KNOWN_PLUGINS_LEGACY_DATA_KEY, KNOWN_SETTINGS_DATA_KEY } from "./knownS
 import { openNewPluginsModal } from "./NewPluginsModal";
 
 export default definePlugin({
+    id: "NewPluginsManager",
     name: "NewPluginsManager",
     description: "Utility that notifies you when new plugins are added to Testcord",
     tags: ["Utility"],

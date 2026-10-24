@@ -31,6 +31,7 @@ const SettingsShortcutsElement = () => (
 );
 
 export default definePlugin({
+    id: "SettingsShortcuts",
     name: "SettingsShortcuts",
     description: "Adds Better Microphone and Better Screenshare shortcut buttons to Discord settings.",
     tags: ["Shortcuts", "Utility"],

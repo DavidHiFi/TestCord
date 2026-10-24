@@ -280,6 +280,7 @@ const NyaaaToggleButton = ErrorBoundary.wrap(function NyaaaToggleButton() {
 }, { noop: true });
 
 export default definePlugin({
+    id: "Nyaaa",
     name: "Nyaaa",
     description: "Tuwrns nyur messages into kawaii uwu nya speak, wif faces wike (>~<) spwinkwed in. Send !atwas anywewe fur a Japanyese nyame wike atwas-chan~",
     authors: [TestcordDevs.x2b],

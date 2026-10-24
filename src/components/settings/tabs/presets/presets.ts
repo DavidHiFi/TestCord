@@ -7,6 +7,7 @@
 import * as DataStore from "@api/DataStore";
 import { PlainSettings, Settings, SettingsStore } from "@api/Settings";
 import { debounce } from "@shared/debounce";
+import { findPlugin, getPluginId } from "@utils/pluginIds";
 
 import plugins from "~plugins";
 
@@ -123,12 +124,22 @@ export const setAnimMaster = (v: boolean) => { (Settings as any).presetsAnimMast
 export const getAnim = (key: AnimKey) => (Settings as any)[`presetsAnim_${key}`] !== false;
 export const setAnim = (key: AnimKey, v: boolean) => { (Settings as any)[`presetsAnim_${key}`] = v; };
 
+/**
+ * Resolve a settings key (canonical id, current display name, or declared alias)
+ * to the plugin's canonical id. Presets saved before or after a rename then
+ * restore into the same storage slot instead of orphaning one another.
+ */
+function canonicalPluginKey(key: string): string {
+    const plugin = findPlugin(key, plugins);
+    return plugin ? getPluginId(plugin) : key;
+}
+
 // PlainSettings.plugins only contains keys that were written or read through the
 // Settings proxy; settings still sitting at their declared default may be absent.
 // Touch every registered plugin's settings once so the snapshot below is complete.
 function materializePluginSettings() {
-    for (const [name, plugin] of Object.entries(plugins)) {
-        const store = Settings.plugins[name];
+    for (const plugin of Object.values(plugins)) {
+        const store = Settings.plugins[getPluginId(plugin)];
         if (!plugin.settings?.def) continue;
         for (const key of Object.keys(plugin.settings.def)) void store[key];
     }
@@ -634,14 +645,19 @@ export async function applyPreset(name: string, restoreSettings: boolean, forceA
     const missingThemes: string[] = [];
 
     if (scope.includes("plugins")) {
+        // Presets may have been saved before or after a plugin rename; map every
+        // stored key back to the canonical id so both restore into the live slot.
+        const mentioned = new Set(Object.keys(preset.plugins).map(canonicalPluginKey));
         if (forceApply) {
             for (const plugin of Object.keys(PlainSettings.plugins)) {
-                if (!(plugin in preset.plugins)) (Settings.plugins[plugin] ??= { enabled: false }).enabled = false;
+                const key = canonicalPluginKey(plugin);
+                if (!mentioned.has(key)) (Settings.plugins[key] ??= { enabled: false }).enabled = false;
             }
         }
         for (const [plugin, saved] of Object.entries(preset.plugins)) {
-            const current = (Settings.plugins[plugin] ??= { enabled: false });
-            if (restoreSettings || forceApply) Settings.plugins[plugin] = structuredClone(saved);
+            const key = canonicalPluginKey(plugin);
+            const current = (Settings.plugins[key] ??= { enabled: false });
+            if (restoreSettings || forceApply) Settings.plugins[key] = structuredClone(saved);
             else current.enabled = saved.enabled;
         }
         changed = true;

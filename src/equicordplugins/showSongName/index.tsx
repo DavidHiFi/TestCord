@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "ShowSongName",
     name: "ShowSongName",
     description: "Shows song name instead of artist for Spotify activity",
     tags: ["Activity"],

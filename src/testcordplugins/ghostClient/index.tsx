@@ -804,6 +804,7 @@ const GhostUserAreaButton: UserAreaButtonFactory = ({ iconForeground, hideToolti
 };
 
 export default definePlugin({
+    id: "GhostClient",
     name: "GhostClient",
     description: "Discord ghost accounts — left-click to enable/disable, right-click to configure.",
     tags: ["Privacy", "Voice", "Nightcord"],

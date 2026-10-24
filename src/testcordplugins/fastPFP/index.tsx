@@ -99,6 +99,7 @@ const imageContextMenuPatch: NavContextMenuPatchCallback = (children, props) => 
 };
 
 export default definePlugin({
+    id: "FastPFP",
     name: "FastPFP",
     description: "Allows you to quickly set any image as your profile picture or banner from the context menu.",
     authors: [{ name: "Unknown", id: 0n }],

@@ -237,6 +237,7 @@ function load() {
 
 migratePluginSettings("CursorBuddy", "Oneko", "oneko");
 export default definePlugin({
+    id: "CursorBuddy",
     name: "CursorBuddy",
     description: "Adds a sprite that follows your cursor.",
     tags: ["Appearance", "Customisation", "Fun"],

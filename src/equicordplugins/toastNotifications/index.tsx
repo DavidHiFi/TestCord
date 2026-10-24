@@ -113,6 +113,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "ToastNotifications",
     name: "ToastNotifications",
     description: "Show a pop-up toast notification, configurable for DMs, group, friends, or guild channels.",
     tags: ["Appearance", "Customisation", "Notifications"],

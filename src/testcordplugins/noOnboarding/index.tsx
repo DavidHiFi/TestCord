@@ -31,6 +31,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "NoOnboarding",
     name: "NoOnboarding",
     description: "Bypasses Discord's onboarding process for quicker server entry.",
     tags: ["Privacy", "Utility"],

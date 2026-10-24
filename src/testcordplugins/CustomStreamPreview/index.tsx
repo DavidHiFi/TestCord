@@ -164,6 +164,7 @@ function PreviewButton(props: UserAreaRenderProps) {
 }
 
 export default definePlugin({
+    id: "CustomStreamPreview",
     name: "CustomStreamPreview",
     description: "Set a custom image as your Discord stream preview.",
     tags: ["Voice", "Utility"],

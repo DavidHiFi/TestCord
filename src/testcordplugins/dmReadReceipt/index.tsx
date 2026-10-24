@@ -37,6 +37,7 @@ function SeenIndicator({ message, channel }: MessageDecorationProps) {
 }
 
 export default definePlugin({
+    id: "DmReadReceipt",
     name: "DmReadReceipt",
     description: "Shows a Seen indicator on your messages in DMs when the other person has read them.",
     tags: ["Chat", "Utility"],

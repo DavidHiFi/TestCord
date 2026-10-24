@@ -110,6 +110,7 @@ const updateStyles = () => {
 };
 
 export default definePlugin({
+    id: "WigglyText",
     name: "WigglyText",
     description: "Adds a new markdown formatting that makes text wiggly.",
     tags: ["Appearance", "Customisation", "Fun"],

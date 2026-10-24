@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import gitRemote from "~git-remote";
 
 export default definePlugin({
+    id: "Versions",
     name: "Versions",
     description: "Adds extra information to the version info",
     tags: ["Utility", "Developers"],

@@ -252,6 +252,7 @@ function injectCSS() {
 }
 
 export default definePlugin({
+    id: "NoButtons",
     name: "NoButtons",
     description: "Removes annoying buttons that you don't need",
     tags: ["Customisation", "Appearance"],

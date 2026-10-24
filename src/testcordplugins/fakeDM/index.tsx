@@ -1134,6 +1134,7 @@ const FakeDMButton: ChatBarButtonFactory = ({ isMainChat }) => {
 
 // ─── Plugin Export ──────────────────────────────────────────────────────────
 export default definePlugin({
+    id: "FakeDM",
     name: "FakeDM",
     description: "Injects fake local messages and calls into any channel or DM with persistence across client restarts.",
     tags: ["Chat", "Utility"],

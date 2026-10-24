@@ -63,6 +63,7 @@ const settings = definePluginSettings({
 export { settings };
 
 export default definePlugin({
+    id: "JSTextReplace",
     name: "JSTextReplace",
     description: "Rewrite your outgoing messages with JavaScript",
     tags: ["Chat", "Utility"],

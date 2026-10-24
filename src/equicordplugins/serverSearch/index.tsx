@@ -25,6 +25,7 @@ function SearchIcon() {
 }
 
 export default definePlugin({
+    id: "ServerSearch",
     name: "ServerSearch",
     authors: [EquicordDevs.camila314],
     description: "Navigate your servers better with a quick search button",

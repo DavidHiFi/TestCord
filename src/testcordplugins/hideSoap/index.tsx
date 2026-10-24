@@ -154,6 +154,7 @@ const hebrewCheckCache = new Map<string, boolean>();
 const HEBREW_CACHE_MAX = 500;
 
 export default definePlugin({
+    id: "AntiSoap (hideSoap)",
     name: "AntiSoap (hideSoap)",
     description: "basically hide all messages from j*ws",
     authors: [TestcordDevs.x2b],

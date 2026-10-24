@@ -12,6 +12,7 @@ import { ChannelRTCStore, ChannelStore, UserStore, VoiceStateStore } from "@webp
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "FullVCPFP",
     name: "FullVCPFP",
     description: "Makes avatars take up the entire vc tile",
     tags: ["Appearance", "Voice"],

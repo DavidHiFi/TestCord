@@ -312,6 +312,7 @@ let originalSend: any;
 let commandsRegistered = false;
 
 export default definePlugin({
+    id: "FakeMuteDeafen",
     name: "FakeMuteDeafen",
     description: "Fake mute and deafen yourself. You can continue speaking and being heard during this time. Toggle via user area button, context menu, or keybinds.",
     tags: ["Voice", "Privacy"],

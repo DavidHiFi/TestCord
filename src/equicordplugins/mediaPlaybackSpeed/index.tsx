@@ -46,6 +46,7 @@ const settings = definePluginSettings({
 type MediaRef = RefObject<HTMLMediaElement> | undefined;
 
 export default definePlugin({
+    id: "MediaPlaybackSpeed",
     name: "MediaPlaybackSpeed",
     description: "Allows changing the (default) playback speed of media embeds",
     tags: ["Chat", "Media"],

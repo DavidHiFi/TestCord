@@ -14,6 +14,7 @@ import { SettingsRouter } from "@webpack/common";
 import { settings } from "./utils/settings";
 
 export default definePlugin({
+    id: "ThemeLibrary",
     name: "ThemeLibrary",
     description: "A library of themes for Vencord.",
     tags: ["Appearance", "Customisation"],

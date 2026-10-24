@@ -122,6 +122,7 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 export default definePlugin({
+    id: "FastPing",
     name: "FastPing",
     description: "Double-click a user ID you just typed in the chat box to instantly turn it into a <@mention>.",
     authors: [{ name: "Unknown", id: 0n }],

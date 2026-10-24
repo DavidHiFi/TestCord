@@ -122,6 +122,7 @@ function MonoToggleButton({ iconForeground, hideTooltips, nameplate }: UserAreaR
 }
 
 export default definePlugin({
+    id: "Force Mono",
     name: "Force Mono",
     description: "forces mono audio on audio",
     tags: ["Voice", "legacy"],

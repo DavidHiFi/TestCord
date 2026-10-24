@@ -90,6 +90,7 @@ const pluginSettings = definePluginSettings(
 const Native = VencordNative.pluginHelpers.OpenInApp as PluginNative<typeof import("./native")>;
 
 export default definePlugin({
+    id: "OpenInApp",
     name: "OpenInApp",
     description: "Open links in their respective apps instead of your browser",
     tags: ["Utility"],

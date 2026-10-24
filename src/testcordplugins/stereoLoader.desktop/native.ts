@@ -23,8 +23,19 @@ const VOICE_INDEX_BASENAME = "index.js";
 const MAX_LOG_LINES = 300;
 
 const VOICE_PLAYGROUND_RAW_BASE = "https://codeberg.org/UnpackedX/Discord-Experimental-Subsystem/raw/branch/main";
-const DAC_GITHUB_CONTENTS_API = "https://api.github.com/repos/ProdHallow/Discord-Stereo-Windows-MacOS-Linux/contents/Updates%2FNodes%2FPatched%20Nodes%20%28for%20Installer%29%2FWindows";
+const DAC_GITHUB_API = "https://api.github.com/repos/ProdHallow/Discord-Stereo-Windows-MacOS-Linux/contents";
 const MAX_DOWNLOAD_BYTES = 160 * 1024 * 1024;
+
+function dacFolderForPlatform(): string {
+    const key = process.platform;
+    if (key === "win32") return "Windows";
+    if (key === "darwin") return "macOS";
+    return "Linux";
+}
+
+function dacContentsUrl(): string {
+    return `${DAC_GITHUB_API}/Updates/Nodes/Patched%20Nodes%20(for%20Installer)/${dacFolderForPlatform()}`;
+}
 
 export type StereoSource = "voicePlayground" | "discordAudioCollective";
 
@@ -515,7 +526,7 @@ export async function downloadPayload(_: unknown, source: StereoSource): Promise
         }
     } else {
         log("Downloading Discord Audio Collective payload...");
-        const listingRaw = await downloadBytes(DAC_GITHUB_CONTENTS_API, 60_000, "application/vnd.github.v3+json");
+        const listingRaw = await downloadBytes(dacContentsUrl(), 60_000, "application/vnd.github.v3+json");
         const listing = JSON.parse(listingRaw.toString("utf8")) as DacContentFile[];
         const pick = (name: string) => Array.isArray(listing)
             ? listing.find(file => file?.type === "file" && file.name === name && !!file.download_url)

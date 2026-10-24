@@ -42,6 +42,7 @@ function handleNode(node: Node) {
 }
 
 export default definePlugin({
+    id: "FixDiscordCss",
     name: "FixDiscordCss",
     description: "Fixes Discord's css lag",
     authors: [Devs.Ven],

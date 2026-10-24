@@ -2089,6 +2089,7 @@ async function removeAccountCommand(ctx: CommandCtx, query: string): Promise<voi
 }
 
 export default definePlugin({
+    id: "DXTokenImporter",
     name: "DXTokenImporter",
     description: "Import and verify Discord tokens.",
     tags: ["Utility", "Nightcord"],

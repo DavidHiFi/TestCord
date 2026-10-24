@@ -202,6 +202,7 @@ function addPinChannelContextMenu(children: any, { channel }: { channel: any; })
 }
 
 export default definePlugin({
+    id: "Pin to Voice Channel",
     name: "Pin to Voice Channel",
     description: "Right-click on a voice channel to pin",
     tags: ["Utility"],

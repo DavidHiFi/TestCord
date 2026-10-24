@@ -27,6 +27,7 @@ function setTitle(v: string) {
 }
 
 export default definePlugin({
+    id: "Title",
     name: "Title",
     description: "Replaces the window title prefix",
     tags: ["Customisation"],

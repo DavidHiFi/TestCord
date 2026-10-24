@@ -294,6 +294,7 @@ const UserContext: NavContextMenuPatchCallback = (children, { user }: UserContex
 const lastStatuses = new Map<string, string>();
 
 export default definePlugin({
+    id: "NotifyUserChanges",
     name: "NotifyUserChanges",
     description: "Adds a notify option in the user context menu to get notified when a user changes voice channels, online status, or sends a message",
     tags: ["Friends", "Notifications"],

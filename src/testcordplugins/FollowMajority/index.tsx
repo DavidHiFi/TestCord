@@ -39,6 +39,7 @@ function rebuild(channelId: string) {
 }
 
 export default definePlugin({
+    id: "FollowMajority",
     name: "FollowMajority",
     description: "Automatically follows the crowd: when most of your voice channel moves somewhere else, you join them.",
     authors: [TestcordDevs.sirphantom89],

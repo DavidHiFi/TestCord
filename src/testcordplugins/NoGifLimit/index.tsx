@@ -1237,6 +1237,7 @@ var addFavContextMenuPatch: NavContextMenuPatchCallback = function (children, pr
 };
 
 export default definePlugin({
+    id: "HeartGifs",
     name: "HeartGifs",
     description: "Unlimited gif/image/video saving with heart icon, folders, and more!",
     tags: ["Media", "Utility"],

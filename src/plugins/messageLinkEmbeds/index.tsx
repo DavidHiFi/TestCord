@@ -417,6 +417,7 @@ function AutomodEmbedAccessory(props: MessageEmbedProps): JSX.Element | null {
 }
 
 export default definePlugin({
+    id: "MessageLinkEmbeds",
     name: "MessageLinkEmbeds",
     description: "Adds a preview to messages that link another message",
     tags: ["Chat", "Appearance"],

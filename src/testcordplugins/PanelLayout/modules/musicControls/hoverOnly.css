@@ -13,7 +13,6 @@
 #eq-strawberry-progress-bar {
     opacity: 1;
     transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-    will-change: opacity, transform;
 }
 
 .vc-spotify-button-row,
@@ -29,7 +28,6 @@
     pointer-events: none;
     transform: translateY(4px);
     transition: opacity 0.15s ease-out, transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
-    will-change: opacity, transform;
     z-index: 10;
 }
 

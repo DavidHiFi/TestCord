@@ -76,6 +76,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MiddleClickTweaks",
     name: "MiddleClickTweaks",
     description: "Various middle click tweaks, such as with pasting and link opening.",
     authors: [EquicordDevs.Etorix, EquicordDevs.korzi],

@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "NeonGlow",
     name: "NeonGlow",
     description: "Adds a neon glow to avatars, links and buttons when you hover them.",
     authors: [{ name: "Sharp", id: 0n }],

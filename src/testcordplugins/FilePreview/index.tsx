@@ -36,6 +36,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "FileViewer",
     name: "FileViewer",
     description: "View PDF and Office files directly inside Discord messages.",
     tags: ["Media", "Utility"],

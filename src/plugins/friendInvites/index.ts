@@ -24,6 +24,7 @@ import { findByPropsLazy } from "@webpack";
 const FriendInvites = findByPropsLazy("createFriendInvite");
 
 export default definePlugin({
+    id: "FriendInvites",
     name: "FriendInvites",
     description: "Create and manage friend invite links via slash commands (/create friend invite, /view friend invites, /revoke friend invites).",
     dependencies: ["CommandsAPI"],

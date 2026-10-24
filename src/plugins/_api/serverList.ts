@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "ServerListAPI",
     name: "ServerListAPI",
     authors: [Devs.kemo],
     description: "Api required for plugins that modify the server list",

@@ -546,6 +546,7 @@ function isDiscordHookError(errorState: any): boolean {
 }
 
 export default definePlugin({
+    id: "CrashHandlerEnhanced",
     name: "CrashHandlerEnhanced",
     description: "Advanced crash handling with detailed logging, statistics, preventive measures, and intelligent recovery",
     tags: ["Developers", "Utility"],

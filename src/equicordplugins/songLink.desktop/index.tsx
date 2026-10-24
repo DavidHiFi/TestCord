@@ -130,6 +130,7 @@ function SongLinkerList({ urls }: { urls: string[]; }) {
 }
 
 export default definePlugin({
+    id: "SongLink",
     name: "SongLink",
     description: "Adds streaming service buttons below song links",
     dependencies: ["MessageAccessoriesAPI"],

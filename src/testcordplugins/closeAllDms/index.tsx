@@ -156,6 +156,7 @@ const ServerContextMenuPatch: NavContextMenuPatchCallback = (
 };
 
 export default definePlugin({
+  id: "CloseAllDms",
   name: "CloseAllDms",
   description:
     "Closes all private DMs with one click with 50ms rate limit (preserves groups)",

@@ -222,6 +222,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "RoundedVCPFP",
     name: "RoundedVCPFP",
     description: "Fork of FullVCPFP: fills the vc tile with the full-size avatar, with lightly rounded corners instead of square ones",
     tags: ["Appearance", "Voice"],

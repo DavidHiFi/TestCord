@@ -222,6 +222,7 @@ const SelfDestructButton: ChatBarButtonFactory = ({ isMainChat }) => {
 };
 
 export default definePlugin({
+    id: "SelfDestruct",
     name: "SelfDestruct",
     description: "Sends messages that are automatically deleted after a configurable delay. Red timer visible on each message.",
     tags: ["Privacy", "Chat", "Nightcord"],

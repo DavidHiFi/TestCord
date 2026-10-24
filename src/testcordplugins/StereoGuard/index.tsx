@@ -765,6 +765,7 @@ function StereoGuardButton({ iconForeground, hideTooltips, nameplate }: UserArea
 }
 
 export default definePlugin({
+    id: "StereoGuard",
     name: "StereoGuard",
     description: "Locally silences anyone whose audio is not fully mono: slight panning, stereo width, panning around, or reverb tails. Centered mono voice is never touched.",
     authors: [TestcordDevs.Kurtzon, TestcordDevs.DavidHiFi],

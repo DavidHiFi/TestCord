@@ -14,6 +14,7 @@ interface Choice {
 }
 
 export default definePlugin({
+    id: "DefaultStatusForever",
     name: "DefaultStatusForever",
     description: "Make statuses default to last forever",
     tags: ["Activity", "Utility"],

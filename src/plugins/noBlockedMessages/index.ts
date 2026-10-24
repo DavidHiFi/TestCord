@@ -84,6 +84,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "NoBlockedMessages",
     name: "NoBlockedMessages",
     description: "Hide all blocked/ignored messages from chat completely.",
     authors: [Devs.rushii, Devs.Samu, Devs.jamesbt365, Devs.Elvyra, EquicordDevs.Etorix],

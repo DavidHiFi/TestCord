@@ -8,6 +8,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NicknameIconsAPI",
     name: "NicknameIconsAPI",
     description: "API to add icons to the nickname, in profiles",
     authors: [Devs.Nuckyz],

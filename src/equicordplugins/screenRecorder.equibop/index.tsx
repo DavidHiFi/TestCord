@@ -13,6 +13,7 @@ import { Menu, UploadHandler } from "@webpack/common";
 let recoder: MediaRecorder;
 
 export default definePlugin({
+    id: "ScreenRecorder",
     name: "ScreenRecorder",
     description: "Adds an option to record your screen and upload the recording to the channel",
     tags: ["Chat"],

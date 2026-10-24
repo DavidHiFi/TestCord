@@ -86,6 +86,7 @@ const GhostTypingButton: ChatBarButtonFactory = ({ channel }) => {
 };
 
 export default definePlugin({
+    id: "GhostTyping",
     name: "GhostTyping",
     description: "Appear to be typing forever in a channel — everyone there keeps seeing your 'is typing…' indicator until you switch it off. Toggle from the chat bar or with /ghosttyping.",
     authors: [TestcordDevs.sirphantom89],

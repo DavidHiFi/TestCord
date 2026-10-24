@@ -1,7 +1,9 @@
-/* Works around a very strange issue where *something* (electron?) will inject body { app-region: drag } when using online themes */
+/* Works around a very strange issue where *something* (electron?) will inject body { app-region: drag } when using online themes.
+   `initial` (== none) defeats that injected drag while, unlike `no-drag`, it does not contribute a subtracting region that can
+   swallow the titlebar's drag area. */
 body {
-    -webkit-app-region: no-drag;
-    app-region: no-drag;
+    -webkit-app-region: initial !important;
+    app-region: initial !important;
 }
 
 /* keep titlebar draggable */
@@ -12,6 +14,21 @@ body {
 
 [class*="typeWindows_"] [class*="winButton"],
 [class*="typeWindows_"] .tc-chrometabs-tab {
+    -webkit-app-region: no-drag;
+}
+
+/* Newer Visual Refresh builds dropped the typeWindows_/titleBar_ names in
+   favour of bar_/title_ (e.g. bar_c38106). Target the real titlebar without
+   depending on the hashed suffix, by selecting the bar that owns the window
+   buttons. Without this the legacy selectors above match nothing and dragging
+   depends entirely on Discord's own stylesheet. */
+[class*="bar_"]:has([class*="winButtons_"]) {
+    -webkit-app-region: drag;
+}
+
+[class*="bar_"]:has([class*="winButtons_"]) [class*="winButton"],
+[class*="bar_"]:has([class*="winButtons_"]) [class*="backForwardButtons"],
+[class*="bar_"]:has([class*="winButtons_"]) [class*="trailing"] {
     -webkit-app-region: no-drag;
 }
 

@@ -128,6 +128,7 @@ function PruneModal(props: ModalProps) {
 }
 
 export default definePlugin({
+    id: "ServerPruner",
     name: "ServerPruner",
     description: "Adds a modal to easily prune your servers with information and stats. Right click the home button!",
     tags: ["Servers", "Utility"],

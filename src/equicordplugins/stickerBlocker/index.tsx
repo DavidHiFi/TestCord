@@ -128,6 +128,7 @@ function isStickerBlocked(name) {
 }
 
 export default definePlugin({
+    id: "StickerBlocker",
     name: "StickerBlocker",
     description: "Allows you to block stickers from being displayed.",
     tags: ["Chat", "Emotes", "Utility"],

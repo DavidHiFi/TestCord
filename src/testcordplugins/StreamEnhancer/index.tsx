@@ -49,6 +49,7 @@ export function StreamEnhancerButton({ iconForeground, hideTooltips, nameplate }
 }
 
 const streamEnhancer = definePlugin({
+    id: "StreamEnhancer",
     name: "StreamEnhancer",
     description: "Stream tuning, native camera previews, viewer controls, and optional spoofed stream badges. DavidHiFi fork.",
     authors: [EquicordDevs.omaw, TestcordDevs.DavidHiFi],

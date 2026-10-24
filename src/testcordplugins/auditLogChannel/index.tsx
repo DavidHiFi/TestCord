@@ -12,6 +12,7 @@ import AuditLogPage from "./components/AuditLogPage";
 import AuditLogPageWrapper from "./components/AuditLogPageWrapper";
 
 export default definePlugin({
+    id: "AuditLogChannel",
     name: "AuditLogChannel",
     description: "Adds an audit log channel",
     tags: ["Servers", "Utility"],

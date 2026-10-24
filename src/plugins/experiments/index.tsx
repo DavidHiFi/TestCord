@@ -30,6 +30,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "Experiments",
     name: "Experiments",
     description: "Enable Access to Experiments & other dev-only features in Discord!",
     tags: ["Developers", "Utility"],

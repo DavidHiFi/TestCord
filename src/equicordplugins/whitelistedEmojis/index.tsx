@@ -395,6 +395,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "WhitelistedEmojis",
     name: "WhitelistedEmojis",
     description: "Adds the ability to disable all message emojis except for a whitelisted set.",
     tags: ["Chat", "Emotes"],

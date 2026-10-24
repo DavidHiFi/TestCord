@@ -360,6 +360,7 @@ function restoreChannelStore() {
 }
 
 export default definePlugin({
+    id: "SurfaceTranslate",
     name: "SurfaceTranslate",
     description: "Translate channel names, channel topics, and search result text.",
     authors: [TestcordDevs.MasuRii],

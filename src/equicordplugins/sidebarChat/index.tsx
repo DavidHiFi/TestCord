@@ -311,6 +311,7 @@ const ChannelContextPatch: NavContextMenuPatchCallback = (children, args: { chan
 };
 
 export default definePlugin({
+    id: "SidebarChat",
     name: "SidebarChat",
     authors: [Devs.Joona, EquicordDevs.justjxke],
     description: "Open a channel or DM as a sidebar or a popout.",

@@ -429,6 +429,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "SecurecordOpossum",
     name: "SecurecordOpossum",
     description: "High-Performance, Post-Quantum Resilient end-to-end encryption for Discord based on BlazingOpossum cipher. Share the same password with other users to communicate securely.",
     tags: ["Privacy", "Utility"],

@@ -12,6 +12,7 @@ const STORAGE_KEY = "PluginStars_starred";
 export const STAR_UPDATED_EVENT = "PLUGIN_STARS_UPDATED";
 
 export default definePlugin({
+    id: "PluginStars",
     name: "PluginStars",
     description: "Star your favourite plugins to pin them to the top of the plugin list.",
     authors: [{ name: "nightwielder23", id: 0n }],

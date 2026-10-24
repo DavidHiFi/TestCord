@@ -13,6 +13,7 @@ import { settings } from "./settings";
 let maxwellRunning = false;
 
 export default definePlugin({
+    id: "Maxwell :3",
     name: "Maxwell :3",
     description: "Silly Silly Silly",
     tags: ["Utility", "Fun"],

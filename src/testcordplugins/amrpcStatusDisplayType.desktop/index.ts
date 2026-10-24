@@ -35,6 +35,7 @@ let reentrant = false;
 let wasListening = false;
 
 export default definePlugin({
+    id: "AMRPCStatusDisplayType",
     name: "AMRPCStatusDisplayType",
     description: "Show the track or artist name in the member list for Apple Music",
     tags: ["Activity", "Customisation"],

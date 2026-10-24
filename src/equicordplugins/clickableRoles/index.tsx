@@ -144,6 +144,7 @@ function ClickableRole({ roleId, guildId, children }: { roleId: string; guildId:
 const WrappedClickableRole = ErrorBoundary.wrap(ClickableRole, { noop: true });
 
 export default definePlugin({
+    id: "ClickableRoles",
     name: "ClickableRoles",
     description: "Click on roles in user profiles and the member list to see which members have them.",
     tags: ["Roles", "Utility"],

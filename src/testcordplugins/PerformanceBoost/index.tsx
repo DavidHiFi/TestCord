@@ -335,6 +335,7 @@ function PerfHeaderButton() {
 }
 
 export default definePlugin({
+    id: "PerformanceBoost",
     name: "PerformanceBoost",
     description: "Game/performance mode: reduces animations, compacts messages, stops GIFs, lowers process priority, cleans cache, and applies runtime speedups (spring skip, passive listeners, lazy images, memory-freeing) — all revertible. (Hardware acceleration requires one-time manual toggle + restart.)",
     authors: [TestcordDevs.LOSTSTR],

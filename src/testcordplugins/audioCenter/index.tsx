@@ -991,6 +991,7 @@ function StatusDisplay() {
 }
 
 export default definePlugin({
+    id: "AudioCenter",
     name: "AudioCenter",
     description:
         "Complete audio center: mixing, virtual device, limiting and diagnostics",

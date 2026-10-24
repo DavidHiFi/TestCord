@@ -879,6 +879,7 @@ const guildContextPatch: NavContextMenuPatchCallback = (children, props) => {
 
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 export default definePlugin({
+    id: "FakeFriends",
     name: "FakeFriends",
     description: "Locally simulates Discord friends and requests. Persistent between reloads.",
     tags: ["Friends", "Nightcord"],

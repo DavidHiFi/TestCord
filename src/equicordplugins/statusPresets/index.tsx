@@ -124,6 +124,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "StatusPresets",
     name: "StatusPresets",
     description: "Allows you to remember your statuses and set them later",
     tags: ["Activity", "Utility"],

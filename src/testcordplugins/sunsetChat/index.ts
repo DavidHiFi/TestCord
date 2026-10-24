@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "SunsetChat",
     name: "SunsetChat",
     description: "Paints a dreamy vaporwave sunset gradient behind the message area.",
     authors: [{ name: "Sharp", id: 0n }],

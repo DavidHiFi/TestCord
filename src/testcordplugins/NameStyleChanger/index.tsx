@@ -847,6 +847,7 @@ function SettingsAboutComponent() {
 }
 
 export default definePlugin({
+    id: "NameStyleChanger",
     name: "NameStyleChanger",
     description: "Change display name font styles, effects, and colors with invisible 3y3 bio sharing support.",
     tags: ["Customisation", "Appearance"],

@@ -4,20 +4,34 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ChatBarButton, ChatBarButtonFactory } from "@api/ChatButtons";
+import { addChatBarButton, BackpackedButtons, backpackListeners,ChatBarButton, ChatBarButtonFactory, ChatBarButtonMap, notifyBackpackChange } from "@api/ChatButtons";
+import { definePluginSettings } from "@api/Settings";
 import { TestcordDevs } from "@utils/constants";
-import definePlugin from "@utils/types";
-import { React, useState } from "@webpack/common";
+import definePlugin, { OptionType } from "@utils/types";
+import { ContextMenuApi, Menu, React, useEffect, useRef,useState } from "@webpack/common";
 
 import backpackStyle from "./style.css?managed";
 
-const COLLAPSED_CLASS = "tc-backpack-collapsed";
-let collapsed = false;
+const BACKPACK_ID = "Backpack";
 
-function applyCollapsed(value: boolean) {
-    collapsed = value;
-    document.body.classList.toggle(COLLAPSED_CLASS, value);
-}
+const settings = definePluginSettings({
+    autoPackNewButtons: {
+        type: OptionType.BOOLEAN,
+        description: "Automatically pack newly added chat bar buttons into the backpack",
+        default: true
+    },
+    showPackedCount: {
+        type: OptionType.BOOLEAN,
+        description: "Show a badge with the number of packed buttons",
+        default: true
+    },
+    packedButtons: {
+        type: OptionType.CUSTOM,
+        description: "Packed button IDs",
+        hidden: true,
+        default: [] as string[]
+    }
+});
 
 function BackpackIcon({ width = 22, height = 22 }: { width?: string | number; height?: string | number; }) {
     return (
@@ -27,29 +41,159 @@ function BackpackIcon({ width = 22, height = 22 }: { width?: string | number; he
     );
 }
 
+function packButton(id: string) {
+    if (BackpackedButtons.has(id)) return;
+
+    const { packedButtons } = settings.store;
+    if (!packedButtons.includes(id)) {
+        settings.store.packedButtons = [...packedButtons, id];
+    }
+    BackpackedButtons.add(id);
+    notifyBackpackChange();
+}
+
+function unpackButton(id: string) {
+    if (!BackpackedButtons.has(id)) return;
+
+    const { packedButtons } = settings.store;
+    settings.store.packedButtons = packedButtons.filter(b => b !== id);
+    BackpackedButtons.delete(id);
+    notifyBackpackChange();
+}
+
+function renderBackpackMenuItems() {
+    const { packedButtons } = settings.store;
+
+    return [
+        <Menu.MenuGroup key="backpack-group" label="BACKPACK">
+            {packedButtons.map(id => {
+                const data = ChatBarButtonMap.get(id);
+                if (!data) return null;
+
+                return (
+                    <Menu.MenuItem
+                        key={id}
+                        id={`backpack-menu-${id}`}
+                        label={id}
+                        icon={data.icon}
+                        action={(e?: React.MouseEvent) => {
+                            e?.stopPropagation();
+                            unpackButton(id);
+                        }}
+                    />
+                );
+            })}
+            {packedButtons.length === 0 && (
+                <Menu.MenuItem disabled key="backpack-empty" label="No packed buttons" id="backpack-empty" />
+            )}
+            <Menu.MenuSeparator />
+            <Menu.MenuItem
+                id="backpack-manage"
+                label="Manage Packed Buttons"
+                action={(e?: React.MouseEvent) => {
+                    e?.stopPropagation();
+                    settings.store.autoPackNewButtons = !settings.store.autoPackNewButtons;
+                }}
+            />
+        </Menu.MenuGroup>
+    ];
+}
+
+function BackpackContextMenu() {
+    settings.use(["packedButtons"]);
+
+    return (
+        <Menu.Menu
+            navId="backpack-context"
+            onClose={() => {}}
+            aria-label="Backpack Options"
+        >
+            {renderBackpackMenuItems()}
+        </Menu.Menu>
+    );
+}
+
+function openBackpackContextMenu(e: React.MouseEvent) {
+    e.stopPropagation();
+    ContextMenuApi.openContextMenu(e, () => <BackpackContextMenu />);
+}
+
 const BackpackButton: ChatBarButtonFactory = ({ isMainChat }) => {
-    const [open, setOpen] = useState(!collapsed);
+    const { packedButtons, showPackedCount } = settings.store;
+    const [popoutOpen, setPopoutOpen] = useState(false);
+    const anchorRef = useRef<HTMLDivElement>(null);
+    const [, forceUpdate] = useState(0);
+
+    useEffect(() => {
+        const listener = () => forceUpdate(n => n + 1);
+        notifyBackpackChange();
+        backpackListeners.add(listener);
+        return () => { backpackListeners.delete(listener); };
+    }, []);
+
     if (!isMainChat) return null;
 
     return (
         <ChatBarButton
-            tooltip={open ? "Pack chat-bar buttons away (Backpack)" : "Unpack chat-bar buttons (Backpack)"}
-            onClick={() => {
-                const next = !open;
-                setOpen(next);
-                applyCollapsed(!next);
-            }}
+            tooltip={packedButtons.length > 0 ? `Backpack (${packedButtons.length} packed)` : "Backpack"}
+            onClick={() => setPopoutOpen(!popoutOpen)}
+            onContextMenu={openBackpackContextMenu}
+            onAuxClick={e => { e.stopPropagation(); setPopoutOpen(!popoutOpen); }}
         >
-            <span className="tc-backpack-marker" style={{ opacity: open ? 1 : 0.55 }}>
+            <span className="tc-backpack-marker">
                 <BackpackIcon />
+                {showPackedCount && packedButtons.length > 0 && (
+                    <span className="tc-backpack-badge">{packedButtons.length}</span>
+                )}
             </span>
         </ChatBarButton>
     );
 };
 
+// Auto-pack new buttons
+let autoPackInitialized = false;
+function initAutoPack() {
+    if (autoPackInitialized) return;
+    autoPackInitialized = true;
+
+    const listener = () => {
+        if (!settings.store.autoPackNewButtons) return;
+
+        for (const [id] of ChatBarButtonMap) {
+            if (id === BACKPACK_ID) continue;
+            if (!BackpackedButtons.has(id) && !settings.store.packedButtons.includes(id)) {
+                packButton(id);
+            }
+        }
+    };
+
+    // Check on startup
+    listener();
+
+    // Listen for new buttons by monkey-patching addChatBarButton
+    const originalAdd = addChatBarButton;
+    (globalThis as any).__backpack_originalAdd = originalAdd;
+    const patchedAdd = (id: string, render: ChatBarButtonFactory, icon: any) => {
+        originalAdd(id, render, icon);
+        if (settings.store.autoPackNewButtons && id !== BACKPACK_ID) {
+            setTimeout(() => packButton(id), 0);
+        }
+    };
+    (globalThis as any).addChatBarButton = patchedAdd;
+}
+
+// Cleanup
+function cleanup() {
+    // Unpack all on unload
+    for (const id of BackpackedButtons) {
+        unpackButton(id);
+    }
+}
+
 export default definePlugin({
+    id: "Backpack",
     name: "Backpack",
-    description: "Collapse your other chat-bar plugin buttons behind a single button to declutter the message bar. Click to pack/unpack.",
+    description: "Collapse your other chat-bar plugin buttons behind a single button to declutter the message bar. Click to expand a menu with packed buttons. Right-click for options.",
     authors: [TestcordDevs.sirphantom89],
     dependencies: ["ChatInputButtonAPI"],
 
@@ -60,7 +204,11 @@ export default definePlugin({
 
     managedStyle: backpackStyle,
 
+    start() {
+        initAutoPack();
+    },
+
     stop() {
-        applyCollapsed(false);
+        cleanup();
     }
 });

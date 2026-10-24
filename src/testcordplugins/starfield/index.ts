@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "Starfield",
     name: "Starfield",
     description: "A faint twinkling starfield drifting behind everything.",
     authors: [{ name: "Sharp", id: 0n }],

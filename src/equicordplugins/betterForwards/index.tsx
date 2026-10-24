@@ -89,6 +89,7 @@ const settings = definePluginSettings({
 
 migratePluginSettings("BetterForwards", "ForwardAnywhere");
 export default definePlugin({
+    id: "BetterForwards",
     name: "BetterForwards",
     description: "Message forward utilities including NSFW bypass and UI improvements.",
     tags: ["Chat", "Utility"],

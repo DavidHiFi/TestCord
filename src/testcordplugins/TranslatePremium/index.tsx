@@ -163,6 +163,7 @@ function handleMessageDelete({ channelId, id }: { channelId: string; id: string;
 }
 
 export default definePlugin({
+    id: "TranslatePremium",
     name: "TranslatePremium",
     description: "Auto translate messages from specific users to ur lang with context menu button",
     tags: ["Chat", "Utility"],

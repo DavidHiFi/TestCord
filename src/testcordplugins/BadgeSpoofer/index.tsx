@@ -17,6 +17,7 @@ import { applyHouse, type HouseId,HOUSES } from "./hypesquad";
 import { settings } from "./settings";
 
 export default definePlugin({
+    id: "BadgeSpoofer",
     name: "BadgeSpoofer",
     description: "Discord profile badge spoofer: Game Variety (Games Played), Game Time (Playtime), & Streaming (Hours Streamed) via /api/v9/science. Also switch your real HypeSquad house or leave HypeSquad.",
     authors: [TestcordDevs.sirphantom89],

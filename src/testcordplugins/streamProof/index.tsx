@@ -308,6 +308,7 @@ const StreamProofButton: ChatBarButtonFactory = ({ isMainChat }) => {
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "StreamProof",
     name: "StreamProof",
     description: "Hides messages, links, images, DMs, but not the screen share/voice grid. Toggle via button (right-click for options).",
     authors: [EquicordDevs.TheArmagan],

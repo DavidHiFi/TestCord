@@ -286,6 +286,7 @@ async function applyWallpaper() {
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "LiveWallpaper",
     name: "LiveWallpaper",
     description: "Global wallpaper for the entire Discord interface (image, gif, video). Compatible with ChannelWallpaper.",
     tags: ["Appearance", "Nightcord"],

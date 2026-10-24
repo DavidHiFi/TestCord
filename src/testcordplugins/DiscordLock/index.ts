@@ -474,6 +474,7 @@ function createOverlay() {
 // ─── Plugin ───────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "DiscordLock",
     name: "DiscordLock",
     description: "Locks Discord on startup, on inactivity, and on specified servers/channels/DMs.",
     tags: ["Privacy", "Utility"],

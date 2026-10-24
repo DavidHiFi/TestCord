@@ -36,6 +36,7 @@ function getCachedUsers(): User[] {
 }
 
 export default definePlugin({
+    id: "UniversalMention",
     name: "UniversalMention",
     authors: [EquicordDevs.justjxke],
     description: "Mention any user, regardless of channel access.",

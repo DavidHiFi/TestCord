@@ -831,6 +831,7 @@ function WebhookSendButton() {
 }
 
 export default definePlugin({
+    id: "WebhookSend",
     name: "WebhookSend",
     description: "Send Discord webhooks from a tabbed modal with visual embed builder and saved history.",
     authors: [TestcordDevs.x2b],

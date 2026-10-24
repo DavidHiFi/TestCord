@@ -41,6 +41,7 @@ const imageContextMenuPatch: NavContextMenuPatchCallback = (children, props: { s
 };
 
 export default definePlugin({
+    id: "CopyMediaLink",
     name: "CopyMediaLink",
     description: "Adds working Copy Media Link and Copy Link actions to the image context menu, copying through the clipboard fallback chain instead of Discord's own handler.",
     tags: ["Media", "Utility"],

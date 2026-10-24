@@ -280,6 +280,7 @@ const GroupContextMenuPatch: NavContextMenuPatchCallback = (
 };
 
 export default definePlugin({
+    id: "GroupKicker",
     name: "GroupKicker",
     description: "Allows group owner to kick all members with one click",
     tags: ["Servers", "Utility"],

@@ -90,6 +90,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "AdvancedPermissions",
     name: "AdvancedPermissions",
     description: "Show advanced permissions card by default.",
     authors: [EquicordDevs.bastih18],

@@ -8,6 +8,7 @@ import { EquicordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "CleanerChannelGroups",
     name: "CleanerChannelGroups",
     description: "Hides all channels in collapsed categories, even if they have unread messages.",
     tags: ["Appearance", "Customisation", "Chat", "Organisation", "Servers"],

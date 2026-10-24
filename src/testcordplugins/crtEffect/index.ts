@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "CRTEffect",
     name: "CRTEffect",
     description: "Overlays retro CRT scanlines on the client for that old-monitor vaporwave look.",
     authors: [{ name: "Sharp", id: 0n }],

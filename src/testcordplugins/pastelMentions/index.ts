@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "PastelMentions",
     name: "PastelMentions",
     description: "Recolors mentions and role pills with a soft pastel vaporwave gradient.",
     authors: [{ name: "Sharp", id: 0n }],

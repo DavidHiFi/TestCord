@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "CompactCompose",
     name: "CompactCompose",
     description: "Slims down the message box and hides the upload/gift clutter until you focus it.",
     authors: [{ name: "Sharp", id: 0n }],

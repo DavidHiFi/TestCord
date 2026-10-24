@@ -24,6 +24,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "DeadMembers",
     name: "DeadMembers",
     description: "Shows when the sender of a message has left the guild",
     authors: [Devs.Kyuuhachi],

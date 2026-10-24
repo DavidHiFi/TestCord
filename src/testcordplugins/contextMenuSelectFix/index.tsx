@@ -13,6 +13,7 @@ const classes = findByPropsLazy("menu", "submenu");
 let lastRightPressTime = 0;
 
 export default definePlugin({
+    id: "ContextMenuSelectFix",
     name: "ContextMenuSelectFix",
     description: "Releasing right click when hovering over a context menu entry selects it, bringing the behaviour in line with other apps",
     tags: ["Utility"],

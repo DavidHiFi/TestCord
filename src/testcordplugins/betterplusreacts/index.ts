@@ -11,6 +11,7 @@ import { findByPropsLazy } from "@webpack";
 const { getMessages } = findByPropsLazy("getMessages");
 
 export default definePlugin({
+    id: "BetterPlusReacts",
     name: "BetterPlusReacts",
     authors: [Devs.Joona],
     description: "The amount of plus before :emoji: is the message to add it to",

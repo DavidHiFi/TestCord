@@ -70,6 +70,7 @@ interface DiscordAPIError {
 }
 
 export default definePlugin({
+    id: "AutoDeleteDMs",
     name: "AutoDeleteDMs",
     description: "Automatically deletes DMs after a specified time period",
     tags: ["Chat", "Utility"],

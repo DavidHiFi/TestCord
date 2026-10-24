@@ -35,6 +35,7 @@ let soundModule: any = null;
 let originalPlaySound: any = null;
 
 export default definePlugin({
+    id: "QuietHours",
     name: "QuietHours",
     description: "Silences notification sounds during a time window you set (e.g. 23:00–08:00). Visual notifications still show.",
     authors: [{ name: "Sharp", id: 0n }],

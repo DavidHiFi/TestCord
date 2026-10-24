@@ -16,6 +16,7 @@ function annoil(input) {
 }
 
 export default definePlugin({
+    id: "Annoiler",
     name: "Annoiler",
     description: "Makes you send messages with spoilers around every single character. Originally made by Kyza for Powercord, Usage: /annoil",
     tags: ["Chat", "Fun"],

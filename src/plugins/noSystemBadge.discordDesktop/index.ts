@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NoSystemBadge",
     name: "NoSystemBadge",
     description: "Disables the taskbar and system tray unread count badge.",
     tags: ["Notifications", "Appearance"],

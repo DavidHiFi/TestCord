@@ -224,6 +224,7 @@ Provide your summary now.`,
 }
 
 export default definePlugin({
+    id: "SummarizeAI",
     name: "SummarizeAI",
     description: "Summarize Discord channel conversations using AI",
     dependencies: ["CommandsAPI"],

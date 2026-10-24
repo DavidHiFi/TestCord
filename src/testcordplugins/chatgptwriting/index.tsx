@@ -242,6 +242,7 @@ const getPresend = (): MessageSendListener => {
 };
 
 export default definePlugin({
+    id: "ChatGPTWriting",
     name: "ChatGPTWriting",
     description: "Enhance your messages with kaomoji, emoji, and autocorrect",
     tags: ["Chat", "Utility"],

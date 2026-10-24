@@ -8,6 +8,7 @@ import { EquicordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "StopAutoUnread",
     name: "StopAutoUnread",
     description: 'Stops Discord from automatically bumping a channels notification setting to "All Messages"',
     tags: ["Notifications"],

@@ -457,6 +457,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 export default definePlugin({
+    id: "Fake Accounts",
     name: "Fake Accounts",
     description: "Allows you to locally make fake accounts and impersonate those fake accounts",
     authors: [{ name: "deracul", id: 1454853467783954444n }],

@@ -289,6 +289,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: {
 migratePluginSetting("Timezones", "showOwnTimezone", "Show Own Timezone");
 migratePluginSetting("Timezones", "twentyFourHourFormat", "24h Time");
 export default definePlugin({
+    id: "Timezones",
     name: "Timezones",
     authors: [Devs.Aria, EquicordDevs.creations],
     description: "Shows the local time of users in profiles and message headers",

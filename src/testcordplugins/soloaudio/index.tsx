@@ -670,6 +670,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }) =
 };
 
 export default definePlugin({
+    id: "SoloAudio",
     name: "SoloAudio",
     description: "A button near mute/deafen to solo users/groups. Left-click opens a full control panel, Right-click opens a quick dropdown.",
     dependencies: ["UserAreaAPI", "UserSettingsAPI", "ContextMenuAPI"],

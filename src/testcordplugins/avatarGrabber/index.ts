@@ -9,6 +9,7 @@ import definePlugin from "@utils/types";
 import { IconUtils, UserStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "AvatarGrabber",
     name: "AvatarGrabber",
     description: "/avatar grabs the full-resolution avatar of any user (or yourself).",
     authors: [{ name: "Sharp", id: 0n }],

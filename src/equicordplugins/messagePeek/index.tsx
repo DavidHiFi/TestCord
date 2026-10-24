@@ -240,6 +240,7 @@ function shouldShowActivity(lastMessage: Message | undefined, hasActivity: boole
 }
 
 export default definePlugin({
+    id: "MessagePeek",
     name: "MessagePeek",
     description: "Shows the last message preview and timestamp in the Direct Messages list.",
     dependencies: ["MemberListDecoratorsAPI"],

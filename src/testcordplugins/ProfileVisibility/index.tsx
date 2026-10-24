@@ -134,6 +134,7 @@ function ProfileVisibilityButton() {
 }
 
 export default definePlugin({
+    id: "ProfileVisibility",
     name: "ProfileVisibility",
     description: "Toggle your Discord profile visibility (private — Friends Only — vs visible to all servers) with a button in the top bar.",
     authors: [TestcordDevs.LOSTSTR],

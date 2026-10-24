@@ -21,6 +21,7 @@ import definePlugin from "@utils/types";
 import { UserStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "NoProfileThemes",
     name: "NoProfileThemes",
     description: "Completely removes Nitro profile themes from everyone but yourself",
     tags: ["Appearance"],

@@ -310,6 +310,7 @@ function AboutComponent() {
 }
 
 export default definePlugin({
+    id: "AutoLanguageBlock",
     name: "AutoLanguageBlock",
     description: "Automatically blocks users who write in the configured language by detecting keywords in their messages.",
     tags: ["Servers", "Utility"],

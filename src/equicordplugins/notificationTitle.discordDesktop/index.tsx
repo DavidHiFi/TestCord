@@ -28,6 +28,7 @@ function toPlainString(val: any): string {
 }
 
 export default definePlugin({
+    id: "NotificationTitle",
     name: "NotificationTitle",
     description: "Makes desktop notifications more informative",
     tags: ["Appearance", "Notifications"],

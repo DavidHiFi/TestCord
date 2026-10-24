@@ -30,6 +30,7 @@ const settings = definePluginSettings({
     }
 });
 export default definePlugin({
+    id: "HopOn",
     name: "HopOn",
     description: "Hop on! Opens a configurable URL when a message matches a custom regex in the current channel.",
     tags: ["Fun"],

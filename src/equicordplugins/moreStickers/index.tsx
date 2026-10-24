@@ -32,6 +32,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MoreStickers",
     name: "MoreStickers",
     description: "Adds sticker packs from other social media platforms. (e.g. LINE)",
     tags: ["Chat", "Emotes", "Media"],

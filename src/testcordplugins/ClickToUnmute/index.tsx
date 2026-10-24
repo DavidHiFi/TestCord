@@ -10,6 +10,7 @@ import { User } from "@vencord/discord-types";
 import { MediaEngineStore, React, showToast, Toasts, VoiceActions } from "@webpack/common";
 
 export default definePlugin({
+    id: "ClickToUnmute",
     name: "ClickToUnmute",
     description: "Click the mute icon next to a locally muted voice member to unmute them instantly, instead of right-click > Unmute.",
     authors: [TestcordDevs.DavidHiFi, TestcordDevs.Kurtzon],

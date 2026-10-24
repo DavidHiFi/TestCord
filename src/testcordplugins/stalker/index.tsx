@@ -299,6 +299,7 @@ const patchUserContext: NavContextMenuPatchCallback = (children, { user }: UserC
 };
 
 export default definePlugin({
+    id: "Stalker",
     name: "Stalker",
     description: "Tracks selected users across status, voice, activity, client, custom status, and message events.",
     tags: ["Friends", "Utility"],

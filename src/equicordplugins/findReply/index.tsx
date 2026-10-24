@@ -135,6 +135,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "FindReply",
     name: "FindReply",
     description: "Jumps to the earliest reply to a message in a channel (lets you follow past conversations more easily).",
     dependencies: ["MessagePopoverAPI"],

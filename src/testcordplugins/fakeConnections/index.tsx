@@ -314,6 +314,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "FakeConnections",
     name: "FakeConnections",
     description: "Add fake connections to your own profile, visible only to you. Supports custom display names, optional clickable links, and per-theme text color. Manage in plugin settings.",
     authors: [{ name: "lastclipped", id: 0n }],

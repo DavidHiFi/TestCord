@@ -479,6 +479,7 @@ function FloatingNotesToolbar() {
 }
 
 export default definePlugin({
+    id: "FloatingNotes",
     name: "FloatingNotes",
     description: "Adds a draggable floating notepad to chats with per DM, per channel, or per server notes.",
     authors: [TestcordDevs.x2b],

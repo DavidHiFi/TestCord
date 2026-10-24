@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NoticesAPI",
     name: "NoticesAPI",
     description: "Fixes notices being automatically dismissed",
     authors: [Devs.Ven],

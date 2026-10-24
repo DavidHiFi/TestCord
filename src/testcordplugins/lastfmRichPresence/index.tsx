@@ -176,6 +176,7 @@ async function updatePresence(updateGeneration = generation) {
 }
 
 export default definePlugin({
+    id: "LastFMRichPresence",
     name: "LastFMRichPresence",
     description: "Show your currently scrobbling Last.fm track as Discord rich presence.",
     tags: ["Activity", "Media"],

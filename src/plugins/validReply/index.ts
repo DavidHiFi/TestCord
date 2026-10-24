@@ -53,6 +53,7 @@ let ReplyStore: any;
 const createMessageRecord = findByCodeLazy(".createFromServer(", ".isBlockedForMessage", "messageReference:");
 
 export default definePlugin({
+    id: "ValidReply",
     name: "ValidReply",
     description: 'Fixes "Message could not be loaded" upon hovering over the reply',
     tags: ["Chat", "Utility"],

@@ -230,6 +230,7 @@ function preserveRemovedMedia(action: MessageUpdateAction) {
 }
 
 export default definePlugin({
+    id: "AntiAntilog",
     name: "AntiAntilog",
     description: "Counters antilog plugins so deleted messages stay visible as deletions, and keeps removed image/video embeds and attachments from disappearing.(doesnt work on ur own msgs so u cant expose urself on stream)",
     tags: ["Privacy", "Utility", "Chat"],

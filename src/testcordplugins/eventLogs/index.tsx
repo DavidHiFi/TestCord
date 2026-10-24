@@ -873,6 +873,7 @@ function subscribeToEvents() {
 }
 
 export default definePlugin({
+    id: "EventLogs",
     name: "EventLogs",
     description: "Logs: deleted/edited messages, voice, friends, servers.",
     tags: ["Notifications", "Utility", "Nightcord"],

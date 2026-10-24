@@ -96,6 +96,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "PlatformEmulator",
     name: "PlatformEmulator",
     description: "PlatformEmulator allows you to spoof your Discord platform (Windows, Linux, Android, iOS, etc.), with optional aggressive OS/client metadata spoofing. (dx maintains it, dont ask x2b for support with this)",
     tags: ["Privacy", "Utility"],

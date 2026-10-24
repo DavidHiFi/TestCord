@@ -59,6 +59,7 @@ async function onKeyDown(e: KeyboardEvent) {
 }
 
 export default definePlugin({
+    id: "QuickDelete",
     name: "QuickDelete",
     description: "Delete your last message in the current channel with a keyboard shortcut.",
     tags: ["Chat", "Utility"],

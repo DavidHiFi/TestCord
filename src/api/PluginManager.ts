@@ -570,36 +570,82 @@ export const stopPlugin = traceFunction("stopPlugin", function stopPlugin(p: Plu
     return true;
 }, p => `stopPlugin ${p.name}`);
 
-export const initPluginManager = onlyOnce(function init() {
-    const pluginsValues = Object.values(Plugins) as Plugin[];
-    const settings = Settings.plugins as Record<string, any>;
+/**
+ * Merge legacy name/alias-keyed plugin configs into each plugin's canonical
+ * `id` key. Settings used to be keyed by `name`, so a rename orphaned the old
+ * entry. This is additive: missing values are copied onto the canonical key
+ * and the old entry is left in place, so existing installs keep working.
+ */
+function migratePluginConfigs(pluginsValues: Plugin[]) {
+    const raw = PlainSettings?.plugins as Record<string, any> | undefined;
+    if (!raw) return;
 
-    // Migrate legacy name-keyed settings to stable ids.
-    // This runs once at startup; it copies enabled + per-plugin settings
-    // from the old `name` key to the new `id` key if the latter is empty.
+    const findKey = (key: string): string | undefined => {
+        if (Object.hasOwn(raw, key)) return key;
+        const lower = key.toLowerCase();
+        return Object.keys(raw).find(k => k.toLowerCase() === lower);
+    };
+
+    let changed = false;
+
     for (const p of pluginsValues) {
         const cid = getPluginId(p);
         if (p.settings) p.settings.pluginName = cid;
 
-        if (cid !== p.name) {
-            const raw = PlainSettings?.plugins as Record<string, any> | undefined;
-            const legacy = raw?.[p.name];
-            const canonical = raw?.[cid];
-            if (legacy && !canonical) {
-                (Settings.plugins as any)[cid] = { ...legacy };
-            } else if (legacy && canonical && legacy.enabled !== undefined && canonical.enabled === undefined) {
-                (Settings.plugins as any)[cid].enabled = legacy.enabled;
+        // The canonical key must exist with the exact casing `settings.store`
+        // reads, even if an old entry only differs by case.
+        if (!Object.hasOwn(raw, cid)) {
+            const caseKey = findKey(cid);
+            if (caseKey !== undefined) {
+                raw[cid] = { ...raw[caseKey] };
+                changed = true;
             }
         }
-        // alias migration
-        for (const alias of (p as any).aliases ?? []) {
-            const raw = PlainSettings?.plugins as Record<string, any> | undefined;
-            const aVal = raw?.[alias];
-            if (aVal && !raw?.[cid]) {
-                (Settings.plugins as any)[cid] = { ...aVal };
+
+        const sources: string[] = [];
+        for (const candidate of [p.name, ...((p as any).aliases ?? [])]) {
+            if (!candidate || candidate === cid) continue;
+            const key = findKey(candidate);
+            if (key !== undefined && key !== cid && !sources.includes(key)) sources.push(key);
+        }
+
+        // Nothing under the canonical key yet: adopt the closest legacy entry.
+        if (!Object.hasOwn(raw, cid)) {
+            const first = sources.shift();
+            if (first === undefined) continue;
+            raw[cid] = { ...raw[first] };
+            changed = true;
+        }
+
+        // Fill only the gaps; values already on the canonical key always win.
+        const target = raw[cid];
+        for (const source of sources) {
+            const legacy = raw[source];
+            if (!legacy) continue;
+            for (const [key, value] of Object.entries(legacy)) {
+                if (key === "enabled") {
+                    if (target.enabled === undefined) {
+                        target.enabled = value;
+                        changed = true;
+                    }
+                } else if (!Object.hasOwn(target, key)) {
+                    target[key] = value;
+                    changed = true;
+                }
             }
         }
     }
+
+    if (changed) SettingsStore.markAsChanged();
+}
+
+export const initPluginManager = onlyOnce(function init() {
+    const pluginsValues = Object.values(Plugins) as Plugin[];
+    const settings = Settings.plugins as Record<string, any>;
+
+    // Restore settings/enabled state orphaned by pre-ID renames, then bind the
+    // canonical id to each plugin's settings store.
+    migratePluginConfigs(pluginsValues);
 
     const pluginKeysToBind: Array<keyof PluginDef & `${"on" | "render"}${string}`> = [
         "onBeforeMessageEdit", "onBeforeMessageSend", "onMessageClick",

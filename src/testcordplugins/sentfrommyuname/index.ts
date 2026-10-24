@@ -54,6 +54,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "SentFromMyUname",
     name: "SentFromMyUname",
     description: "Sign every message you send with your uname or user agent",
     tags: ["Chat", "Customisation"],

@@ -2171,6 +2171,7 @@ function getCustomThumbnail(originalThumbnail: string): string {
 }
 
 export default definePlugin({
+    id: "CustomStreamTopQ",
     name: "CustomStreamTopQ",
     description: "Custom stream preview images with profiles & slideshow. GitHub: https://github.com/MrTopQ/customStream-Vencord",
     tags: ["Voice", "Customisation"],

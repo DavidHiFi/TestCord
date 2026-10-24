@@ -312,6 +312,7 @@ async function listBackups(): Promise<string[]> {
 }
 
 export default definePlugin({
+    id: "ServerBackup",
     name: "ServerBackup",
     description:
         "Backs up and restores complete Discord server configuration (roles, channels, permissions) - No permissions required",

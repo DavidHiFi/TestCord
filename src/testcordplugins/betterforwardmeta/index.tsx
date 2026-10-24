@@ -87,6 +87,7 @@ const GuildLink = ErrorBoundary.wrap(function GuildLink({ guildId }: { guildId: 
 }, { noop: true });
 
 export default definePlugin({
+    id: "BetterForwardMeta",
     name: "BetterForwardMeta",
     description: "Add the origin server, channel and time to forwarded messages",
     tags: ["Chat", "Utility"],

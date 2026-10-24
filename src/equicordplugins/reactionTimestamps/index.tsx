@@ -95,6 +95,7 @@ function ReactionName(props: ReactionUserRowProps) {
 }
 
 export default definePlugin({
+    id: "ReactionTimestamps",
     name: "ReactionTimestamps",
     description: "Shows each reaction time in the reaction popout.",
     authors: [EquicordDevs.Kurt],

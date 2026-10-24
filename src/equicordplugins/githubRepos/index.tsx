@@ -36,6 +36,7 @@ export const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "GitHubRepos",
     name: "GitHubRepos",
     description: "Displays a user's public GitHub repositories in their profile",
     dependencies: ["ProfileCollectionsAPI"],

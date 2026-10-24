@@ -20,6 +20,7 @@ import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "F8Break",
     name: "F8Break",
     description: "Pause the client when you press F8 with DevTools (+ breakpoints) open.",
     tags: ["Developers", "Shortcuts"],

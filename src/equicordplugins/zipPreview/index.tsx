@@ -13,6 +13,7 @@ import managedStyle from "./style.css?managed";
 import { clearZipPreviewCache, getAttachmentFileName, isZipFile, ZipPreviewAttachmentProps } from "./utils";
 
 export default definePlugin({
+    id: "ZipPreview",
     name: "ZipPreview",
     description: "Previews ZIP contents inside file attachments.",
     tags: ["Chat", "Utility"],

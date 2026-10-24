@@ -25,6 +25,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "VoiceSettings",
     name: "VoiceSettings",
     description: "Extends voice chat audio bitrate beyond Discord's default and unlocks the push-to-talk release delay slider above its 2-second cap.",
     tags: ["Voice", "Utility"],

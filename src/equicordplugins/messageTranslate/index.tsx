@@ -50,6 +50,7 @@ function triggerReRender(message: MessageWithContent) {
 }
 
 export default definePlugin({
+    id: "MessageTranslate",
     name: "MessageTranslate",
     description: "Auto translate messages to your language with caching, per-channel toggles, and more options.",
     tags: ["Chat", "Utility"],

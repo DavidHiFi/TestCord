@@ -71,6 +71,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "RPCEditor",
     name: "RPCEditor",
     description: "Edit the type and content of any Rich Presence",
     tags: ["Customisation"],

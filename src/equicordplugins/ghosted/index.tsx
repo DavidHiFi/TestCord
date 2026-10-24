@@ -142,6 +142,7 @@ function makeContextItem(props) {
 }
 
 export default definePlugin({
+    id: "Ghosted",
     name: "Ghosted",
     description: "A cute ghost will appear if you don't answer their DMs",
     tags: ["Chat", "Utility"],

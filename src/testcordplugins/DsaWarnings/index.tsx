@@ -452,6 +452,7 @@ const DsaWarningsCollection = ErrorBoundary.wrap(function DsaWarningsCollection(
 }, { noop: true });
 
 export default definePlugin({
+    id: "DsaWarnings",
     name: "DsaWarnings",
     description: "Shows active DSA standing warnings on user profiles.",
     tags: ["Privacy", "Utility"],

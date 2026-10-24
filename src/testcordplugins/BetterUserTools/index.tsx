@@ -364,6 +364,7 @@ const styles = `
 `;
 
 export default definePlugin({
+    id: "BetterUserTools",
     name: "BetterUserTools",
     description: "Adds mic test shortcut button and off-the-radar button to the user panel, both are toggles. MicTest Simply lets you test your mic without entering the settings page. OffTheRadar Enables idle status and hides activity while enabled. just added before equicord, if the original gets added to equicord I will delete this one.",
     tags: ["Utility", "Customisation", "Shortcuts"],

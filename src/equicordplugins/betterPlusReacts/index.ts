@@ -10,6 +10,7 @@ import type { Message } from "@vencord/discord-types";
 import { MessageStore } from "@webpack/common";
 
 export default definePlugin({
+    id: "BetterPlusReacts",
     name: "BetterPlusReacts",
     authors: [Devs.Joona],
     description: "The amount of plus before :emoji: is the message to add it to",

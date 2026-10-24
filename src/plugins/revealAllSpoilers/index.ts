@@ -29,6 +29,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "RevealAllSpoilers",
     name: "RevealAllSpoilers",
     description: "Reveal all spoilers in a message by Ctrl-clicking a spoiler, or in the chat with Ctrl+Shift-click. Enable auto-reveal to never see spoilers at all.",
     authors: [Devs.whqwert, TestcordDevs.x2b],

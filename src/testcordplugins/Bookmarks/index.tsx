@@ -129,6 +129,7 @@ function openBookmarks() {
 }
 
 export default definePlugin({
+    id: "Bookmarks",
     name: "Bookmarks",
     description: "Privately bookmark messages (beyond Discord's 50-pin limit) with a hover button, then view and jump to them from the Testcord menu in the header.",
     authors: [TestcordDevs.sirphantom89],

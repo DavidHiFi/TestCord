@@ -17,6 +17,7 @@ const { getBlockedUsersForVoiceChannel, getIgnoredUsersForVoiceChannel } = findB
 const pendingProfileFetches = new Set<string>();
 
 export default definePlugin({
+    id: "BypassBlockedOrIgnored",
     name: "BypassBlockedOrIgnored",
     description: "Bypass the blocked or ignored user modal if is present in voice channels.",
     tags: ["Utility", "Privacy"],

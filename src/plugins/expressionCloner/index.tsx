@@ -433,6 +433,7 @@ const expressionPickerPatch: NavContextMenuPatchCallback = (children, props: { t
 
 migratePluginSettings("ExpressionCloner", "EmoteCloner");
 export default definePlugin({
+    id: "ExpressionCloner",
     name: "ExpressionCloner",
     description: "Allows you to clone Emotes & Stickers to your own server (right click them)",
     tags: ["Emotes", "Servers"],

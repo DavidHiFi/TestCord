@@ -29,6 +29,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "MessageNitroBadge",
     name: "MessageNitroBadge",
     description: "Enables the Social Proofing Message Nitro Badge experiment",
     tags: ["Chat", "Customisation"],

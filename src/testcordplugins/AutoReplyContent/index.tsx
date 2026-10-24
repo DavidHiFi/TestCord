@@ -350,6 +350,7 @@ migratePluginSetting("AutoReplyContent", "legacyReply", "responseMessages");
 migratePluginSetting("AutoReplyContent", "legacyReply", "responseMessage");
 
 export default definePlugin({
+    id: "AutoReplyContent",
     name: "AutoReplyContent",
     description: "Automatically sends a reply when a message matches one of your trigger rules",
     authors: [TestcordDevs.x2b, TestcordDevs.dxrx99],

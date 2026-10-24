@@ -146,6 +146,7 @@ const TsundereTalkButton = ErrorBoundary.wrap(function TsundereTalkButton() {
 }, { noop: true });
 
 export default definePlugin({
+    id: "TsundereTalk",
     name: "TsundereTalk",
     description: "Rewrites your outgoing messages into a cute tsundere style using TestcordAI.",
     authors: [TestcordDevs.x2b],

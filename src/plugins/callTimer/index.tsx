@@ -107,6 +107,7 @@ let myLastChannelId: string | undefined;
 let runOneTime = true;
 
 export default definePlugin({
+    id: "CallTimer",
     name: "CallTimer",
     description: "Add call timers for all users in voice channels and in the connection status.",
     tags: ["Voice", "Utility"],

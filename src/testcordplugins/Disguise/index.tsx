@@ -116,6 +116,7 @@ function userContextPatch(children: Array<React.ReactNode>, { user }: { user?: U
 }
 
 export default definePlugin({
+    id: "Disguise",
     name: "Disguise",
     description: "Make chosen people look like someone else on your screen. Name, avatar and profile are swapped locally, so a glance at your client never gives away who you are talking to.",
     authors: [TestcordDevs.sirphantom89],

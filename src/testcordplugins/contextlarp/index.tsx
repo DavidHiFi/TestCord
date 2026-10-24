@@ -123,6 +123,7 @@ const UserContextMenuPatch: NavContextMenuPatchCallback = (children, { channel, 
 };
 
 export default definePlugin({
+    id: "ContextLarp",
     name: "ContextLarp",
     description: "Adds violent context menu roleplay actions for messages and users that fake a Clyde report on click.",
     authors: [TestcordDevs.x2b],

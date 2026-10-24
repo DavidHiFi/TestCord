@@ -8,6 +8,7 @@ import { TestcordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "NoEditedTimestamp",
     name: "NoEditedTimestamp",
     description: "Removes the '(edited)' label from all messages globally, not just your own.",
     authors: [TestcordDevs.Sharp],

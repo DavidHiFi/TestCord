@@ -71,6 +71,7 @@ export function removeIndicator() {
 }
 
 export default definePlugin({
+    id: "HideServers",
     name: "HideServers",
     description: "Allows you to hide servers from the guild list and quick switcher by right clicking them",
     tags: ["Servers", "Utility"],

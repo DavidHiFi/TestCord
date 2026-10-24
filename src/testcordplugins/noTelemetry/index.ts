@@ -44,6 +44,7 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
+    id: "NoTelemetry",
     name: "NoTelemetry",
     description: "Blocks additional Discord telemetry beyond the built-in NoTrack plugin: experiment exposure reporting, call diagnostics, remote debug logging, and Sentry crash reporting.",
     tags: ["Privacy"],

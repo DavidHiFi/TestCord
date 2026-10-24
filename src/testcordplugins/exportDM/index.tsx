@@ -583,6 +583,7 @@ function ExportButton() {
 }
 
 export default definePlugin({
+    id: "ExportDM",
     name: "ExportDM",
     description: "Exports your DMs with messages, images, videos, audio, links, embeds, stickers, reactions in TXT/JSON/CSV/MD/HTML.",
     tags: ["Media", "Utility", "Nightcord"],

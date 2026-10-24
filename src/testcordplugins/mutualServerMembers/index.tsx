@@ -389,6 +389,7 @@ const ctxMenuPatch: NavContextMenuPatchCallback = (children, props) => {
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
 export default definePlugin({
+    id: "MutualServerMembers",
     name: "MutualServerMembers",
     description: "Compare two servers you're in and see which members are in both. Right-click a server, use dropdowns, or enter IDs manually.",
     tags: ["Servers", "Utility"],

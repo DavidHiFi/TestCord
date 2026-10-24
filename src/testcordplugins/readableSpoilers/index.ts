@@ -10,6 +10,7 @@ import definePlugin from "@utils/types";
 import style from "./style.css?managed";
 
 export default definePlugin({
+    id: "ReadableSpoilers",
     name: "ReadableSpoilers",
     description: "Gives unrevealed spoilers a subtle neon outline so you can spot them at a glance.",
     authors: [{ name: "Sharp", id: 0n }],

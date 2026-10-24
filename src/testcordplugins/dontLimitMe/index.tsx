@@ -7,6 +7,7 @@
 import definePlugin from "@utils/types";
 
 export default definePlugin({
+    id: "DontLimitMe",
     name: "DontLimitMe",
     description: "removes the limit on message sending. spam away! (Bannable)",
     tags: ["Utility", "Chat"],

@@ -268,6 +268,7 @@ const userContextPatch: NavContextMenuPatchCallback = (children, props: { user?:
 };
 
 export default definePlugin({
+    id: "PurgeDMs",
     name: "PurgeDMs",
     description: "Right-click a user and delete every message you ever sent them, with a live feed of each deletion.",
     authors: [TestcordDevs.x2b],
