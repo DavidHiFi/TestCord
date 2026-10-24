@@ -243,7 +243,7 @@ function LoaderPanel() {
                 />
             </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 <Button color={Button.Colors.GREEN} size={Button.Sizes.SMALL} disabled={busy} onClick={() => void download()}>
                     Download & enable
                 </Button>
