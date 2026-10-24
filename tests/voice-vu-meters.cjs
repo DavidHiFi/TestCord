@@ -15,7 +15,7 @@ function load(name, exports) {
     const settings = [];
     const sandbox = {
         console, Date, Float32Array, Map, Set, Math, Number, Object, Array,
-        setInterval, clearInterval, React, VencordCreateElement: React.createElement,
+        setInterval, clearInterval, setTimeout, clearTimeout, React, VencordCreateElement: React.createElement,
         document: { hidden: false, addEventListener: () => {}, removeEventListener: () => {} },
         requestAnimationFrame: () => 0, cancelAnimationFrame: () => {},
         performance: { now: () => Date.now() },
@@ -59,7 +59,20 @@ function load(name, exports) {
     vm.runInContext(code, sandbox);
     return { api: sandbox.test, sandbox, writes };
 }
-const vu = load('VoiceVUMeters', 'readChannel, readLevels, newMeter, meters, VoiceMeter, createWebMeter, syncSelfInput, dropAll, getPan, smooth, MeterBar, tick, readNativeLevels, readStreamLevels, setStreamAmplitude, syncDesktopMeters, isAudioActive, audioActiveUsers, setLastScan: value => { lastScanAt = value; }');
+const vu = load('VoiceVUMeters', 'readChannel, readLevels, newMeter, meters, VoiceMeter, createWebMeter, syncSelfInput, dropAll, getPan, smooth, MeterBar, tick, readNativeLevels, readStreamLevels, setStreamAmplitude, syncDesktopMeters, isAudioActive, audioActiveUsers, setLastScan: value => { lastScanAt = value; }, setSelfSentAt: value => { selfSentAt = value; }, getSelfSentAt: () => selfSentAt');
+check('Meter frame loop waits 33 ms before asking for the next frame', () => {
+    const loop = load('VoiceVUMeters', 'frameTick, meters, newMeter, meterDoms');
+    const frames = [], timers = [];
+    loop.sandbox.requestAnimationFrame = cb => frames.push(cb);
+    loop.sandbox.setTimeout = (cb, ms) => timers.push([cb, ms]);
+    loop.api.meters.set('a', loop.api.newMeter(true));
+    loop.api.meterDoms.set('a', new Set());
+    loop.api.frameTick();
+    assert.equal(frames.length, 0);
+    assert.deepEqual(timers.map(t => t[1]), [33]);
+    timers[0][0]();
+    assert.equal(frames.length, 1);
+});
 function tone(amp = .3) { return Float32Array.from({ length: 2048 }, (_, i) => amp * Math.sin(i * .1)); }
 const sound = tone();
 const silence = new Float32Array(2048);
@@ -263,7 +276,7 @@ check('Stream meters ignore the native bridge so soundshare moves while it is in
     vu.api.setStreamAmplitude('alice', .5); nativeTick();
     const s = vu.api.meters.get('stream:alice');
     assert.notEqual(s.nativeAvailable, true); assert(s.display[0] > .5);
-    assert.equal(vu.api.isAudioActive('alice'), true);
+    assert.equal(vu.api.isAudioActive('alice'), false); // soundshare is not the person's mic
 });
 check('Received audio lights the glow before the speaking flag arrives or while a stale zero flag lingers', () => {
     vu.api.meters.clear();
@@ -306,7 +319,7 @@ check('Room noise below the active level does not light the glow', () => {
     assert.equal(vu.api.isAudioActive('alice'), false);
     nativeBridgeInstalled = true;
 });
-check('Stream meter audio activity keys on the owner id', () => {
+check('Soundshare audio never lights the streamer voice glow', () => {
     vu.api.meters.clear();
     nativeBridgeInstalled = false; // exercise the stats path, not the fake bridge
     const voiceConn = { context: 'default' };
@@ -315,7 +328,8 @@ check('Stream meter audio activity keys on the owner id', () => {
     vu.api.readStreamLevels({ context: 'stream', streamUserId: 'self', soundshareActive: true }, { rtp: { outbound: [{ type: 'audio', ssrc: 199, audioLevel: .5 }] } });
     vu.api.tick();
     nativeBridgeInstalled = true;
-    assert.equal(vu.api.isAudioActive('self'), true);
+    assert.equal(vu.api.isAudioActive('self'), false);
+    assert(vu.api.meters.get('stream:self').amplitude > .4);
 });
 check('Stream soundshare outbound feeds the streamer stream meter, not the voice meter', () => {
     vu.api.meters.clear();
@@ -342,5 +356,134 @@ check('Stale stream meters release instead of pinning', () => {
     m.lastStreamAt = Date.now() - 4000;
     nativeTick();
     assert.equal(vu.api.meters.has('stream:alice'), false);
+});
+vu.sandbox.MediaEngineStore.getMediaEngine = () => ({ connections: [nativeConnection] });
+vu.api.setConnection(nativeConnection);
+function selfTap(samples) {
+    const reader = { getFloatTimeDomainData: target => target.set(samples) };
+    return { output: {}, source: {}, splitter: {}, left: reader, right: reader, silent: {}, bufLeft: new Float32Array(2048), bufRight: new Float32Array(2048) };
+}
+check('Flagged speaker with no audio level shows no bars', () => {
+    vu.api.meters.clear();
+    nativeBridgeInstalled = false;
+    nativeConnection.localSpeakingFlags = { carl: 1 };
+    const m = vu.api.newMeter(true); vu.api.meters.set('carl', m);
+    nativeTick();
+    assert.equal(m.display[0], 0); assert.equal(m.display[1], 0);
+    assert.equal(vu.api.isAudioActive('carl'), false);
+    delete nativeConnection.localSpeakingFlags;
+    nativeBridgeInstalled = true;
+});
+check('Self tap stays flat while Discord sends nothing, even with the mic loud', () => {
+    vu.api.meters.clear();
+    const m = vu.api.newMeter(true, selfTap(sound)); m.ownsInput = true; vu.api.meters.set('self', m);
+    vu.api.setSelfSentAt(0); m.display[0] = 0; m.display[1] = 0; m.activeUntil = 0;
+    nativeTick();
+    assert.equal(m.display[0], 0); assert.equal(vu.api.isAudioActive('self'), false);
+    vu.api.setSelfSentAt(Date.now());
+    nativeTick();
+    assert(m.display[0] > .3); assert.equal(vu.api.isAudioActive('self'), true);
+});
+check('Outbound above the send floor marks Discord as sending, silence and mute do not', () => {
+    vu.api.setSelfSentAt(0);
+    vu.api.readLevels(nativeConnection, { rtp: { outbound: { audioLevel: .0000305 } } });
+    assert.equal(vu.api.getSelfSentAt(), 0);
+    vu.api.readLevels(nativeConnection, { rtp: { outbound: { audioLevel: .2 } } });
+    assert(vu.api.getSelfSentAt() > 0);
+    vu.api.setSelfSentAt(0);
+    vu.sandbox.MediaEngineStore.isSelfMute = () => true;
+    vu.api.readLevels(nativeConnection, { rtp: { outbound: { audioLevel: .2 } } });
+    vu.sandbox.MediaEngineStore.isSelfMute = () => false;
+    assert.equal(vu.api.getSelfSentAt(), 0);
+});
+check('Silent self tap while Discord sends falls back to outbound levels', () => {
+    const v = load('VoiceVUMeters', 'checkSelfMismatch, newMeter, meters, setLastStatsAt: value => { lastStatsAt = value; }');
+    const m = v.api.newMeter(true); m.ownsInput = true; v.api.meters.set('self', m);
+    const start = Date.now();
+    v.api.setLastStatsAt(start);
+    v.api.checkSelfMismatch(m, false, 0, start);
+    v.api.checkSelfMismatch(m, false, 0, start + 1000);
+    assert.equal(v.api.meters.get('self'), m, 'a short silence keeps the tap');
+    v.api.checkSelfMismatch(m, false, .3, start + 1100);
+    v.api.checkSelfMismatch(m, false, 0, start + 1200);
+    v.api.checkSelfMismatch(m, false, 0, start + 3000);
+    assert.equal(v.api.meters.get('self'), m, 'speech on the tap restarts the hold');
+    v.api.checkSelfMismatch(m, true, 0, start + 3500);
+    v.api.setLastStatsAt(start + 4300);
+    v.api.checkSelfMismatch(m, false, 0, start + 4300);
+    assert.equal(v.api.meters.has('self'), false, 'a tap silent through 3 s of sending is dropped, pauses included');
+});
+check('Self tap keeps fast stats while a stream meter is up', () => {
+    const v = load('VoiceVUMeters', 'statsPollMs, newMeter, meters');
+    const self = v.api.newMeter(true, {}); self.ownsInput = true; v.api.meters.set('self', self);
+    const stream = v.api.newMeter(false); stream.nativeAvailable = true; v.api.meters.set('stream:self', stream);
+    assert.equal(v.api.statsPollMs(), 250);
+});
+check('Discord voice activity drives the self meter and its send gate', () => {
+    const v = load('VoiceVUMeters', 'syncVoiceActivity, readLevels, newMeter, meters, getSelfSentAt: () => selfSentAt, setLastStatsAt: value => { lastStatsAt = value; }');
+    const listeners = {};
+    const engine = { on: (e, fn) => { listeners[e] = fn; }, removeListener: (e, fn) => { if (listeners[e] === fn) delete listeners[e]; } };
+    v.sandbox.MediaEngineStore.getMediaEngine = () => engine;
+    const m = v.api.newMeter(true); v.api.meters.set('self', m);
+    v.api.syncVoiceActivity(true);
+    assert.equal(typeof listeners.voiceactivity, 'function', 'subscribes while a self meter is wanted');
+    listeners.voiceactivity(-20, 1);
+    assert.ok(Math.abs(m.amplitude - 0.1) < 1e-9, '-20 dB reads as 0.1 linear');
+    assert.ok(Date.now() - v.api.getSelfSentAt() < 50, 'speaking opens the tap gate at once');
+    v.api.readLevels({}, { rtp: { outbound: { type: 'audio', audioLevel: 0.9 } } });
+    assert.ok(Math.abs(m.amplitude - 0.1) < 1e-9, 'stale stats do not overwrite fresh voice activity');
+    listeners.voiceactivity(-100, 0);
+    assert.equal(m.amplitude, 0, '-100 dB is silence');
+    v.sandbox.MediaEngineStore.isSelfMute = () => true;
+    listeners.voiceactivity(-10, 1);
+    assert.equal(m.amplitude, 0, 'self mute shows nothing');
+    v.api.syncVoiceActivity(false);
+    assert.equal(listeners.voiceactivity, undefined, 'unsubscribes so the engine stops emitting');
+});
+check('A self tap that keeps going silent ends up suspended', () => {
+    const src = require('node:fs').readFileSync('src/testcordplugins/VoiceVUMeters/index.tsx', 'utf8');
+    const adopt = src.slice(src.indexOf('meter.ownsInput = true;'), src.indexOf('inputKey = deviceKey;'));
+    assert.ok(!/inputMismatchDrops\s*=\s*0/.test(adopt), 'adopting a tap must not reset the drop count');
+});
+check('A silent self tap shows Discord voice level instead of flat bars', () => {
+    const v = load('VoiceVUMeters', 'advanceEnvelopes, onVoiceActivity, newMeter, meters, setSelfSentAt: value => { selfSentAt = value; }');
+    v.api.meters.clear();
+    const m = v.api.newMeter(true, selfTap(silence)); m.ownsInput = true; v.api.meters.set('self', m);
+    v.api.onVoiceActivity(-20, 1);
+    v.api.advanceEnvelopes(Date.now());
+    assert.ok(m.display[0] > .5 && m.display[1] > .5, 'dead tap falls back to the voice activity level at once');
+    v.api.onVoiceActivity(-100, 0);
+    m.display[0] = 0; m.display[1] = 0;
+    v.api.advanceEnvelopes(Date.now() + 1000);
+    assert.equal(m.display[0], 0, 'silence stays flat');
+    v.sandbox.MediaEngineStore.isSelfMute = () => true;
+    v.api.onVoiceActivity(-10, 1);
+    v.api.advanceEnvelopes(Date.now() + 2000);
+    assert.equal(m.display[0], 0, 'self mute stays flat');
+});
+check('A real tap level wins over the voice activity level', () => {
+    const v = load('VoiceVUMeters', 'advanceEnvelopes, onVoiceActivity, newMeter, meters');
+    v.api.meters.clear();
+    const m = v.api.newMeter(true, selfTap(sound)); m.ownsInput = true; v.api.meters.set('self', m);
+    v.api.onVoiceActivity(-50, 1);
+    v.api.advanceEnvelopes(Date.now());
+    assert.ok(m.display[0] > .7, 'tap with sound is shown as measured');
+});
+check('Own bars follow speech when Discord never sets the speaking flag', () => {
+    const v = load('VoiceVUMeters', 'advanceEnvelopes, onVoiceActivity, readLevels, newMeter, meters');
+    for (const tap of [selfTap(silence), undefined]) {
+        v.api.meters.clear();
+        const m = v.api.newMeter(true, tap); m.ownsInput = !!tap; v.api.meters.set('self', m);
+        v.api.onVoiceActivity(-20, 0);
+        v.api.readLevels({}, { rtp: { outbound: { type: 'audio', audioLevel: 0.1, audioDetected: 1 } } });
+        v.api.advanceEnvelopes(Date.now());
+        assert.ok(m.display[0] > .5 && m.display[1] > .5, 'bars show speech Discord detected even with flags 0');
+    }
+    v.api.meters.clear();
+    const idle = v.api.newMeter(true, selfTap(silence)); idle.ownsInput = true; v.api.meters.set('self', idle);
+    v.api.onVoiceActivity(-100, 0);
+    v.api.readLevels({}, { rtp: { outbound: { type: 'audio', audioLevel: 0.012, audioDetected: 0 } } });
+    v.api.advanceEnvelopes(Date.now() + 5000);
+    assert.equal(idle.display[0], 0, 'no detected speech stays flat');
 });
 console.log(`${checks} total checks passed`);

@@ -28,8 +28,12 @@ const NOTIFY_MS = 500;
 const SCAN_MS = 500;
 // Stats are the desktop fallback level source, polled only while a meter draws from them (see statsPollMs)
 const STATS_MS = 250;
-// Stats cadence when only the self-tap mismatch guard needs them
-const SELF_STATS_MS = 1000;
+// Self tap cadence: the input meter only shows while Discord sends the mic, so its send state is polled quickly
+const SELF_STATS_MS = 250;
+// Outbound above this level means Discord is sending (silence reads about 0.00003). The self tap stays open
+// for SELF_SEND_HOLD_MS after the last send so gaps between stats polls do not flicker.
+const SELF_SEND_FLOOR = 0.001;
+const SELF_SEND_HOLD_MS = 500;
 // Stats cadence for stream meters alone. getStats runs on the renderer main
 // thread and took 9ms to 8s per call here, so stream meters poll sparsely.
 const STREAM_STATS_MS = 2000;
@@ -54,6 +58,11 @@ const SELF_MISMATCH_HOLD_MS = 5000;
 const SELF_MISMATCH_RAW_FLOOR = 0.5;
 const SELF_MISMATCH_OUTBOUND_CEILING = 0.02;
 const SELF_MISMATCH_RETRY_MS = 30000;
+// The opposite mismatch: the tap reads nothing above the floor for this long while
+// Discord keeps sending, so the device Chromium opens is not the audio Discord sends.
+const SELF_SILENT_HOLD_MS = 3000;
+// voice activity events older than this hand the self meter back to stats
+const SELF_VAD_STALE_MS = 500;
 const STREAM_RELEASE_MS = 3000;
 const BAR_HEIGHT = 18;
 const BAR_WIDTH = 4;
@@ -121,6 +130,7 @@ interface Meter {
     ownsInput?: boolean;
     inputContext?: AudioContext;
     mismatchSince?: number;
+    silentSince?: number;
     lastStreamAt?: number;
 }
 
@@ -144,8 +154,14 @@ let inputRetryAt = 0;
 let participantBridge: ParticipantBridge | undefined;
 let bridgeChecked = false;
 let selfOutboundLinear = 0;
+let selfSentAt = 0;
 let inputMismatchDrops = 0;
 let inputSuspendKey: string | null = null;
+// Discord's own processed mic level, about 10 Hz, the source of its settings mic test
+let vadEngine: { on(event: string, fn: (...args: any[]) => void): void; removeListener(event: string, fn: (...args: any[]) => void): void; } | undefined;
+let selfVadAt = 0;
+let selfVadSpeaking = false;
+let selfVadLinear = 0;
 
 // Mounted meter DOM, driven by one requestAnimationFrame loop that writes
 // transforms straight to refs, so levels never re-render React. A user can have
@@ -165,19 +181,34 @@ interface MeterDom {
 const meterDoms = new Map<string, Set<MeterDom>>();
 const meterDomByRoot = new WeakMap<HTMLElement, MeterDom>();
 let frameId: number | undefined;
+let frameTimer: ReturnType<typeof setTimeout> | undefined;
 let domResize: ResizeObserver | undefined;
+// Levels arrive at 4-10 Hz, so 30 fps keeps the bars smooth. Running at the
+// display rate (165 Hz here) repainted the panel every vsync for no visible gain.
+const FRAME_MS = 33;
 
 // Live counters for diagnostics over the CDP port
 const debugState = (globalThis as { __vumDebug?: Record<string, number>; }).__vumDebug ??= {};
 
 // The loop stays parked while nothing is mounted or the tab is hidden
 function ensureFrameLoop() {
-    if (frameId === undefined && meterDoms.size && meters.size && !document.hidden) {
+    if (frameId === undefined && frameTimer === undefined && meterDoms.size && meters.size && !document.hidden) {
         frameId = requestAnimationFrame(frameTick);
     }
 }
 
+function scheduleNextFrame() {
+    frameTimer = setTimeout(() => {
+        frameTimer = undefined;
+        ensureFrameLoop();
+    }, FRAME_MS);
+}
+
 function parkFrameLoop() {
+    if (frameTimer !== undefined) {
+        clearTimeout(frameTimer);
+        frameTimer = undefined;
+    }
     if (frameId !== undefined) {
         cancelAnimationFrame(frameId);
         frameId = undefined;
@@ -443,7 +474,7 @@ async function syncSelfInput(conn: VoiceConnection) {
             meter.ownsInput = true;
             meter.inputContext = audioContext;
             adopted = true;
-            inputMismatchDrops = 0;
+            // drops reset only once the tap carries sound, so a dead device still gets suspended
             inputSuspendKey = null;
         }
         inputKey = deviceKey;
@@ -597,8 +628,45 @@ function readLevels(conn: VoiceConnection, stats: any) {
     if (me && outbound) {
         const level = MediaEngineStore.isSelfMute() ? 0 : toLinear(outbound.audioLevel);
         selfOutboundLinear = level;
+        // audioDetected is Discord's own voice detection on the sent audio, true while the VAD flags stay 0
+        if (outbound.audioDetected && !MediaEngineStore.isSelfMute()) {
+            selfSentAt = Date.now();
+            selfVadSpeaking = true;
+        }
+        if (selfVadLive(Date.now())) return;
+        if (level > SELF_SEND_FLOOR) selfSentAt = Date.now();
         setAmplitude(me, level);
     }
+}
+
+function selfVadLive(now: number) {
+    return now - selfVadAt <= SELF_VAD_STALE_MS;
+}
+
+// levelDb is -100 when silent; flags is Discord's own speaking state for the local user
+function onVoiceActivity(levelDb: number, flags: number) {
+    const now = Date.now();
+    const muted = MediaEngineStore.isSelfMute();
+    selfVadAt = now;
+    const level = muted || !Number.isFinite(levelDb) || levelDb <= -100 ? 0 : Math.min(10 ** (levelDb / 20), 1);
+    // flags stayed 0 through speech at -15 dB (measured 2026-10-25), so a clear level counts as speaking too
+    selfVadSpeaking = !muted && (!!flags || level > SELF_SEND_FLOOR);
+    if (selfVadSpeaking) selfSentAt = now;
+    selfVadLinear = level;
+    setAmplitude(UserStore.getCurrentUser()?.id, level);
+}
+
+// Listening makes the native engine emit levels, so subscribe only while a desktop self meter needs them
+function syncVoiceActivity(want: boolean) {
+    const engine = want ? MediaEngineStore.getMediaEngine() as unknown as typeof vadEngine : undefined;
+    if (engine === vadEngine) return;
+    vadEngine?.removeListener("voiceactivity", onVoiceActivity);
+    vadEngine = undefined;
+    selfVadAt = 0;
+    selfVadSpeaking = false;
+    if (typeof engine?.on !== "function" || typeof engine.removeListener !== "function") return;
+    engine.on("voiceactivity", onVoiceActivity);
+    vadEngine = engine;
 }
 
 // 0 means taps or the native bridge already feed every voice meter. Otherwise
@@ -616,8 +684,9 @@ function statsPollMs() {
         else if (!meter.nativeAvailable || meter.nativeGap) voiceFallback = true;
     }
     if (voiceFallback) return STATS_MS;
-    if (stream) return STREAM_STATS_MS;
-    return selfTap ? SELF_STATS_MS : 0;
+    // the self send gate needs fast stats even while a stream meter is up
+    if (selfTap) return SELF_STATS_MS;
+    return stream ? STREAM_STATS_MS : 0;
 }
 
 async function pollStats() {
@@ -760,8 +829,9 @@ function notifySubscribers() {
     for (const subscriber of subscribers) subscriber();
 }
 
-// Audio activity per user id (stream: prefix stripped), for consumers that
-// need more than Discord's mic-only speaking flag. Changes dispatch a window event.
+// Mic audio activity per user id, for consumers that need more than Discord's
+// speaking flag. Stream meters stay out: soundshare is not the person's mic.
+// Changes dispatch a window event.
 const audioActiveUsers = new Set<string>();
 let audioActiveDirty = false;
 function noteActive(meter: Meter, rawLevel: number, now: number) {
@@ -772,19 +842,19 @@ function updateAudioActive() {
     const seen = new Set<string>();
     const now = Date.now();
     for (const [userId, meter] of meters) {
-        const key = userId.startsWith("stream:") ? userId.slice(7) : userId;
-        seen.add(key);
+        if (userId.startsWith("stream:")) continue;
+        seen.add(userId);
         const active = (meter.activeUntil ?? 0) > now;
         if (active && debugState.firstActiveAt == null) debugState.firstActiveAt = now;
-        if (active !== audioActiveUsers.has(key)) {
-            if (active) audioActiveUsers.add(key);
-            else audioActiveUsers.delete(key);
+        if (active !== audioActiveUsers.has(userId)) {
+            if (active) audioActiveUsers.add(userId);
+            else audioActiveUsers.delete(userId);
             audioActiveDirty = true;
         }
     }
-    for (const key of audioActiveUsers) {
-        if (!seen.has(key)) {
-            audioActiveUsers.delete(key);
+    for (const userId of audioActiveUsers) {
+        if (!seen.has(userId)) {
+            audioActiveUsers.delete(userId);
             audioActiveDirty = true;
         }
     }
@@ -809,17 +879,26 @@ if (typeof window !== "undefined") {
 // both dt-based, so mixing the cadences is safe.
 function advanceEnvelopes(now: number) {
     const { floorDb } = settings.store;
-    const perfNow = performance.now();
+    const me = UserStore.getCurrentUser()?.id;
     for (const [userId, meter] of meters) {
         if (meter.tap) {
-            const muted = meter.ownsInput && MediaEngineStore.isSelfMute();
-            const left = muted ? { rms: 0, peak: 0 } : readChannel(meter.tap.left, meter.tap.bufLeft, floorDb);
-            const right = muted || meter.mono ? left : readChannel(meter.tap.right, meter.tap.bufRight, floorDb);
+            // The input meter shows only while Discord is sending, so it matches what people hear
+            const muted = meter.ownsInput && (MediaEngineStore.isSelfMute() || now - selfSentAt > SELF_SEND_HOLD_MS);
+            let left = muted ? { rms: 0, peak: 0 } : readChannel(meter.tap.left, meter.tap.bufLeft, floorDb);
+            let right = muted || meter.mono ? left : readChannel(meter.tap.right, meter.tap.bufRight, floorDb);
+            const tapRaw = Math.max(left.rms, right.rms);
+
+            // A tap that reads nothing while Discord hears speech (muted capture session, wrong device) would
+            // leave the bars flat until it is dropped, so show Discord's own level meanwhile
+            if (meter.ownsInput && !muted && tapRaw === 0 && selfVadLive(now) && selfVadSpeaking) {
+                const vad = normalize(selfVadLinear, floorDb);
+                left = right = { rms: vad, peak: vad };
+            }
 
             smooth(meter, 0, left.rms, left.peak, now);
             smooth(meter, 1, right.rms, right.peak, now);
             noteActive(meter, Math.max(left.rms, right.rms), now);
-            if (meter.ownsInput) checkSelfMismatch(meter, muted === true, Math.max(left.rms, right.rms), now);
+            if (meter.ownsInput) checkSelfMismatch(meter, muted === true, tapRaw, now);
         } else if (meter.nativeAvailable && !meter.nativeGap) {
             const rmsLeft = normalize(meter.native?.rmsLeft ?? 0, floorDb);
             const rmsRight = normalize(meter.native?.rmsRight ?? 0, floorDb);
@@ -827,18 +906,9 @@ function advanceEnvelopes(now: number) {
             smooth(meter, 1, rmsRight, normalize(meter.native?.peakRight ?? 0, floorDb), now);
             noteActive(meter, Math.max(rmsLeft, rmsRight), now);
         } else {
-            const heard = isHeard(userId);
-            let linear = meter.amplitude;
-            // stats can miss a flagged speaker (unmapped SSRC), so synthesize a
-            // nominal level to keep the meter and the speaking ring in agreement
-            if (heard && linear <= 0.001) {
-                const flags = connection?.localSpeakingFlags;
-                if (flags && userId in flags && flags[userId] !== 0) {
-                    linear = 0.32 + 0.1 * Math.sin(perfNow / 110 + userId.length * 1.7 + (userId.charCodeAt(0) % 7));
-                }
-            }
-
-            const value = heard ? normalize(linear, floorDb) : 0;
+            // Bars follow measured audio only. A flagged speaker with no level reads flat, never a made-up one.
+            const heard = userId === me && selfVadLive(now) ? selfVadSpeaking : isHeard(userId);
+            const value = heard ? normalize(meter.amplitude, floorDb) : 0;
             // received audio counts as activity even before Discord's speaking flag arrives
             noteActive(meter, normalize(meter.amplitude, floorDb), now);
             const [panL, panR] = getPan(userId);
@@ -876,7 +946,7 @@ function frameTick() {
     debugState.meters = meters.size;
     debugState.frameAt = Date.now();
 
-    if (meterDoms.size && meters.size && !document.hidden) frameId = requestAnimationFrame(frameTick);
+    if (meterDoms.size && meters.size && !document.hidden) scheduleNextFrame();
 }
 
 // The self tap reads the OS device before Discord processing, so bleed that
@@ -885,19 +955,32 @@ function frameTick() {
 // delayed retry; after two drops the input stays on outbound until the Discord
 // input device changes.
 function checkSelfMismatch(meter: Meter, muted: boolean, raw: number, now: number) {
+    // Not muted means Discord sent within SELF_SEND_HOLD_MS. Pauses between words close
+    // the gate, so only sound on the tap clears the silent hold.
+    if (!meter.ownsInput || raw > 0) meter.silentSince = undefined;
+    else if (!muted && meter.silentSince == null) meter.silentSince = now;
+    else if (!muted && now - meter.silentSince! >= SELF_SILENT_HOLD_MS) {
+        dropSelfTap("self input tap is silent while Discord sends; falling back to outbound levels");
+        return;
+    }
     if (!meter.ownsInput || muted || now - lastStatsAt > SELF_STATS_MS * 1.5) {
         meter.mismatchSince = undefined;
         return;
     }
     if (raw < SELF_MISMATCH_RAW_FLOOR || selfOutboundLinear > SELF_MISMATCH_OUTBOUND_CEILING) {
         meter.mismatchSince = undefined;
-        inputMismatchDrops = 0;
+        // a silent tap is not a healthy one, so it keeps counting toward suspension
+        if (raw > 0) inputMismatchDrops = 0;
         return;
     }
     if (meter.mismatchSince == null) meter.mismatchSince = now;
     if (now - meter.mismatchSince < SELF_MISMATCH_HOLD_MS) return;
+    dropSelfTap("self input tap disagrees with voice outbound; falling back to outbound levels");
+}
+
+function dropSelfTap(reason: string) {
     const me = UserStore.getCurrentUser()?.id;
-    logger.warn("self input tap disagrees with voice outbound; falling back to outbound levels");
+    logger.warn(reason);
     if (me) dropMeter(me);
     inputMismatchDrops++;
     inputRetryAt = Date.now() + SELF_MISMATCH_RETRY_MS;
@@ -916,10 +999,11 @@ function tick() {
             statsFailed = false;
         }
 
+        const web = !!connection && isWebConnection(connection);
+        syncVoiceActivity(!!connection && !web && settings.store.showSelf);
         if (!connection) return;
 
         const now = Date.now();
-        const web = isWebConnection(connection);
 
         if (now - lastScanAt >= SCAN_MS) {
             lastScanAt = now;
@@ -1286,6 +1370,7 @@ export default definePlugin({
         }
 
         parkFrameLoop();
+        syncVoiceActivity(false);
         domResize?.disconnect();
         domResize = undefined;
         meterDoms.clear();
@@ -1297,7 +1382,7 @@ export default definePlugin({
         participantBridge = undefined;
         bridgeChecked = false;
         selfOutboundLinear = 0;
-        inputMismatchDrops = 0;
-        inputSuspendKey = null;
+        selfSentAt = 0;
+        // inputMismatchDrops and inputSuspendKey stay: a tap proven dead on this device is dead in the next call too
     }
 });
