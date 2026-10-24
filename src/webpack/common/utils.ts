@@ -89,6 +89,8 @@ const ToastType = {
     CLOCK: "clock"
 } as const;
 
+type ToastTypeValue = (typeof ToastType)[keyof typeof ToastType];
+
 const ToastPosition = {
     TOP: 0,
     BOTTOM: 1
@@ -288,11 +290,17 @@ export const Toasts = {
 /**
  * Show a simple toast. If you need more options, use Toasts.show manually
  */
-export function showToast(message: string, type: t.ToastType = "message", options?: ToastOptions) {
+export function showToast(data: t.ToastData): void;
+export function showToast(message: string, type?: ToastTypeValue, options?: ToastOptions): void;
+export function showToast(messageOrData: string | t.ToastData, type: ToastTypeValue = "message", options?: ToastOptions) {
     // Normalisation lives in Toasts.show: Discord's createToast when the build
     // ships one, our own legacy-to-store mapping otherwise. See resolveToasts /
     // normalizeToast above. No try/catch needed here.
-    Toasts.show(Toasts.create(message, type, options));
+    // Callers also pass a ready store entry ({text, variant, position}); that has to
+    // reach Toasts.show as-is, wrapping it as a message renders the object as a
+    // React child and soft-crashes the renderer (React error #31).
+    if (typeof messageOrData === "string") Toasts.show(Toasts.create(messageOrData, type, options));
+    else Toasts.show(messageOrData as unknown as ToastData);
 }
 
 export const UserUtils = {
