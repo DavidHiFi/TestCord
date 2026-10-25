@@ -9,9 +9,12 @@ import { definePluginSettings } from "@api/Settings";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Notice } from "@components/Notice";
 import { TestcordDevs } from "@utils/constants";
+import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
 import { filters, findByProps, mapMangledModuleLazy } from "@webpack";
 import { AuthenticationStore, SessionsStore, Tooltip, useStateFromStores } from "@webpack/common";
+
+const logger = new Logger("PlatformEmulator");
 
 const { useStatusFillColor } = mapMangledModuleLazy([".5625*", "translate"], {
     useStatusFillColor: filters.byCode(".hex")
@@ -151,6 +154,12 @@ const Icons: Record<string, ReturnType<typeof Icon>> = {
 // Spoof-target -> icon key. Android renders the same mobile icon Discord uses
 // for it; consoles render their Discord brand icons instead of falling back to
 // the desktop monitor.
+// There is deliberately no `embedded` key. The icon is picked from this plugin's
+// own `plateforme` setting, whose options are exactly the nine keys below, and
+// never from a session Discord reports back. "Embedded" only appears as the
+// browser string xbox and playstation send ("Discord Embedded"), so this
+// component can never be asked for an `embedded` platform. The desktop fallback
+// in PlatformIcon only covers a hand-edited or stale setting value.
 const platformIcons: Record<string, string> = {
     windows: "desktop",
     linux: "desktop",
@@ -174,6 +183,18 @@ const platformMap: Record<string, string> = {
     playstation: "PlayStation",
     vr: "VR"
 };
+
+// The core patcher already warns ("had no effect") and records a PluginHealth
+// entry when a patch match misses, because neither patch below sets noWarn. That
+// cannot see a match that still lands after a Discord update but now captures
+// something that is not the icon array. The push helpers check for that and warn
+// once per patch instead of throwing inside Discord's render.
+const warnedPatches = new Set<string>();
+function warnPatchFailed(name: string) {
+    if (warnedPatches.has(name)) return;
+    warnedPatches.add(name);
+    logger.warn(`Patch failed: ${name}. The self-view indicator is skipped until the patch is updated.`);
+}
 
 function PlatformIcon({ platform, status, small }: { platform: string; status: string; small: boolean; }) {
     const tooltip = platformMap[platform] ?? platform.charAt(0).toUpperCase() + platform.slice(1);
@@ -305,12 +326,15 @@ export default definePlugin({
         // other members' platform icons (left of the game icon the caller
         // pushes next). Plain array operation; the component decides
         // visibility.
+        if (!Array.isArray(arr)) return warnPatchFailed("VoiceUserIcons");
         arr.push(<VoiceIndicator key="pe-self-view" userId={userId} />);
     },
     tileIndicatorPush(arr: unknown[], userId: string) {
-        // Appends the keyed indicator to the call tile name plate's child
-        // array right after the display name. Plain array operation.
-        arr.push(<VoiceIndicator key="pe-self-view" userId={userId} />);
+        // Inserts the keyed indicator ahead of the name plate's last child
+        // instead of appending it, so it never trails the end of the plate.
+        // Plain array operation.
+        if (!Array.isArray(arr)) return warnPatchFailed("title-text");
+        arr.splice(arr.length - 1, 0, <VoiceIndicator key="pe-self-view" userId={userId} />);
     },
     commands: [
         {
