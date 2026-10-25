@@ -5,7 +5,7 @@
  */
 
 import { addMessagePreSendListener, MessageSendListener,removeMessagePreSendListener, } from "@api/MessageEvents";
-import { definePluginSettings } from "@api/Settings";
+import { definePluginSettings, Settings } from "@api/Settings";
 import { TestcordDevs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 

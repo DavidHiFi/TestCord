@@ -9,6 +9,7 @@ import {
 } from "@api/MessageEvents";
 import {
     definePluginSettings,
+    Settings,
 } from "@api/Settings";
 import { Devs, EquicordDevs } from "@utils/constants";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
