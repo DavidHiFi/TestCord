@@ -191,9 +191,10 @@ function toModernEntry(data: ToastData): Record<string, unknown> {
 }
 
 // builds that ship createToast want a normalised entry and ignore message/type/id
-function normalizeToast(data: ToastData, mod: ToastsExports): any {
-    // already a normalised entry (no legacy message) — pass through
-    if (data.message == null && typeof (data as { text?: unknown }).text === "string") return data;
+function normalizeToast(data: ToastData | t.ToastData, mod: ToastsExports): any {
+    // a ready store entry never carries the legacy `message`, so it goes through
+    // untouched (including entries that only set __dangerouslyRenderContent)
+    if (!("message" in data)) return data;
 
     const create = resolveCreateToast(mod);
     if (create) {
@@ -272,13 +273,14 @@ export const Toasts = {
     Position: ToastPosition,
     genId: () => (Math.random() || Math.random()).toString(36).slice(2),
 
-    show(data: ToastData) {
+    show(data: ToastData | t.ToastData) {
         const toasts = resolveToasts();
         if (!toasts) return;
         // a repeat of the same id replaces the visible toast (progress toasts);
         // the new store queues every show, so pop the previous one first
-        if (data.id && data.id === lastShownToastId) toasts.popToast?.();
-        lastShownToastId = data.id;
+        const id = "message" in data ? data.id : undefined;
+        if (id && id === lastShownToastId) toasts.popToast?.();
+        lastShownToastId = id;
         toasts.showToast(normalizeToast(data, toasts));
     },
     pop() {
@@ -300,7 +302,7 @@ export function showToast(messageOrData: string | t.ToastData, type: ToastTypeVa
     // reach Toasts.show as-is, wrapping it as a message renders the object as a
     // React child and soft-crashes the renderer (React error #31).
     if (typeof messageOrData === "string") Toasts.show(Toasts.create(messageOrData, type, options));
-    else Toasts.show(messageOrData as unknown as ToastData);
+    else Toasts.show(messageOrData);
 }
 
 export const UserUtils = {
